@@ -21,8 +21,11 @@ I was [thiiiis close](https://en.wikipedia.org/wiki/Millimeter) to using a GPL l
 Requirements: `make` and `go`. `sass` is optional unless you make any edits to the .scss as a .css is included. 
 
 `go get github.com/jagger27/iwikii`
+
 `cd $GOPATH/src/github.com/jagger27/iwikii`
+
 `make` (or just `go build`)
+
 `./iwikii`
 
-<small>1: Mostly because of this wonderful intro to Go web apps, [Writing Web Applications](https://golang.org/doc/articles/wiki/).</small>
+<sub>1: Mostly because of this wonderful intro to Go web apps, [Writing Web Applications](https://golang.org/doc/articles/wiki/).</sub>
