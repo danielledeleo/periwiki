@@ -1,0 +1,23 @@
+{{define "content"}}
+<div id="sidebar">
+    <a href="/"><img src="/static/logo.svg" /></a>
+    <ul>
+        <li><a href="/">Home Page</a></li>
+        <li><a href="#">Random Page</a></li>
+        <li class="wg-sidebar-title">Tools</li>
+        <li><a href="#">Cite This Page</a></li>
+    </ul>
+</div>
+<div id="article-area">
+    <ul>
+        <a href="{{.Url}}"><li class="wg-active">Article</li></a>
+        <a href="{{.Url}}?edit"><li>Edit</li></a>
+    </ul>
+    <article>
+        <h1>{{.Title}}</h1>
+        <div class="wg-article-content">
+            {{.Body}}
+        </div>
+    </article>
+</div>
+{{end}}

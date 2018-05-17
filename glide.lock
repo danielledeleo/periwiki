@@ -1,0 +1,10 @@
+hash: 772a9a82ae84df8725ad41622791699d82970d7cef6228e10d3840a3341c0743
+updated: 2018-05-15T00:38:29.649079-04:00
+imports:
+- name: github.com/gorilla/context
+  version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
+- name: github.com/gorilla/mux
+  version: e3702bed27f0d39777b0b37b664b6280e8ef8fbf
+- name: github.com/russross/blackfriday
+  version: 3420fef03359a232d74c2ac1d237ac357cfca298
+testImports: []

@@ -1,0 +1,82 @@
+body {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  background-color: #f6f6f6;
+  font-family: sans-serif;
+  line-height: 1.1em;
+}
+
+a {
+  color: #0645ad;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+#sidebar {
+  margin: 0 0.75em;
+  padding: 0.5em;
+  width: 10em;
+}
+#sidebar ul {
+  margin: 0;
+  padding: 0;
+  font-size: 0.75em;
+  list-style: none;
+}
+#sidebar ul li.wg-sidebar-title {
+  width: 80%;
+  margin: 0.4em 0;
+  border-bottom: 1px solid #a2a9b1;
+}
+
+#article-area {
+  padding: 24px 0 0 0;
+  width: 100%;
+}
+#article-area ul {
+  display: flex;
+  padding: 0;
+  margin: 0 0 -1px 0;
+  list-style: none;
+  border-left: 1px solid #a7aef9;
+}
+#article-area ul li {
+  font-size: 0.8em;
+  text-align: center;
+  padding: 0.5em 0.8em 0.3em 0.8em;
+  border-top: 1px solid #a7aef9;
+  border-right: 1px solid #a7aef9;
+}
+#article-area ul li.wg-active {
+  background-color: #ffffff;
+  border-bottom: 1px solid #ffffff;
+}
+#article-area textarea#edit {
+  display: block;
+  width: 80%;
+  min-height: 600px;
+}
+
+article {
+  padding: 20px 24px 24px 24px;
+  background-color: #ffffff;
+  border: 1px solid #a7aef9;
+  border-right: none;
+}
+article h1 {
+  line-height: 1.3em;
+  margin: 0 0 0.25em 0;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: 1.8em;
+  font-weight: 400;
+  border-bottom: 1px solid #a2a9b1;
+}
+article div.wg-article-content {
+  font-size: 0.875em;
+}
+
+/*# sourceMappingURL=static/main.css.map */
