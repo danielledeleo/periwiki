@@ -1,5 +1,5 @@
-# iwikii
-<img align="left" width="288" height="97.5" src="assets/iwikii2x.png">
+<img width="288" height="97.5" src="assets/iwikii2x.png">
+
 
 A shameless clone of MediaWiki written in Go.
 
