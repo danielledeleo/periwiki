@@ -1,5 +1,4 @@
 body {
-  display: flex;
   margin: 0;
   padding: 0;
   background-color: #f6f6f6;
@@ -16,6 +15,19 @@ a:hover {
   text-decoration: underline;
 }
 
+#flex-container {
+  display: flex;
+}
+
+#login-bar {
+  text-align: right;
+  padding: 0.3em 0.8em 0 0;
+  font-size: 0.75em;
+}
+#login-bar a {
+  margin: 0 0 0 0.4em;
+}
+
 #sidebar {
   margin: 0 0.75em;
   padding: 0.5em;
@@ -27,14 +39,14 @@ a:hover {
   font-size: 0.75em;
   list-style: none;
 }
-#sidebar ul li.wg-sidebar-title {
+#sidebar ul li.iw-sidebar-title {
   width: 80%;
   margin: 0.4em 0;
   border-bottom: 1px solid #a2a9b1;
 }
 
 #article-area {
-  padding: 24px 0 0 0;
+  padding: 18px 0 0 0;
   width: 100%;
 }
 #article-area ul {
@@ -51,14 +63,20 @@ a:hover {
   border-top: 1px solid #a7aef9;
   border-right: 1px solid #a7aef9;
 }
-#article-area ul li.wg-active {
+#article-area ul li.iw-active {
   background-color: #ffffff;
   border-bottom: 1px solid #ffffff;
 }
-#article-area textarea#edit {
+#article-area textarea#body-edit {
   display: block;
   width: 80%;
-  min-height: 600px;
+  min-height: 80px;
+  height: 160px;
+}
+#article-area input#title-edit {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: 1.8em;
+  font-weight: 400;
 }
 
 article {
@@ -75,8 +93,55 @@ article h1 {
   font-weight: 400;
   border-bottom: 1px solid #a2a9b1;
 }
-article div.wg-article-content {
+article div.iw-article-content {
   font-size: 0.875em;
+}
+
+.iw-callout {
+  display: inline-block;
+  margin: 0.5em 0;
+  padding: 10px;
+  border: 1px solid;
+}
+
+.iw-green, .iw-success {
+  border-color: #8ed28e;
+  background-color: #f4ffe2;
+}
+
+.iw-red, .iw-error {
+  border-color: #d28e8e;
+  background-color: #ffe2e2;
+}
+
+.iw-blue, .iw-info {
+  border-color: #8ebfd2;
+  background-color: #e2f7ff;
+}
+
+.iw-grey {
+  border-color: #d7d7d7;
+  background-color: #f9f9f9;
+}
+
+.hidden {
+  display: none;
+}
+
+#footer {
+  text-align: center;
+  margin: 1em 0;
+  color: #9a9a9a;
+}
+#footer small.iw-powered-by {
+  font-size: 0.75em;
+}
+#footer .iw-powered-by .iw-heart {
+  color: #a7aef9;
+  font-size: 1.4em;
+  margin: 0 0 0 1px;
+  display: inline-block;
+  transform: rotate(35deg);
 }
 
 /*# sourceMappingURL=static/main.css.map */

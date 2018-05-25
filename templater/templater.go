@@ -2,9 +2,9 @@ package templater
 
 import (
 	"fmt"
-	"html/template"
 	"io"
 	"path/filepath"
+	"text/template"
 )
 
 // Templater ecapsulates the map to prevent direct access. See RenderTemplate

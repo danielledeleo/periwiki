@@ -1,4 +1,4 @@
-<img width="288" height="97.5" src="assets/iwikii2x.png">
+<img width="192" height="65.6667" src="assets/iwikii2x.png">
 
 
 A shameless clone of MediaWiki written in Go.

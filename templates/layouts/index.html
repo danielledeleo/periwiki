@@ -3,12 +3,23 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>{{.Title}}— iwikii</title>
+    <title>{{.Article.Title}} — iwikii</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="/static/favicon32.png" />
     <link rel="stylesheet" type="text/css" media="screen" href="/static/main.css" />
 </head>
 <body>
-{{template "content" . }}
+    <div id="login-bar">
+    {{ if .User }}
+        <a href="/profile/{{ .User.ScreenName }}">My Profile</a><a href="/user/settings">Settings</a>
+    {{ else }}
+        <a href="/user/login">Login</a><a href="/user/register">Register</a>
+    {{ end }}
+    </div>
+    <div id="flex-container">
+        {{template "sidebar" .Sidebar }}
+        {{template "content" .Article }}
+    </div>
+    <div id="footer"><small class="iw-powered-by">Powered by <a href="https://github.com/jagger27/iwikii">iwikii</a><span class="iw-heart">♥</span></small></div>
 </body>
 </html>

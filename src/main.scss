@@ -1,9 +1,9 @@
 $link-color: #0645ad;
-$wikigogo: #a7aef9;
+$iwikii-purple: #a7aef9;
 $underline: #a2a9b1;
     
 body {
-    display: flex;
+    // display: flex;
     margin: 0;
     padding: 0;
 
@@ -20,6 +20,20 @@ a:hover {
     text-decoration: underline;
 }
 
+#flex-container {
+    display: flex;
+}
+
+#login-bar {
+    text-align: right;
+    padding: 0.3em 0.8em 0 0;
+    font-size: .75em;
+
+    a {
+        margin: 0 0 0 0.4em;
+    }
+}
+
 #sidebar {
     margin: 0 0.75em;
     padding: 0.5em;
@@ -32,7 +46,7 @@ a:hover {
         font-size: .75em;
         list-style: none;
 
-        li.wg-sidebar-title {
+        li.iw-sidebar-title {
             width: 80%;
             margin: 0.4em 0;
             border-bottom: 1px solid $underline;
@@ -41,7 +55,7 @@ a:hover {
 }
 
 #article-area {
-    padding: 24px 0 0 0;
+    padding: 18px 0 0 0;
     width: 100%;
 
     ul {
@@ -50,27 +64,34 @@ a:hover {
         margin: 0 0 -1px 0;
 
         list-style: none;
-        border-left: 1px solid $wikigogo;
+        border-left: 1px solid $iwikii-purple;
         li {
             // display: flex;
             font-size: 0.8em;
             text-align: center;
             padding: 0.5em 0.8em 0.3em 0.8em;
 
-            border-top: 1px solid $wikigogo;
-            border-right: 1px solid $wikigogo;
+            border-top: 1px solid $iwikii-purple;
+            border-right: 1px solid $iwikii-purple;
             
         }
-        li.wg-active {
+        li.iw-active {
             background-color: #ffffff;
             border-bottom: 1px solid #ffffff;
         }
     }
 
-    textarea#edit {
+    textarea#body-edit {
         display: block;
         width: 80%;
-        min-height: 600px;
+        min-height: 80px;
+        height: 160px;
+    }
+
+    input#title-edit {
+        font-family: Georgia, 'Times New Roman', Times, serif;
+        font-size: 1.8em;
+        font-weight: 400;
     }
 }
 
@@ -79,7 +100,7 @@ article {
     // width: 100%;
 
     background-color: #ffffff;
-    border: 1px solid $wikigogo;
+    border: 1px solid $iwikii-purple;
     border-right: none;
 
     h1 {
@@ -92,7 +113,60 @@ article {
 
         border-bottom: 1px solid $underline;
     }
-    div.wg-article-content {
+    div.iw-article-content {
         font-size: 0.875em;
+    }
+}
+
+.iw-callout {
+    // width: 60%;
+    display: inline-block;
+    margin: 0.5em 0;
+    padding: 10px;
+    border: 1px solid;
+}
+
+.iw-green, .iw-success {
+    border-color: #8ed28e;
+    background-color: #f4ffe2;;
+}
+
+.iw-red, .iw-error {
+    border-color: #d28e8e;
+    background-color: #ffe2e2;
+}
+
+.iw-blue, .iw-info {
+    border-color: #8ebfd2;
+    background-color: #e2f7ff;
+}
+
+.iw-grey {
+    border-color: #d7d7d7;
+    background-color: #f9f9f9;
+}
+
+.hidden {
+    display: none;
+}
+
+#footer {
+    text-align: center;
+    margin: 1em 0;
+
+    color: #9a9a9a;
+
+    small.iw-powered-by {
+        font-size: 0.75em;
+    }
+    .iw-powered-by {        
+        .iw-heart {
+            
+            color: $iwikii-purple;
+            font-size: 1.4em;
+            margin: 0 0 0 1px;
+            display: inline-block;
+            transform: rotate(35deg); 
+        }
     }
 }

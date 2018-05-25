@@ -1,21 +1,45 @@
 package model
 
-import "time"
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+	"net/http"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/gorilla/sessions"
+)
 
 type WikiModel struct {
-	db
+	db db
+	*Config
+	// cache, perhaps
+}
+
+type Config struct {
+	MinimumPasswordLength int
 }
 
 type db interface {
-	GetArticle(url string) (*Article, error)
+	SelectArticle(url string) (*Article, error)
+	SelectUserByScreenname(screenname string, withHash bool) (*User, error)
+	InsertArticle(article *Article) error
+	InsertUser(user *User) error
+	sessions.Store
+
 	// SetArticle(*Article) error
 	// UpdateArticle(*Article) error
 }
 
 type Article struct {
-	URL       string
-	Title     string
-	Revisions *RevisionTree
+	URL string
+	*Revision
+}
+
+func (article *Article) String() string {
+	return fmt.Sprintf("%q %q", article.URL, *article.Revision)
 }
 
 type RevisionTree interface {
@@ -45,18 +69,94 @@ func (rt *SimpleRevisionTree) Add(revision *Revision) {
 }
 
 type Revision struct {
-	Markdown string
-	HTML     string
-	Hash     string
+	Title    string `db:"title"`
+	Markdown string `db:"markdown"`
+	HTML     string `db:"html"`
+	Hash     string `db:"hashval"`
 	Creator  *User
-	Date     time.Time
-	Parent   *Revision
+	Created  time.Time `db:"created"`
+	Previous *Revision
 }
 
 type User struct {
-	Email        string
-	ScreenName   string
-	ID           int
-	PasswordHash []byte
+	Email        string `db:"email"`
+	ScreenName   string `db:"screenname"`
+	ID           int    `db:"id"`
+	PasswordHash string `db:"passwordhash"`
+	RawPassword  string
 	// Role
+}
+
+func (u *User) SetPasswordHash() error {
+	rawHash, err := bcrypt.GenerateFromPassword([]byte(u.RawPassword), bcrypt.MinCost)
+	u.RawPassword = ""
+	if err != nil {
+		return err
+	}
+	u.PasswordHash = string(rawHash)
+	return nil
+}
+
+func New(db db, conf *Config) *WikiModel {
+	return &WikiModel{db: db, Config: conf}
+}
+
+func (model *WikiModel) GetArticle(url string) (*Article, error) {
+	article, err := model.db.SelectArticle(url)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	// article.HTML = article.Markdown // TODO: Parse markdown into clean HTML
+	return article, err
+}
+
+var ErrUsernameTaken = errors.New("username already in use")
+var ErrEmailTaken = errors.New("email already in use")
+var ErrPasswordTooShort = errors.New("password too short")
+var ErrIncorrectPassword = errors.New("incorrect password")
+var ErrUsernameNotFound = errors.New("username not found")
+
+func (model *WikiModel) PostArticle(article *Article) error {
+	return model.db.InsertArticle(article)
+}
+
+// PostUser inserts attempts to insert a user into the database
+func (model *WikiModel) PostUser(user *User) error {
+	if len(user.RawPassword) < model.MinimumPasswordLength {
+		return errors.New(ErrPasswordTooShort.Error() + fmt.Sprintf(" (must be %d characters long)", model.MinimumPasswordLength))
+	}
+	err := user.SetPasswordHash()
+	if err != nil {
+		return err
+	}
+	return model.db.InsertUser(user)
+}
+
+// GetCookie wraps gorilla/sessions.Store.Get, as implemented by WikiModel.db
+func (model *WikiModel) GetCookie(r *http.Request, name string) (*sessions.Session, error) {
+	return model.db.Get(r, name)
+}
+
+// NewCookie wraps gorilla/sessions.Store.New, as implemented by WikiModel.db
+func (model *WikiModel) NewCookie(r *http.Request, name string) (*sessions.Session, error) {
+	return model.db.New(r, name)
+}
+
+// SaveCookie wraps gorilla/sessions.Store.Save, as implemented by WikiModel.db
+func (model *WikiModel) SaveCookie(r *http.Request, rw http.ResponseWriter, s *sessions.Session) error {
+	return model.db.Save(r, rw, s)
+}
+
+func (model *WikiModel) CheckUserPassword(u *User) error {
+	dbUser, err := model.db.SelectUserByScreenname(u.ScreenName, true)
+	if err == sql.ErrNoRows {
+		return ErrUsernameNotFound
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(dbUser.PasswordHash), []byte(u.RawPassword))
+	if err == bcrypt.ErrMismatchedHashAndPassword {
+		return ErrIncorrectPassword
+	}
+	return err
 }
