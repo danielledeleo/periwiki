@@ -27,7 +27,10 @@ type db interface {
 	SelectUserByScreenname(screenname string, withHash bool) (*User, error)
 	InsertArticle(article *Article) error
 	InsertUser(user *User) error
+
+	// For cookie store, delete isn't part of the interface for some reason
 	sessions.Store
+	Delete(r *http.Request, rw http.ResponseWriter, s *sessions.Session) error
 
 	// SetArticle(*Article) error
 	// UpdateArticle(*Article) error
@@ -149,6 +152,11 @@ func (model *WikiModel) SaveCookie(r *http.Request, rw http.ResponseWriter, s *s
 	return model.db.Save(r, rw, s)
 }
 
+// DeleteCookie wraps gorilla/sessions.Store.Delete, as implemented by WikiModel.db
+func (model *WikiModel) DeleteCookie(r *http.Request, rw http.ResponseWriter, s *sessions.Session) error {
+	return model.db.Delete(r, rw, s)
+}
+
 func (model *WikiModel) CheckUserPassword(u *User) error {
 	dbUser, err := model.db.SelectUserByScreenname(u.ScreenName, true)
 	if err == sql.ErrNoRows {
@@ -159,4 +167,12 @@ func (model *WikiModel) CheckUserPassword(u *User) error {
 		return ErrIncorrectPassword
 	}
 	return err
+}
+
+func (model *WikiModel) GetUserByScreenName(screenname string) (*User, error) {
+	dbUser, err := model.db.SelectUserByScreenname(screenname, false)
+	if err == sql.ErrNoRows {
+		return nil, ErrUsernameNotFound
+	}
+	return dbUser, err
 }
