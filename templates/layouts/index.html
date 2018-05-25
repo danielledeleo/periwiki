@@ -11,9 +11,12 @@
 <body>
     <div id="login-bar">
     {{ if .User }}
-        <a href="/profile/{{ .User.ScreenName }}">My Profile</a><a href="/user/settings">Settings</a>
+        <a href="/profile/{{ .User.ScreenName }}">My Profile</a>
+        <a href="/user/settings">Settings</a>
+        <form method="POST" action="/user/logout"><button class="iw-logout-btn" type="submit">Logout</button></form>
     {{ else }}
-        <a href="/user/login">Login</a><a href="/user/register">Register</a>
+        <a href="/user/login">Login</a>
+        <a href="/user/register">Register</a>
     {{ end }}
     </div>
     <div id="flex-container">

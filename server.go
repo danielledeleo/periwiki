@@ -44,6 +44,8 @@ func main() {
 
 	app := app{t, model, bm}
 
+	router.Use(app.SessionMiddleware)
+
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
 	router.HandleFunc("/", app.homeHandler).Methods("GET")
 	router.HandleFunc("/wiki/{article}", app.articleHandler)
@@ -51,6 +53,7 @@ func main() {
 	router.HandleFunc("/user/register", app.userPostHandler).Methods("POST")
 	router.HandleFunc("/user/login", app.loginHander).Methods("GET")
 	router.HandleFunc("/user/login", app.loginPostHander).Methods("POST")
+	router.HandleFunc("/user/logout", app.logoutPostHander).Methods("POST")
 
 	logger := handlers.LoggingHandler(os.Stdout, router)
 	http.ListenAndServe(":8080", logger)
@@ -114,24 +117,41 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 		render["formClasses"] = ""
 		render["screennameValue"] = user.ScreenName
 	} else {
-		// set cookie
+		session, err := a.GetCookie(req, "iwikii-login")
+		check(err)
+		session.Options.MaxAge = 86400 // a day
+		session.Values["username"] = user.ScreenName
+		err = session.Save(req, rw)
+		check(err)
 	}
 
 	err = a.RenderTemplate(rw, "login.html", "index.html", render)
 	check(err)
 }
 
-func (a *app) homeHandler(rw http.ResponseWriter, req *http.Request) {
+func (a *app) logoutPostHander(rw http.ResponseWriter, req *http.Request) {
+	session, err := a.GetCookie(req, "iwikii-login")
+	check(err)
 
+	err = a.DeleteCookie(req, rw, session)
+	check(err)
+
+	http.Redirect(rw, req, "/", http.StatusSeeOther)
+}
+
+func (a *app) homeHandler(rw http.ResponseWriter, req *http.Request) {
 	data := make(map[string]interface{})
+	user := req.Context().Value(userKey)
+
+	if user != nil {
+		data["User"] = user
+	}
 	data["Article"] = &model.Article{
 		Revision: &model.Revision{
 			Title: "Home",
 			HTML:  "Welcome to iwikii! Why don't you check out <a href='/wiki/test'>Test</a>?",
 		},
 	}
-	data["User"] = model.User{ScreenName: "Jagger", Email: "jagger@twoseven.ca"}
-
 	err := a.RenderTemplate(rw, "home.html", "index.html", data)
 	check(err)
 }
@@ -141,8 +161,11 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 	render := map[string]interface{}{}
 	article, err := a.GetArticle(vars["article"])
 	check(err)
+	user := req.Context().Value(userKey)
 
-	render["User"] = model.User{ScreenName: "Jagger", Email: "jagger@twoseven.ca"}
+	if user != nil {
+		render["User"] = user.(*model.User)
+	}
 
 	found := article != nil
 
@@ -156,7 +179,7 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 
 		article.Title = req.PostFormValue("title")
 		article.Markdown = req.PostFormValue("body")
-		article.Creator = &model.User{ID: 1}
+		article.Creator = render["User"].(*model.User)
 		// article.Title = req.PostFormValue("title")
 		a.articlePostHandler(article, rw, req)
 		return
