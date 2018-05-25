@@ -140,7 +140,6 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	render := map[string]interface{}{}
 	article, err := a.GetArticle(vars["article"])
-	log.Println("Article handler", article)
 	check(err)
 
 	render["User"] = model.User{ScreenName: "Jagger", Email: "jagger@twoseven.ca"}
@@ -186,8 +185,8 @@ func (a *app) editHandler(data interface{}, rw http.ResponseWriter, req *http.Re
 }
 
 func (a *app) articlePostHandler(article *model.Article, rw http.ResponseWriter, req *http.Request) {
-	article.HTML = a.Sanitize(string(blackfriday.Run([]byte(article.Markdown))))
-	log.Println("articlePostHandler", article)
+	unsafe := blackfriday.Run([]byte(article.Markdown), blackfriday.WithExtensions(blackfriday.NoIntraEmphasis|blackfriday.HardLineBreak|blackfriday.Tables))
+	article.HTML = a.Sanitize(string(unsafe))
 	err := a.PostArticle(article)
 	check(err)
 	http.Redirect(rw, req, req.URL.Path, http.StatusSeeOther) // To prevent "browser must resend..."
