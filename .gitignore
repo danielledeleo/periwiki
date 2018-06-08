@@ -1,5 +1,7 @@
 vendor/
 iwikii
 iwikii.db
+tmp/
+
 
 .DS_Store

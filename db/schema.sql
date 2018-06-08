@@ -20,12 +20,24 @@ CREATE TABLE IF NOT EXISTS Revision (
     article_id INT NOT NULL,
     user_id INTEGER NOT NULL,
     created TIMESTAMP NOT NULL,
+    previous_hash TEXT NOT NULL,
+    comment TEXT,
     FOREIGN KEY(article_id) REFERENCES Article(id),
+    -- FOREIGN KEY(previous_hash) REFERENCES Revision(hashval),
     FOREIGN KEY(user_id) REFERENCES User(id)
 );
 
-CREATE TABLE IF NOT EXISTS Passwords (
+CREATE TABLE IF NOT EXISTS Password (
     user_id INTEGER PRIMARY KEY NOT NULL,
     passwordhash TEXT NOT NULL,
     FOREIGN KEY(user_id) REFERENCES User(id)
 );
+
+CREATE TABLE IF NOT EXISTS AnonymousEdit (
+    ip TEXT NOT NULL,
+    revision_id INT NOT NULL,
+    FOREIGN KEY(revision_id) REFERENCES Revision(id)
+);
+
+INSERT OR IGNORE INTO User(id, email, screenname) VALUES (0, "", "Anonymous");
+-- INSERT OR IGNORE INTO User(id, email, screenname) VALUES (1, "", "Administrator");

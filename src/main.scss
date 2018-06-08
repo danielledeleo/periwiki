@@ -1,6 +1,7 @@
 $link-color: #0645ad;
 $iwikii-purple: #a7aef9;
 $underline: #a2a9b1;
+$iwikii-grey: #9a9a9a;
     
 body {
     // display: flex;
@@ -28,9 +29,24 @@ a:hover {
     text-align: right;
     padding: 0.3em 0.8em 0 0;
     font-size: .75em;
+    display: flex;
+    justify-content: right;
 
-    a {
-        margin: 0 0 0 0.4em;
+    a, .iw-logout-btn {
+        margin: 0 0 0 0.75em;
+    }
+
+    button.iw-logout-btn {
+        background: none;
+        color: $link-color;
+        border:none; 
+        padding: 0;
+        font: inherit;
+        cursor: pointer;
+
+        &:hover {
+            text-decoration: underline;
+        }
     }
 }
 
@@ -58,7 +74,7 @@ a:hover {
     padding: 18px 0 0 0;
     width: 100%;
 
-    ul {
+    ul.iw-tabs {
         display: flex;
         padding: 0;
         margin: 0 0 -1px 0;
@@ -84,8 +100,8 @@ a:hover {
     textarea#body-edit {
         display: block;
         width: 80%;
-        min-height: 80px;
-        height: 160px;
+        min-height: 160px;
+        height: 320px;
     }
 
     input#title-edit {
@@ -93,17 +109,24 @@ a:hover {
         font-size: 1.8em;
         font-weight: 400;
     }
+    .iw-last-edited {
+        // text-align: center;
+        font-size: 0.75em;
+        color: $iwikii-grey;
+        display: block;
+    }
 }
 
 article {
     padding: 20px 24px 24px 24px;
-    // width: 100%;
+    margin: 0 0 24px 0;
 
     background-color: #ffffff;
     border: 1px solid $iwikii-purple;
     border-right: none;
+    line-height: 1.6;
 
-    h1 {
+    h1, h2 {
         line-height: 1.3em;
         margin: 0 0 .25em 0;
 
@@ -113,8 +136,29 @@ article {
 
         border-bottom: 1px solid $underline;
     }
+    h2 {
+        margin: 1em 0 .25em 0;
+        font-size: 1.5em;
+    }
     div.iw-article-content {
         font-size: 0.875em;
+    }
+
+    pre {
+        border: 1px solid $iwikii-purple;
+        padding: 0.75em;
+        background-color: #FBFBFB;
+    }
+    code {
+        font-family: "Andale Mono", "Consolas", monospace;
+        font-size: 1em;
+    }
+    ul {
+        margin: 0.3em 0 0 1.6em;
+        padding: 0;
+        li {
+            margin: 0 0 0.1em 0;
+        }
     }
 }
 
@@ -154,7 +198,7 @@ article {
     text-align: center;
     margin: 1em 0;
 
-    color: #9a9a9a;
+    color: $iwikii-grey;
 
     small.iw-powered-by {
         font-size: 0.75em;

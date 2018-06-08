@@ -1,7 +1,7 @@
 <img width="192" height="65.6667" src="assets/iwikii2x.png">
 
 
-MediaWiki-inspired wiki written in Go with an SQLite backend.
+MediaWiki-inspired, Pandoc powered wiki written in Go with an SQLite backend.
 
 ## Why?
 Because I don't like managing PHP installations.
@@ -18,7 +18,9 @@ This is what a wiki should look like.
 I was [thiiiis close](https://en.wikipedia.org/wiki/Millimeter) to using GPL, but then I thought: "hey but what if someone at some big corp wants to use iwikii but they aren't allowed to?", so I decided on Mozilla Public License. Share what you do with it!
 
 ## Build/Run
-Requirements: `make` and `go`. `sass` is optional unless you make any edits to the .scss as a .css is included. 
+Requirements: `pandoc`, `make`, and `go`. `sass` is optional unless you make any edits to the .scss as a .css is included. 
+
+Install Pandoc (`brew install pandoc`)
 
 `go get github.com/jagger27/iwikii`
 

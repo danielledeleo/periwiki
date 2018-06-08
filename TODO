@@ -1,7 +1,7 @@
 Soon(ish)
 - Make user pages, index, and other special pages all types of Articles (and revisions)
 - Auto populate new databases with an Admin user with id 1 as the owner of all the default pages
-- Create Markdown templates for default pages (index, user profiles, etc.)
+- Create Markdown templates for default pages (user profiles, admin pages, etc.)
 - Automated tests 
 
 Down the line

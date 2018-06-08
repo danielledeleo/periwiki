@@ -1,0 +1,22 @@
+{{define "content"}}
+<div id="article-area">
+    {{with .Article}}
+    <ul class="iw-tabs">
+        <a href="/wiki/{{.URL}}"><li>Article</li></a>
+        <a href="/wiki/{{.URL}}/history"><li class="iw-active">History</li></a>
+    </ul>
+    <article>
+        <h1>{{.Title}}</h1>
+        {{end}}
+        <div class="iw-article-content">
+            <ul>
+            {{range .Revisions}}
+                <li>
+                    <a href="/wiki/{{$.Article.URL}}/r/{{.Hash}}">{{ .Created.Format "2006, Jan _2 3:04 MST" }}</a> by {{.Creator.ScreenName}} {{if .Comment}}... <em>({{.Comment}})</em>{{end}}
+                </li>
+            {{end}}
+            </ul>
+        </div>
+    </article>
+</div>
+{{end}}

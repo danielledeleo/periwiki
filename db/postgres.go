@@ -4,21 +4,23 @@ import (
 	"database/sql"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/jagger27/iwikii/model"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
-	"github.com/michaeljs1990/sqlitestore"
+	_ "github.com/lib/pq"
+
+	"github.com/gorilla/sessions"
 )
 
-type SqliteConfig struct {
+type PgConfig struct {
 	DatabaseFile    string
 	CookieSecretKey string
 }
 
-type sqliteDb struct {
-	*sqlitestore.SqliteStore
+type pgDb struct {
+	*sessions.CookieStore
 	conn                              *sqlx.DB
 	selectArticleByLatestRevisionStmt *sqlx.Stmt
 	selectArticleByRevisionStmt       *sqlx.Stmt
@@ -26,9 +28,12 @@ type sqliteDb struct {
 	selectUserScreennameWithHashStmt  *sqlx.Stmt
 }
 
-func Init(config SqliteConfig) (*sqliteDb, error) {
-	conn, err := sqlx.Open("sqlite3", config.DatabaseFile)
+func (db *pgDb) Delete(r *http.Request, rw http.ResponseWriter, s *sessions.Session) error {
+	return nil
+}
 
+func InitPg(config PgConfig) (*pgDb, error) {
+	conn, err := sqlx.Open("postgres", "user=jagger dbname=iwikii sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,9 +50,8 @@ func Init(config SqliteConfig) (*sqliteDb, error) {
 		log.Fatalf("%q: %s\n", err, sqlStmt)
 	}
 
-	db := &sqliteDb{conn: conn}
-
-	db.SqliteStore, err = sqlitestore.NewSqliteStoreFromConnection(conn, "sessions", "/", 86400, []byte(config.CookieSecretKey))
+	db := &pgDb{conn: conn}
+	db.CookieStore = sessions.NewCookieStore([]byte(config.CookieSecretKey))
 	check(err)
 	// timenowquery := `strftime("%Y-%m-%d %H:%M:%f", "now")`
 
@@ -69,13 +73,7 @@ func Init(config SqliteConfig) (*sqliteDb, error) {
 	return db, err
 }
 
-func check(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func (db *sqliteDb) InsertUser(user *model.User) error {
+func (db *pgDb) InsertUser(user *model.User) error {
 	tx, err := db.conn.Beginx()
 	_, userErr := tx.Exec(`INSERT INTO User(screenname, email) VALUES (?, ?)`, user.ScreenName, user.Email)
 	_, _ = tx.Exec(`INSERT INTO Password(user_id, passwordhash) VALUES (last_insert_rowid(), ?)`, user.PasswordHash)
@@ -95,7 +93,7 @@ func (db *sqliteDb) InsertUser(user *model.User) error {
 	return nil
 }
 
-func (db *sqliteDb) SelectArticle(url string) (*model.Article, error) {
+func (db *pgDb) SelectArticle(url string) (*model.Article, error) {
 	article := &model.Article{}
 	article.Revision = &model.Revision{}
 	err := db.selectArticleByLatestRevisionStmt.Get(article, url)
@@ -105,7 +103,7 @@ func (db *sqliteDb) SelectArticle(url string) (*model.Article, error) {
 	return article, err
 }
 
-func (db *sqliteDb) SelectArticleByRevision(url string, hash string) (*model.Article, error) {
+func (db *pgDb) SelectArticleByRevision(url string, hash string) (*model.Article, error) {
 	article := &model.Article{}
 	article.Revision = &model.Revision{}
 
@@ -117,7 +115,7 @@ func (db *sqliteDb) SelectArticleByRevision(url string, hash string) (*model.Art
 	return article, err
 }
 
-func (db *sqliteDb) SelectRevision(hash string) (*model.Revision, error) {
+func (db *pgDb) SelectRevision(hash string) (*model.Revision, error) {
 	r := &model.Revision{}
 	x := &struct {
 		ID           int
@@ -136,7 +134,7 @@ func (db *sqliteDb) SelectRevision(hash string) (*model.Revision, error) {
 	return r, err
 }
 
-func (db *sqliteDb) SelectRevisionHistory(url string) ([]*model.Revision, error) {
+func (db *pgDb) SelectRevisionHistory(url string) ([]*model.Revision, error) {
 	rows, err := db.conn.Queryx(
 		`SELECT title, hashval, created, comment, User.screenname
 			FROM Article JOIN Revision ON Article.id = Revision.article_id 
@@ -166,7 +164,7 @@ func (db *sqliteDb) SelectRevisionHistory(url string) ([]*model.Revision, error)
 	return results, nil
 }
 
-func (db *sqliteDb) SelectUserByScreenname(screenname string, withHash bool) (*model.User, error) {
+func (db *pgDb) SelectUserByScreenname(screenname string, withHash bool) (*model.User, error) {
 	user := &model.User{}
 
 	var err error
@@ -179,7 +177,7 @@ func (db *sqliteDb) SelectUserByScreenname(screenname string, withHash bool) (*m
 	return user, err
 }
 
-func (db *sqliteDb) InsertArticle(article *model.Article) error {
+func (db *pgDb) InsertArticle(article *model.Article) error {
 	testArticle, err := db.SelectArticle(article.URL)
 	if err == sql.ErrNoRows { // New article.
 		tx, err := db.conn.Beginx()

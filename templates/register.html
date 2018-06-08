@@ -10,11 +10,11 @@
                 <table>
                     <tr>
                         <td><label for="screenname">Username</label></td>
-                        <td><input type="text" name="screenname" placeholder="Username" value="{{ .screennameValue }}"></td>
+                        <td><input type="text" name="screenname" placeholder="Username" {{if .screennameValue}} value="{{ .screennameValue }}" {{end}}></td>
                     </tr>
                     <tr>
                         <td><label for="email">Email</label></td>
-                        <td><input type="text" name="email" placeholder="Email address" value="{{ .emailValue }}"></td>
+                        <td><input type="text" name="email" placeholder="Email address" {{if .emailValue}} value="{{ .emailValue }}" {{end}}></td>
                     </tr>
                     <tr>
                         <td><label for="password">Password</label></td>

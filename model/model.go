@@ -1,20 +1,24 @@
 package model
 
 import (
+	"crypto/sha512"
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/gorilla/sessions"
+	"github.com/jagger27/iwikii/pandoc"
+	"github.com/microcosm-cc/bluemonday"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type WikiModel struct {
 	db db
 	*Config
+	sanitizer *bluemonday.Policy
 	// cache, perhaps
 }
 
@@ -24,7 +28,10 @@ type Config struct {
 
 type db interface {
 	SelectArticle(url string) (*Article, error)
+	SelectArticleByRevision(url string, hash string) (*Article, error)
+	SelectRevision(hash string) (*Revision, error)
 	SelectUserByScreenname(screenname string, withHash bool) (*User, error)
+	SelectRevisionHistory(url string) ([]*Revision, error)
 	InsertArticle(article *Article) error
 	InsertUser(user *User) error
 
@@ -45,40 +52,16 @@ func (article *Article) String() string {
 	return fmt.Sprintf("%q %q", article.URL, *article.Revision)
 }
 
-type RevisionTree interface {
-	Head() *Revision
-	Add(*Revision)
-	// Compare(a, b *Revision) (diff string) ?
-}
-
-type SimpleRevisionTree struct {
-	head      *Revision
-	revisions []*Revision
-}
-
-func (rt *SimpleRevisionTree) Head() *Revision {
-	return rt.head
-}
-
-func (rt *SimpleRevisionTree) Add(revision *Revision) {
-	if rt.head != nil {
-		rt.head = revision
-	}
-	if rt.revisions == nil {
-		rt.revisions = make([]*Revision, 0)
-	}
-
-	rt.revisions = append(rt.revisions, revision)
-}
-
 type Revision struct {
-	Title    string `db:"title"`
-	Markdown string `db:"markdown"`
-	HTML     string `db:"html"`
-	Hash     string `db:"hashval"`
-	Creator  *User
-	Created  time.Time `db:"created"`
-	Previous *Revision
+	ID           int    `db:"id"`
+	Title        string `db:"title"`
+	Markdown     string `db:"markdown"`
+	HTML         string `db:"html"`
+	Hash         string `db:"hashval"`
+	Creator      *User
+	Created      time.Time `db:"created"`
+	PreviousHash string    `db:"previous_hash"`
+	Comment      string    `db:"comment"`
 }
 
 type User struct {
@@ -87,6 +70,7 @@ type User struct {
 	ID           int    `db:"id"`
 	PasswordHash string `db:"passwordhash"`
 	RawPassword  string
+	IPAddress    string
 	// Role
 }
 
@@ -100,8 +84,8 @@ func (u *User) SetPasswordHash() error {
 	return nil
 }
 
-func New(db db, conf *Config) *WikiModel {
-	return &WikiModel{db: db, Config: conf}
+func New(db db, conf *Config, s *bluemonday.Policy) *WikiModel {
+	return &WikiModel{db: db, Config: conf, sanitizer: s}
 }
 
 func (model *WikiModel) GetArticle(url string) (*Article, error) {
@@ -111,7 +95,6 @@ func (model *WikiModel) GetArticle(url string) (*Article, error) {
 	} else if err != nil {
 		return nil, err
 	}
-	// article.HTML = article.Markdown // TODO: Parse markdown into clean HTML
 	return article, err
 }
 
@@ -120,9 +103,30 @@ var ErrEmailTaken = errors.New("email already in use")
 var ErrPasswordTooShort = errors.New("password too short")
 var ErrIncorrectPassword = errors.New("incorrect password")
 var ErrUsernameNotFound = errors.New("username not found")
+var ErrArticleNotModified = errors.New("article not modified")
 
 func (model *WikiModel) PostArticle(article *Article) error {
-	return model.db.InsertArticle(article)
+	x := sha512.Sum384([]byte(article.Title + article.Markdown))
+	article.Hash = base64.URLEncoding.EncodeToString(x[:])
+
+	sourceRevision, err := model.GetArticleByRevisionHash(article.URL, article.PreviousHash)
+	if err != sql.ErrNoRows {
+		if sourceRevision.Hash == article.Hash {
+			return ErrArticleNotModified
+		} else if err != nil {
+			return err
+		}
+	}
+
+	unsafe, err := pandoc.MarkdownToHTML(article.Markdown)
+	if err != nil {
+		return err
+	}
+
+	article.HTML = model.sanitizer.Sanitize(string(unsafe))
+	err = model.db.InsertArticle(article)
+
+	return err
 }
 
 // PostUser inserts attempts to insert a user into the database
@@ -135,6 +139,19 @@ func (model *WikiModel) PostUser(user *User) error {
 		return err
 	}
 	return model.db.InsertUser(user)
+}
+
+func AnonymousUser() *User {
+	return &User{ID: 0}
+}
+
+func (model *WikiModel) PreviewMarkdown(markdown string) (string, error) {
+	unsafe, err := pandoc.MarkdownToHTML(markdown)
+	if err != nil {
+		return "", err
+	}
+
+	return model.sanitizer.Sanitize(string(unsafe)), nil
 }
 
 // GetCookie wraps gorilla/sessions.Store.Get, as implemented by WikiModel.db
@@ -175,4 +192,16 @@ func (model *WikiModel) GetUserByScreenName(screenname string) (*User, error) {
 		return nil, ErrUsernameNotFound
 	}
 	return dbUser, err
+}
+
+func (model *WikiModel) GetArticleByRevisionHash(url string, hash string) (*Article, error) {
+	revision, err := model.db.SelectArticleByRevision(url, hash)
+	if err != nil {
+		return nil, err
+	}
+	return revision, err
+}
+
+func (model *WikiModel) GetRevisionHistory(url string) ([]*Revision, error) {
+	return model.db.SelectRevisionHistory(url)
 }

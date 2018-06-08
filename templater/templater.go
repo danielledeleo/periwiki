@@ -12,6 +12,36 @@ type Templater struct {
 	templates map[string]*template.Template
 }
 
+// HTMLItem is used to inject attributes and text into HTML templates.
+type HTMLItem struct {
+	Text string
+	attr map[string][]string
+}
+
+// Attributes returns a formatted string of attributes (set by AddAttribute)
+func (item HTMLItem) Attributes() string {
+	result := ""
+	for key, val := range item.attr {
+		attrs := ""
+		for _, attr := range val {
+			attrs += attr + " "
+		}
+		attrs = attrs[:len(attrs)-1]
+		result += fmt.Sprintf(`%s="%s" `, key, attrs)
+	}
+	return result
+}
+
+// AddAttribute creates a key/value pair to represent and format HTML attributes into a string
+// e.g. class="hidden iw-error"
+// Setting a key twice overwrites it. Empty keys are ignored.
+func (item HTMLItem) AddAttribute(key string, value ...string) {
+	if key == "" {
+		return
+	}
+	item.attr[key] = value
+}
+
 func New() *Templater {
 	return &Templater{}
 }
@@ -39,7 +69,7 @@ func (t *Templater) Load(baseGlob, mainGlob string) error {
 	return nil
 }
 
-// RenderTemplate just makes sure the templates exist. Don't mix up name and base!
+// RenderTemplate makes sure templates exist and renders them. Don't mix up name and base!
 func (t *Templater) RenderTemplate(w io.Writer, name string, base string, data interface{}) error {
 	// Ensure the template exists in the map.
 	tmpl, ok := t.templates[name]

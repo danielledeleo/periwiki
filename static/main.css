@@ -23,9 +23,22 @@ a:hover {
   text-align: right;
   padding: 0.3em 0.8em 0 0;
   font-size: 0.75em;
+  display: flex;
+  justify-content: right;
 }
-#login-bar a {
-  margin: 0 0 0 0.4em;
+#login-bar a, #login-bar .iw-logout-btn {
+  margin: 0 0 0 0.75em;
+}
+#login-bar button.iw-logout-btn {
+  background: none;
+  color: #0645ad;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+#login-bar button.iw-logout-btn:hover {
+  text-decoration: underline;
 }
 
 #sidebar {
@@ -49,43 +62,50 @@ a:hover {
   padding: 18px 0 0 0;
   width: 100%;
 }
-#article-area ul {
+#article-area ul.iw-tabs {
   display: flex;
   padding: 0;
   margin: 0 0 -1px 0;
   list-style: none;
   border-left: 1px solid #a7aef9;
 }
-#article-area ul li {
+#article-area ul.iw-tabs li {
   font-size: 0.8em;
   text-align: center;
   padding: 0.5em 0.8em 0.3em 0.8em;
   border-top: 1px solid #a7aef9;
   border-right: 1px solid #a7aef9;
 }
-#article-area ul li.iw-active {
+#article-area ul.iw-tabs li.iw-active {
   background-color: #ffffff;
   border-bottom: 1px solid #ffffff;
 }
 #article-area textarea#body-edit {
   display: block;
   width: 80%;
-  min-height: 80px;
-  height: 160px;
+  min-height: 160px;
+  height: 320px;
 }
 #article-area input#title-edit {
   font-family: Georgia, "Times New Roman", Times, serif;
   font-size: 1.8em;
   font-weight: 400;
 }
+#article-area .iw-last-edited {
+  font-size: 0.75em;
+  color: #9a9a9a;
+  display: block;
+}
 
 article {
   padding: 20px 24px 24px 24px;
+  margin: 0 0 24px 0;
   background-color: #ffffff;
   border: 1px solid #a7aef9;
   border-right: none;
+  line-height: 1.6;
 }
-article h1 {
+article h1, article h2 {
   line-height: 1.3em;
   margin: 0 0 0.25em 0;
   font-family: Georgia, "Times New Roman", Times, serif;
@@ -93,8 +113,28 @@ article h1 {
   font-weight: 400;
   border-bottom: 1px solid #a2a9b1;
 }
+article h2 {
+  margin: 1em 0 0.25em 0;
+  font-size: 1.5em;
+}
 article div.iw-article-content {
   font-size: 0.875em;
+}
+article pre {
+  border: 1px solid #a7aef9;
+  padding: 0.75em;
+  background-color: #FBFBFB;
+}
+article code {
+  font-family: "Andale Mono", "Consolas", monospace;
+  font-size: 1em;
+}
+article ul {
+  margin: 0.3em 0 0 1.6em;
+  padding: 0;
+}
+article ul li {
+  margin: 0 0 0.1em 0;
 }
 
 .iw-callout {

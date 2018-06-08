@@ -7,10 +7,11 @@
             <div class="iw-callout {{ .calloutClasses }}">{{ .calloutMessage }}</div>
             {{ end }}
             <form class="iw-register-form {{ .formClasses }}" action="/user/login" method="POST">
+                <input type="hidden" name="referrer" {{if .referrerValue}} value="{{ .referrerValue }}{{end}}">
                 <table>
                     <tr>
                         <td><label for="screenname">Username</label></td>
-                        <td><input type="text" name="screenname" placeholder="Username" value="{{ .screennameValue }}"></td>
+                        <td><input type="text" name="screenname" placeholder="Username" {{if .screennameValue}} value="{{ .screennameValue }}" {{end}}></td>
                     </tr>
                     <tr>
                         <td><label for="password">Password</label></td>
