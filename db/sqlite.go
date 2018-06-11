@@ -133,7 +133,6 @@ func (db *sqliteDb) SelectRevision(hash string) (*model.Revision, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Println(x)
 	return r, err
 }
 
@@ -189,10 +188,11 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 	testArticle, err := db.SelectArticle(article.URL)
 	if err == sql.ErrNoRows { // New article.
 		tx, err := db.conn.Beginx()
-		check(err)
-		_, err = tx.Exec(`INSERT INTO Article (url) VALUES (?);`, article.URL)
-		check(err)
-		_, err = tx.Exec(`INSERT INTO Revision (title, hashval, markdown, html, article_id, user_id, created, previous_hash, comment)
+		if err != nil {
+			return err
+		}
+		tx.Exec(`INSERT INTO Article (url) VALUES (?);`, article.URL)
+		tx.Exec(`INSERT INTO Revision (title, hashval, markdown, html, article_id, user_id, created, previous_hash, comment)
 			VALUES (?, ?, ?, ?, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
 			article.Title,
 			article.Hash,
@@ -201,15 +201,18 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 			article.Creator.ID,
 			article.PreviousHash,
 			article.Comment)
-		check(err)
 
 		err = tx.Commit()
-		check(err)
+		if err != nil {
+			return err
+		}
 
 	} else if err == nil && testArticle != nil { // New revision to article
 		tx, err := db.conn.Beginx()
-		check(err)
-		_, err = tx.Exec(`INSERT INTO Revision (title, hashval, markdown, html, article_id, user_id, created, previous_hash, comment)
+		if err != nil {
+			return err
+		}
+		tx.Exec(`INSERT INTO Revision (title, hashval, markdown, html, article_id, user_id, created, previous_hash, comment)
 			VALUES (?, ?, ?, ?, (SELECT id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
 			article.Title,
 			article.Hash,
@@ -219,10 +222,11 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 			article.Creator.ID,
 			article.PreviousHash,
 			article.Comment)
-		check(err)
 
 		err = tx.Commit()
-		check(err)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
