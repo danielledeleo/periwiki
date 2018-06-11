@@ -1,0 +1,20 @@
+{{define "content"}}
+<div id="article-area">
+    {{with .Article }}
+
+    <ul class="iw-tabs">
+        <a href="/"><li>Home</li></a>
+    </ul>
+    <article>
+    {{end}}
+    {{with .Error }}
+        <h1>{{.Code}}</h1>
+        <div class="iw-article-content">
+            {{range .Errors}}
+                <div>{{print . | title }}</div>
+            {{end}}
+        </div>
+    </article>
+    {{end}}
+</div>
+{{end}}

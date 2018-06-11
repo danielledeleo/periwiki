@@ -3,13 +3,16 @@ package templater
 import (
 	"fmt"
 	"io"
+	"log"
 	"path/filepath"
+	"strings"
 	"text/template"
 )
 
 // Templater ecapsulates the map to prevent direct access. See RenderTemplate
 type Templater struct {
 	templates map[string]*template.Template
+	funcs     map[string]interface{}
 }
 
 // HTMLItem is used to inject attributes and text into HTML templates.
@@ -61,10 +64,13 @@ func (t *Templater) Load(baseGlob, mainGlob string) error {
 	if err != nil {
 		return err
 	}
+
+	t.funcs = template.FuncMap{"title": strings.Title}
+
 	// Generate our templates map from our layouts/ and includes/ directories
 	for _, layout := range layouts {
 		files := append(base, layout)
-		t.templates[filepath.Base(layout)] = template.Must(template.ParseFiles(files...))
+		t.templates[filepath.Base(layout)] = template.Must(template.New(filepath.Base(layout)).Funcs(t.funcs).ParseFiles(files...))
 	}
 	return nil
 }
@@ -81,5 +87,6 @@ func (t *Templater) RenderTemplate(w io.Writer, name string, base string, data i
 	if b == nil {
 		return fmt.Errorf("base template %s does not exist", name)
 	}
+	log.Print(t.funcs)
 	return tmpl.ExecuteTemplate(w, base, data)
 }

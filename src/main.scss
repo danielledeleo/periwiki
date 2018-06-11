@@ -152,6 +152,21 @@ article {
     code {
         font-family: "Andale Mono", "Consolas", monospace;
         font-size: 1em;
+        a {
+            display: inline-block;
+            width: 100%;
+            color: black;
+        }
+        a:hover {
+            // background-color: $iwikii-purple;
+            text-decoration: none;
+        }
+    }
+    pre.lineNumbers {
+        a::before {
+            color: $iwikii-grey;
+            content: attr(data-line-number) " ";
+        }
     }
     ul {
         margin: 0.3em 0 0 1.6em;

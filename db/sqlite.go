@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"time"
@@ -138,15 +139,16 @@ func (db *sqliteDb) SelectRevision(hash string) (*model.Revision, error) {
 
 func (db *sqliteDb) SelectRevisionHistory(url string) ([]*model.Revision, error) {
 	rows, err := db.conn.Queryx(
-		`SELECT title, hashval, created, comment, User.screenname
+		`SELECT title, hashval, created, comment, User.screenname, length(markdown)
 			FROM Article JOIN Revision ON Article.id = Revision.article_id 
 					     JOIN User ON Revision.user_id = User.id
 			WHERE Article.url = ? ORDER BY created DESC`, url)
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
 	result := struct {
 		Title, Hashval, Comment, Screenname string
+		Length                              int `db:"length(markdown)"`
 		Created                             time.Time
 	}{}
 	results := make([]*model.Revision, 0)
@@ -160,8 +162,12 @@ func (db *sqliteDb) SelectRevisionHistory(url string) ([]*model.Revision, error)
 		rev.Created = result.Created
 		rev.Hash = result.Hashval
 		rev.Comment = result.Comment
+		rev.Markdown = fmt.Sprint(result.Length) // dirty hack
 		rev.Creator.ScreenName = result.Screenname
 		results = append(results, rev)
+	}
+	if len(results) < 1 {
+		return nil, model.ErrGenericNotFound
 	}
 	return results, nil
 }
@@ -187,7 +193,7 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 		_, err = tx.Exec(`INSERT INTO Article (url) VALUES (?);`, article.URL)
 		check(err)
 		_, err = tx.Exec(`INSERT INTO Revision (title, hashval, markdown, html, article_id, user_id, created, previous_hash, comment)
-			VALUES (?, ?, ?, ?, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)  ORDER BY created DESC LIMIT 100`,
+			VALUES (?, ?, ?, ?, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
 			article.Title,
 			article.Hash,
 			article.Markdown,

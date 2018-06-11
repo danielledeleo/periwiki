@@ -104,6 +104,8 @@ var ErrPasswordTooShort = errors.New("password too short")
 var ErrIncorrectPassword = errors.New("incorrect password")
 var ErrUsernameNotFound = errors.New("username not found")
 var ErrArticleNotModified = errors.New("article not modified")
+var ErrRevisionNotFound = errors.New("revision not found")
+var ErrGenericNotFound = errors.New("not found")
 
 func (model *WikiModel) PostArticle(article *Article) error {
 	x := sha512.Sum384([]byte(article.Title + article.Markdown))
@@ -196,8 +198,8 @@ func (model *WikiModel) GetUserByScreenName(screenname string) (*User, error) {
 
 func (model *WikiModel) GetArticleByRevisionHash(url string, hash string) (*Article, error) {
 	revision, err := model.db.SelectArticleByRevision(url, hash)
-	if err != nil {
-		return nil, err
+	if err == sql.ErrNoRows {
+		return nil, ErrRevisionNotFound
 	}
 	return revision, err
 }

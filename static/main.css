@@ -129,6 +129,18 @@ article code {
   font-family: "Andale Mono", "Consolas", monospace;
   font-size: 1em;
 }
+article code a {
+  display: inline-block;
+  width: 100%;
+  color: black;
+}
+article code a:hover {
+  text-decoration: none;
+}
+article pre.lineNumbers a::before {
+  color: #9a9a9a;
+  content: attr(data-line-number) " ";
+}
 article ul {
   margin: 0.3em 0 0 1.6em;
   padding: 0;

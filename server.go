@@ -1,7 +1,7 @@
 package main
 
 import (
-	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -25,7 +25,7 @@ type app struct {
 func main() {
 	router := mux.NewRouter()
 	bm := bluemonday.UGCPolicy()
-	bm.AllowAttrs("class").Matching(regexp.MustCompile("^sourceCode(| [a-zA-Z0-9]+)$")).
+	bm.AllowAttrs("class").Matching(regexp.MustCompile("^sourceCode(| [a-zA-Z0-9]+)(| lineNumbers)$")).
 		OnElements("pre", "code")
 
 	bm.AllowAttrs("data-line-number", "class").Matching(regexp.MustCompile("^[0-9]+$")).OnElements("a")
@@ -134,11 +134,15 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	session, err := a.GetCookie(req, "iwikii-login")
-	check(err)
+	if err != nil {
+		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+	}
 	session.Options.MaxAge = 86400 // a day
 	session.Values["username"] = user.ScreenName
 	err = session.Save(req, rw)
-	check(err)
+	if err != nil {
+		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+	}
 
 	if referrer == "" {
 		referrer = "/"
@@ -148,10 +152,14 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 
 func (a *app) logoutPostHander(rw http.ResponseWriter, req *http.Request) {
 	session, err := a.GetCookie(req, "iwikii-login")
-	check(err)
+	if err != nil {
+		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+	}
 
 	err = a.DeleteCookie(req, rw, session)
-	check(err)
+	if err != nil {
+		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+	}
 
 	http.Redirect(rw, req, "/", http.StatusSeeOther)
 }
@@ -179,7 +187,9 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 	render := map[string]interface{}{}
 	article, err := a.GetArticle(vars["article"])
 
-	check(err)
+	if err != nil {
+		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+	}
 	user := req.Context().Value(userKey)
 
 	if user != nil && user.(*model.User).ID != 0 {
@@ -226,12 +236,15 @@ func (a *app) articleHistoryHandler(rw http.ResponseWriter, req *http.Request) {
 	url := vars["article"]
 
 	revisions, err := a.GetRevisionHistory(url)
-	check(err)
+	if err != nil {
+		a.errorHandler(http.StatusNotFound, rw, req, err)
+		return
+	}
 
 	err = a.RenderTemplate(rw, "article_history.html", "index.html", map[string]interface{}{
 		"Article": map[string]interface{}{
 			"URL":   url,
-			"Title": "History of " + revisions[0].Title,
+			"Title": "History of " + url,
 		},
 		"Revisions": revisions})
 	check(err)
@@ -246,30 +259,28 @@ func (a *app) revisionHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 	article, err := a.GetArticleByRevisionHash(vars["article"], vars["revision"])
 	if err != nil {
-		log.Panic(err)
+		a.errorHandler(http.StatusNotFound, rw, req, err)
 	}
 	render["Article"] = article
 	err = a.RenderTemplate(rw, "article.html", "index.html", render)
-	// log.Println(article.Title, err)
+	check(err)
 }
 
 func (a *app) revisionEditHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	article, err := a.GetArticleByRevisionHash(vars["article"], vars["revision"])
-	if err == sql.ErrNoRows {
+	if err == model.ErrRevisionNotFound {
 		article = model.NewArticle(vars["article"], strings.Title(vars["article"]), "")
 		article.Hash = "new"
 	} else if err != nil {
-		log.Panic(err)
+		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 	}
 
 	other := make(map[string]interface{})
 	other["preview"] = false
 
 	err = a.RenderTemplate(rw, "article_edit.html", "index.html", map[string]interface{}{"Article": article, "Other": other})
-	if err != nil {
-		log.Panic(err)
-	}
+	check(err)
 }
 
 func (a *app) revisionPostHandler(rw http.ResponseWriter, req *http.Request) {
@@ -301,15 +312,13 @@ func (a *app) articlePreviewHandler(article *model.Article, rw http.ResponseWrit
 	article.HTML = html
 	article.Hash = article.PreviousHash
 	if err != nil {
-		log.Panic(err)
+		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 	}
 	other := make(map[string]interface{})
 	other["Preview"] = true
 
 	err = a.RenderTemplate(rw, "article_edit.html", "index.html", map[string]interface{}{"Article": article, "Other": other})
-	if err != nil {
-		log.Panic(err)
-	}
+	check(err)
 }
 func (a *app) articlePostHandler(article *model.Article, rw http.ResponseWriter, req *http.Request) {
 
@@ -321,5 +330,20 @@ func (a *app) articlePostHandler(article *model.Article, rw http.ResponseWriter,
 func check(err error) {
 	if err != nil {
 		log.Println(err)
+	}
+}
+
+func (a *app) errorHandler(responseCode int, rw http.ResponseWriter, req *http.Request, errors ...error) {
+	rw.WriteHeader(responseCode)
+	err := a.RenderTemplate(rw, "error.html", "index.html",
+		map[string]interface{}{
+			"Article": &model.Article{Revision: &model.Revision{Title: fmt.Sprintf("%d: %s", responseCode, http.StatusText(responseCode))}},
+			"Error": map[string]interface{}{
+				"Code":       responseCode,
+				"CodeString": http.StatusText(responseCode),
+				"Errors":     errors,
+			}})
+	if err != nil {
+		log.Panic(err)
 	}
 }
