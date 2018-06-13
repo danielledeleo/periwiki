@@ -1,0 +1,10 @@
+<div id="toc">
+    <span><strong>Contents</strong></span>
+    <ol>{{ range .Headers }}
+        <li>
+            <a href="#{{ range .Attr }}{{ if eq .Key "id" }}{{ .Val }}{{ end }}{{ end }}">
+                {{ .FirstChild.Data }}
+            </a>
+        </li>{{ end }}
+    </ol>
+</div>

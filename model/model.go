@@ -10,10 +10,13 @@ import (
 	"time"
 
 	"github.com/gorilla/sessions"
-	"github.com/jagger27/iwikii/pandoc"
+
 	"github.com/microcosm-cc/bluemonday"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// UserKey is for context.Context
+const UserKey string = "User"
 
 type WikiModel struct {
 	db db
@@ -28,7 +31,8 @@ type Config struct {
 
 type db interface {
 	SelectArticle(url string) (*Article, error)
-	SelectArticleByRevision(url string, hash string) (*Article, error)
+	SelectArticleByRevisionHash(url string, hash string) (*Article, error)
+	SelectArticleByRevisionID(url string, id int) (*Article, error)
 	SelectRevision(hash string) (*Revision, error)
 	SelectUserByScreenname(screenname string, withHash bool) (*User, error)
 	SelectRevisionHistory(url string) ([]*Revision, error)
@@ -53,15 +57,15 @@ func (article *Article) String() string {
 }
 
 type Revision struct {
-	ID           int    `db:"id"`
-	Title        string `db:"title"`
-	Markdown     string `db:"markdown"`
-	HTML         string `db:"html"`
-	Hash         string `db:"hashval"`
-	Creator      *User
-	Created      time.Time `db:"created"`
-	PreviousHash string    `db:"previous_hash"`
-	Comment      string    `db:"comment"`
+	ID         int    `db:"id"`
+	Title      string `db:"title"`
+	Markdown   string `db:"markdown"`
+	HTML       string `db:"html"`
+	Hash       string `db:"hashval"`
+	Creator    *User
+	Created    time.Time `db:"created"`
+	PreviousID int       `db:"previous_id"`
+	Comment    string    `db:"comment"`
 }
 
 type User struct {
@@ -111,8 +115,8 @@ func (model *WikiModel) PostArticle(article *Article) error {
 	x := sha512.Sum384([]byte(article.Title + article.Markdown))
 	article.Hash = base64.URLEncoding.EncodeToString(x[:])
 
-	sourceRevision, err := model.GetArticleByRevisionHash(article.URL, article.PreviousHash)
-	if err != sql.ErrNoRows {
+	sourceRevision, err := model.GetArticleByRevisionID(article.URL, article.PreviousID)
+	if err != ErrRevisionNotFound {
 		if sourceRevision.Hash == article.Hash {
 			return ErrArticleNotModified
 		} else if err != nil {
@@ -120,7 +124,8 @@ func (model *WikiModel) PostArticle(article *Article) error {
 		}
 	}
 
-	unsafe, err := pandoc.MarkdownToHTML(article.Markdown)
+	// unsafe, err := pandoc.MarkdownToHTML(article.Markdown)
+	unsafe, err := RenderHTML(article.Markdown)
 	if err != nil {
 		return err
 	}
@@ -148,7 +153,7 @@ func AnonymousUser() *User {
 }
 
 func (model *WikiModel) PreviewMarkdown(markdown string) (string, error) {
-	unsafe, err := pandoc.MarkdownToHTML(markdown)
+	unsafe, err := RenderHTML(markdown)
 	if err != nil {
 		return "", err
 	}
@@ -197,7 +202,15 @@ func (model *WikiModel) GetUserByScreenName(screenname string) (*User, error) {
 }
 
 func (model *WikiModel) GetArticleByRevisionHash(url string, hash string) (*Article, error) {
-	revision, err := model.db.SelectArticleByRevision(url, hash)
+	revision, err := model.db.SelectArticleByRevisionHash(url, hash)
+	if err == sql.ErrNoRows {
+		return nil, ErrRevisionNotFound
+	}
+	return revision, err
+}
+
+func (model *WikiModel) GetArticleByRevisionID(url string, id int) (*Article, error) {
+	revision, err := model.db.SelectArticleByRevisionID(url, id)
 	if err == sql.ErrNoRows {
 		return nil, ErrRevisionNotFound
 	}

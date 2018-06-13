@@ -12,7 +12,7 @@
             <ul>
             {{range .Revisions}}
                 <li>
-                    <a href="/wiki/{{$.Article.URL}}/r/{{.Hash}}">
+                    <a href="/wiki/{{$.Article.URL}}/r/{{.ID}}">
                         {{ .Created.Format "2006, Jan _2 3:04 MST" }}
                     </a> by {{.Creator.ScreenName}} ({{.Markdown}} bytes) {{if .Comment}} ... 
                     <em>({{.Comment}})</em>{{end}}

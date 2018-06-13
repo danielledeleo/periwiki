@@ -8,10 +8,6 @@ import (
 	"github.com/jagger27/iwikii/model"
 )
 
-type key string
-
-const userKey key = "User"
-
 func (a *app) SessionMiddleware(handler http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -23,7 +19,7 @@ func (a *app) SessionMiddleware(handler http.Handler) http.Handler {
 			anon.ScreenName = "Anonymous"
 			anon.IPAddress = ip
 
-			ctx := context.WithValue(req.Context(), userKey, anon)
+			ctx := context.WithValue(req.Context(), model.UserKey, anon)
 			handler.ServeHTTP(rw, req.WithContext(ctx))
 			// Add some sort of "access denied context to req"
 			return
@@ -31,7 +27,7 @@ func (a *app) SessionMiddleware(handler http.Handler) http.Handler {
 		screenname := session.Values["username"].(string)
 		user, err := a.GetUserByScreenName(screenname)
 		check(err)
-		ctx := context.WithValue(req.Context(), userKey, user)
+		ctx := context.WithValue(req.Context(), model.UserKey, user)
 		handler.ServeHTTP(rw, req.WithContext(ctx))
 	})
 }

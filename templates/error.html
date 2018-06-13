@@ -11,7 +11,7 @@
         <h1>{{.Code}}</h1>
         <div class="iw-article-content">
             {{range .Errors}}
-                <div>{{print . | title }}</div>
+                <div>{{print . | capitalize }}</div>
             {{end}}
         </div>
     </article>

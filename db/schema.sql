@@ -20,10 +20,10 @@ CREATE TABLE IF NOT EXISTS Revision (
     article_id INT NOT NULL,
     user_id INTEGER NOT NULL,
     created TIMESTAMP NOT NULL,
-    previous_hash TEXT NOT NULL,
+    previous_id INT NOT NULL,
     comment TEXT,
     FOREIGN KEY(article_id) REFERENCES Article(id),
-    -- FOREIGN KEY(previous_hash) REFERENCES Revision(hashval),
+    -- FOREIGN KEY(previous_id) REFERENCES Revision(id),
     FOREIGN KEY(user_id) REFERENCES User(id)
 );
 
@@ -37,6 +37,11 @@ CREATE TABLE IF NOT EXISTS AnonymousEdit (
     ip TEXT NOT NULL,
     revision_id INT NOT NULL,
     FOREIGN KEY(revision_id) REFERENCES Revision(id)
+);
+
+CREATE TABLE IF NOT EXISTS Preference (
+    pref TEXT PRIMARY KEY NOT NULL,
+    val TEXT
 );
 
 INSERT OR IGNORE INTO User(id, email, screenname) VALUES (0, "", "Anonymous");

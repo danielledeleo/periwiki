@@ -3,10 +3,11 @@ package templater
 import (
 	"fmt"
 	"io"
-	"log"
 	"path/filepath"
 	"strings"
 	"text/template"
+	"unicode"
+	"unicode/utf8"
 )
 
 // Templater ecapsulates the map to prevent direct access. See RenderTemplate
@@ -65,7 +66,7 @@ func (t *Templater) Load(baseGlob, mainGlob string) error {
 		return err
 	}
 
-	t.funcs = template.FuncMap{"title": strings.Title}
+	t.funcs = template.FuncMap{"title": strings.Title, "capitalize": capitalize}
 
 	// Generate our templates map from our layouts/ and includes/ directories
 	for _, layout := range layouts {
@@ -87,6 +88,13 @@ func (t *Templater) RenderTemplate(w io.Writer, name string, base string, data i
 	if b == nil {
 		return fmt.Errorf("base template %s does not exist", name)
 	}
-	log.Print(t.funcs)
 	return tmpl.ExecuteTemplate(w, base, data)
+}
+
+func capitalize(s string) string {
+	if s == "" {
+		return ""
+	}
+	r, size := utf8.DecodeRuneInString(s)
+	return string(unicode.ToTitle(r)) + s[size:]
 }

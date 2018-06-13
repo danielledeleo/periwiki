@@ -99,7 +99,6 @@ a:hover {
 
 article {
   padding: 20px 24px 24px 24px;
-  margin: 0 0 24px 0;
   background-color: #ffffff;
   border: 1px solid #a7aef9;
   border-right: none;
@@ -125,6 +124,38 @@ article pre {
   padding: 0.75em;
   background-color: #FBFBFB;
 }
+article #toc {
+  padding: 0.5em 0.75em;
+  border: 1px solid #a2a9b1;
+  background-color: #FBFBFB;
+  display: inline-block;
+  width: auto;
+}
+article #toc span {
+  display: block;
+  text-align: center;
+}
+article #toc ol {
+  list-style-type: none;
+  counter-reset: item;
+  margin: 0;
+  padding: 0;
+}
+article #toc ol > li {
+  display: table;
+  counter-increment: item;
+}
+article #toc ol > li:before {
+  content: counters(item, ".") " ";
+  display: table-cell;
+  padding-right: 0.6em;
+}
+article #toc li ol > li {
+  margin: 0;
+}
+article #toc li ol > li:before {
+  content: counters(item, ".") " ";
+}
 article code {
   font-family: "Andale Mono", "Consolas", monospace;
   font-size: 1em;
@@ -147,6 +178,13 @@ article ul {
 }
 article ul li {
   margin: 0 0 0.1em 0;
+}
+article .iw-diff {
+  line-height: 1em;
+}
+
+article.iw-preview {
+  margin: 24px 0 0 0;
 }
 
 .iw-callout {

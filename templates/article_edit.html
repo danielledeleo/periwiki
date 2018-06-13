@@ -3,16 +3,16 @@
     {{ with .Article }}
     <ul class="iw-tabs">
         <a href="/wiki/{{.URL}}"><li>Article</li></a>
-        <a href="/wiki/{{.URL}}/r/{{.Hash}}/edit"><li class="iw-active">Edit</li></a>
+        <a href="/wiki/{{.URL}}/r/{{.ID}}/edit"><li class="iw-active">Edit</li></a>
         <a href="/wiki/{{.URL}}/history"><li>History</li></a>
     </ul>
 
     <article>
-        <form action="/wiki/{{.URL}}/r/{{.Hash}}" method="POST">
+        <form action="/wiki/{{.URL}}/r/{{.ID}}" method="POST">
         <input name="title" id="title-edit" type="text" value="{{.Title}}" />
         <div class="iw-article-content">
             <textarea name="body" id="body-edit">{{.Markdown}}</textarea>
-            <input type="text" name="comment" placeholder="Describe your changes..."/>
+            <input type="text" name="comment" placeholder="Describe your changes..." {{ if $.Other.Preview }}value="{{.Comment}}"{{end}}/>
             <button name="action" value="submit">Submit</button>
             <button name="action" value="preview">Preview</button>
         </div>
@@ -20,8 +20,8 @@
     </article>
     {{ end }}
     {{ if .Other.Preview }}
-    <article>
-        This is a preview.
+    <article class="iw-preview">
+        <div class="iw-callout iw-error">This is a preview. Nothing has been saved yet.</div>
         <h1>{{.Article.Title}}</h1>
         <div class="iw-article-content">
             {{.Article.HTML}}

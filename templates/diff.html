@@ -1,0 +1,19 @@
+{{define "content"}}
+<div id="article-area">
+    {{with .Article }}
+    <ul class="iw-tabs">
+        <a href="/wiki/{{.URL}}"><li>Article</li></a>
+        <a href="/wiki/{{.URL}}/r/{{.Hash}}/edit"><li>Edit</li></a>
+        <a href="/wiki/{{.URL}}/history"><li>History</li></a>
+    </ul>
+    <article>
+        <h1>Diff of {{.Title}}</h1>
+    {{end}}
+        {{with .Other}}
+        <div class="iw-article-content">
+            <pre><code class="iw-diff">{{.DiffString}}</code></pre>
+        </div>
+        {{end}}
+    </article>
+</div>
+{{end}}

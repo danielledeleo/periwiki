@@ -22,7 +22,8 @@ type sqliteDb struct {
 	*sqlitestore.SqliteStore
 	conn                              *sqlx.DB
 	selectArticleByLatestRevisionStmt *sqlx.Stmt
-	selectArticleByRevisionStmt       *sqlx.Stmt
+	selectArticleByRevisionHashStmt   *sqlx.Stmt
+	selectArticleByRevisionIDStmt     *sqlx.Stmt
 	selectUserScreennameStmt          *sqlx.Stmt
 	selectUserScreennameWithHashStmt  *sqlx.Stmt
 }
@@ -54,12 +55,15 @@ func Init(config SqliteConfig) (*sqliteDb, error) {
 
 	// Add prepared statements
 	// q := `select title, markdown, html, hashval, created from Revision where article_id = (select id from Article where url = ?) ORDER BY created DESC LIMIT 1`
-	q := `SELECT url, Revision.id, title, markdown, html, hashval, created, previous_hash, comment 
+	q := `SELECT url, Revision.id, title, markdown, html, hashval, created, previous_id, comment 
 			FROM Article JOIN Revision ON Article.id = Revision.article_id WHERE Article.url = ?`
 	db.selectArticleByLatestRevisionStmt, err = db.conn.Preparex(q + ` ORDER BY created DESC LIMIT 1`)
 	check(err)
 
-	db.selectArticleByRevisionStmt, err = db.conn.Preparex(q + ` AND Revision.hashval = ?`)
+	db.selectArticleByRevisionHashStmt, err = db.conn.Preparex(q + ` AND Revision.hashval = ?`)
+	check(err)
+
+	db.selectArticleByRevisionIDStmt, err = db.conn.Preparex(q + ` AND Revision.id = ?`)
 	check(err)
 
 	db.selectUserScreennameStmt, err = db.conn.Preparex(`SELECT id, screenname, email FROM User WHERE screenname = ?`)
@@ -106,11 +110,23 @@ func (db *sqliteDb) SelectArticle(url string) (*model.Article, error) {
 	return article, err
 }
 
-func (db *sqliteDb) SelectArticleByRevision(url string, hash string) (*model.Article, error) {
+func (db *sqliteDb) SelectArticleByRevisionHash(url string, hash string) (*model.Article, error) {
 	article := &model.Article{}
 	article.Revision = &model.Revision{}
 
-	err := db.selectArticleByRevisionStmt.Get(article, url, hash)
+	err := db.selectArticleByRevisionHashStmt.Get(article, url, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return article, err
+}
+
+func (db *sqliteDb) SelectArticleByRevisionID(url string, id int) (*model.Article, error) {
+	article := &model.Article{}
+	article.Revision = &model.Revision{}
+
+	err := db.selectArticleByRevisionIDStmt.Get(article, url, id)
 	if err != nil {
 		return nil, err
 	}
@@ -121,15 +137,15 @@ func (db *sqliteDb) SelectArticleByRevision(url string, hash string) (*model.Art
 func (db *sqliteDb) SelectRevision(hash string) (*model.Revision, error) {
 	r := &model.Revision{}
 	x := &struct {
-		ID           int
-		Title        sql.NullString
-		Markdown     sql.NullString
-		HTML         sql.NullString
-		Hash         sql.NullString `db:"hashval"`
-		PreviousHash sql.NullString `db:"previous_hash"`
-		Created      time.Time
+		ID         int
+		Title      sql.NullString
+		Markdown   sql.NullString
+		HTML       sql.NullString
+		Hash       sql.NullString `db:"hashval"`
+		PreviousID int            `db:"previous_id"`
+		Created    time.Time
 	}{}
-	err := db.conn.Get(x, "SELECT id, title, markdown, html, hashval, created, previous_hash FROM Revision WHERE hashval = ?", hash)
+	err := db.conn.Get(x, "SELECT id, title, markdown, html, hashval, created, previous_id FROM Revision WHERE hashval = ?", hash)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +154,7 @@ func (db *sqliteDb) SelectRevision(hash string) (*model.Revision, error) {
 
 func (db *sqliteDb) SelectRevisionHistory(url string) ([]*model.Revision, error) {
 	rows, err := db.conn.Queryx(
-		`SELECT title, hashval, created, comment, User.screenname, length(markdown)
+		`SELECT Revision.id, title, hashval, created, comment, User.screenname, length(markdown)
 			FROM Article JOIN Revision ON Article.id = Revision.article_id 
 					     JOIN User ON Revision.user_id = User.id
 			WHERE Article.url = ? ORDER BY created DESC`, url)
@@ -147,6 +163,7 @@ func (db *sqliteDb) SelectRevisionHistory(url string) ([]*model.Revision, error)
 	}
 	result := struct {
 		Title, Hashval, Comment, Screenname string
+		ID                                  int
 		Length                              int `db:"length(markdown)"`
 		Created                             time.Time
 	}{}
@@ -160,6 +177,7 @@ func (db *sqliteDb) SelectRevisionHistory(url string) ([]*model.Revision, error)
 		rev.Title = result.Title
 		rev.Created = result.Created
 		rev.Hash = result.Hashval
+		rev.ID = result.ID
 		rev.Comment = result.Comment
 		rev.Markdown = fmt.Sprint(result.Length) // dirty hack
 		rev.Creator.ScreenName = result.Screenname
@@ -192,16 +210,19 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 			return err
 		}
 		tx.Exec(`INSERT INTO Article (url) VALUES (?);`, article.URL)
-		tx.Exec(`INSERT INTO Revision (title, hashval, markdown, html, article_id, user_id, created, previous_hash, comment)
+		tx.Exec(`INSERT INTO Revision (title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
 			VALUES (?, ?, ?, ?, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
 			article.Title,
 			article.Hash,
 			article.Markdown,
 			article.HTML,
 			article.Creator.ID,
-			article.PreviousHash,
+			article.PreviousID,
 			article.Comment)
-
+		if article.Creator.ID == 0 { // Anonymous
+			tx.Exec(`INSERT INTO AnonymousEdit (ip, revision_id) VALUES (?, last_insert_rowid())`,
+				article.Creator.IPAddress)
+		}
 		err = tx.Commit()
 		if err != nil {
 			return err
@@ -212,7 +233,7 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 		if err != nil {
 			return err
 		}
-		tx.Exec(`INSERT INTO Revision (title, hashval, markdown, html, article_id, user_id, created, previous_hash, comment)
+		tx.Exec(`INSERT INTO Revision (title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
 			VALUES (?, ?, ?, ?, (SELECT id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
 			article.Title,
 			article.Hash,
@@ -220,9 +241,12 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 			article.HTML,
 			article.URL,
 			article.Creator.ID,
-			article.PreviousHash,
+			article.PreviousID,
 			article.Comment)
-
+		if article.Creator.ID == 0 { // Anonymous
+			tx.Exec(`INSERT INTO AnonymousEdit (ip, revision_id) VALUES (?, last_insert_rowid())`,
+				article.Creator.IPAddress)
+		}
 		err = tx.Commit()
 		if err != nil {
 			return err
