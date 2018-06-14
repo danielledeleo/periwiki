@@ -11,7 +11,8 @@ import (
 func (a *app) SessionMiddleware(handler http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		session, _ := a.GetCookie(req, "iwikii-login")
+		session, err := a.GetCookie(req, "iwikii-login")
+		check(err)
 		if session.IsNew {
 			anon := model.AnonymousUser()
 			ip, _, _ := net.SplitHostPort(req.RemoteAddr)

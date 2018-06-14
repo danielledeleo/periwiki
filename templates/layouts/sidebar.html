@@ -1,6 +1,7 @@
 {{define "sidebar"}}
 <div id="sidebar">
-    <a href="/"><img src="/static/logo.svg" /></a>
+    <!-- max-width is to prevent giant flashing iwikii logo on slow connections -->
+    <a href="/"><img style="max-width: 12em; width: auto;" src="/static/logo.svg" /></a>
     <ul>
         <li><a href="/">Home Page</a></li>
         <li><a href="#">Random Page</a></li>

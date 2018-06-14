@@ -3,6 +3,7 @@ package templater
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -66,7 +67,12 @@ func (t *Templater) Load(baseGlob, mainGlob string) error {
 		return err
 	}
 
-	t.funcs = template.FuncMap{"title": strings.Title, "capitalize": capitalize}
+	t.funcs = template.FuncMap{
+		"title":       strings.Title,
+		"capitalize":  capitalize,
+		"pathEscape":  url.PathEscape,
+		"queryEscape": url.QueryEscape,
+	}
 
 	// Generate our templates map from our layouts/ and includes/ directories
 	for _, layout := range layouts {

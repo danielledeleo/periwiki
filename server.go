@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/jagger27/iwikii/db"
+	"github.com/spf13/viper"
+
 	"github.com/jagger27/iwikii/model"
 	"github.com/jagger27/iwikii/templater"
-	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -27,30 +27,13 @@ type app struct {
 }
 
 func main() {
+	app := Setup()
+
 	router := mux.NewRouter()
-	bm := bluemonday.UGCPolicy()
-	bm.AllowAttrs("class").Matching(regexp.MustCompile("^sourceCode(| [a-zA-Z0-9]+)(| lineNumbers)$")).
-		OnElements("pre", "code")
-
-	bm.AllowAttrs("data-line-number", "class").Matching(regexp.MustCompile("^[0-9]+$")).OnElements("a")
-	bm.AllowAttrs("style").OnElements("ins", "del")
-	t := templater.New()
-	t.Load("templates/layouts/*.html", "templates/*.html")
-	fs := http.FileServer(http.Dir("./static"))
-
-	cookieKey := os.Getenv("COOKIE_SECRET")
-	if cookieKey == "" {
-		log.Fatal("COOKIE_SECRET environment variable not set!")
-	}
-	database, err := db.Init(db.SqliteConfig{DatabaseFile: "iwikii.db", CookieSecretKey: cookieKey})
-	// database, err := db.InitPg(db.PgConfig{"", cookieKey})
-	check(err)
-	model := model.New(database, &model.Config{MinimumPasswordLength: 8}, bm)
-
-	app := app{t, model}
 
 	router.Use(app.SessionMiddleware)
 
+	fs := http.FileServer(http.Dir("./static"))
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
 	router.HandleFunc("/", app.homeHandler).Methods("GET")
 
@@ -68,7 +51,9 @@ func main() {
 	router.HandleFunc("/user/logout", app.logoutPostHander).Methods("POST")
 
 	logger := handlers.LoggingHandler(os.Stdout, router)
-	http.ListenAndServe(":8080", logger)
+	hostport := net.JoinHostPort(viper.GetString("host"), viper.GetString("port"))
+	log.Println("Listening on ", hostport)
+	http.ListenAndServe(hostport, logger)
 }
 
 func (a *app) registerHandler(rw http.ResponseWriter, req *http.Request) {
@@ -86,7 +71,7 @@ func (a *app) registerPostHandler(rw http.ResponseWriter, req *http.Request) {
 	user.RawPassword = req.PostFormValue("password")
 
 	render := map[string]interface{}{
-		"Title":          "Register",
+		"Article":        map[string]string{"Title": "Register"},
 		"calloutClasses": "iw-success",
 		"calloutMessage": "Successfully registered!",
 		"formClasses":    "hidden",
@@ -148,12 +133,14 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 	session, err := a.GetCookie(req, "iwikii-login")
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		return
 	}
-	session.Options.MaxAge = 86400 * 7 // a week
+	session.Options.MaxAge = a.CookieExpiry
 	session.Values["username"] = user.ScreenName
 	err = session.Save(req, rw)
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		return
 	}
 
 	if referrer == "" {
@@ -166,11 +153,13 @@ func (a *app) logoutPostHander(rw http.ResponseWriter, req *http.Request) {
 	session, err := a.GetCookie(req, "iwikii-login")
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		return
 	}
 
 	err = a.DeleteCookie(req, rw, session)
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		return
 	}
 
 	http.Redirect(rw, req, "/", http.StatusSeeOther)
@@ -198,6 +187,7 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		return
 	}
 	user := req.Context().Value(model.UserKey)
 

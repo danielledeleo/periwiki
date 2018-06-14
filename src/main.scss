@@ -2,13 +2,14 @@ $link-color: #0645ad;
 $iwikii-purple: #a7aef9;
 $underline: #a2a9b1;
 $iwikii-grey: #9a9a9a;
+$iwikii-light-grey: #f6f6f6;
     
 body {
     // display: flex;
     margin: 0;
     padding: 0;
 
-    background-color: #f6f6f6;
+    background-color: $iwikii-light-grey;
     font-family: sans-serif;
     line-height: 1.1em;
 }
@@ -26,17 +27,23 @@ a:hover {
 }
 
 #login-bar {
+    
     text-align: right;
-    padding: 0.3em 0.8em 0 0;
+    margin: 0.3em 0.8em 0 0;
     font-size: .75em;
-    display: flex;
-    justify-content: right;
+    // display: flex;
+    // justify-content: right;
 
     a, .iw-logout-btn {
+        display: inline-block;
+        // float: left;
         margin: 0 0 0 0.75em;
     }
-
+    form {
+        display: inline;
+    }
     button.iw-logout-btn {
+        display: inline-block;
         background: none;
         color: $link-color;
         border:none; 
@@ -53,7 +60,8 @@ a:hover {
 #sidebar {
     margin: 0 0.75em;
     padding: 0.5em;
-    width: 10em;
+    width: 140px;
+    min-width: 140px;
 
     ul {
         margin: 0;
@@ -68,6 +76,10 @@ a:hover {
             border-bottom: 1px solid $underline;
         }
     }  
+}
+
+#right-panel {
+    width: 100%;
 }
 
 #article-area {
@@ -139,6 +151,13 @@ article {
         margin: 1em 0 .25em 0;
         font-size: 1.5em;
     }
+
+    section hr {
+        display: none;
+        border-color: $underline;
+        background-color: $underline;
+    }
+
     div.iw-article-content {
         font-size: 0.875em;
     }
@@ -187,6 +206,17 @@ article {
             content: counters(item, ".") " ";
         }
     }
+    table {
+        border-collapse: collapse;
+        border-spacing: 0px;
+        tr:nth-child(2n), thead {
+            background-color: #f6f8fa;
+        }
+        td, th {
+            border: 1px solid #c6cbd1;
+            padding: 0.4em 1em;
+        }
+    }
     code {
         font-family: "Andale Mono", "Consolas", monospace;
         font-size: 1em;
@@ -215,6 +245,15 @@ article {
     }
     .iw-diff {
         line-height: 1em;
+    }
+    .footnote-ref {
+        sup::before {
+            content: "["
+        }
+
+        sup::after {
+            content: "]"
+        }
     }
 }
 article.iw-preview {

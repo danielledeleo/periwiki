@@ -13,11 +13,6 @@ import (
 	"github.com/michaeljs1990/sqlitestore"
 )
 
-type SqliteConfig struct {
-	DatabaseFile    string
-	CookieSecretKey string
-}
-
 type sqliteDb struct {
 	*sqlitestore.SqliteStore
 	conn                              *sqlx.DB
@@ -28,7 +23,7 @@ type sqliteDb struct {
 	selectUserScreennameWithHashStmt  *sqlx.Stmt
 }
 
-func Init(config SqliteConfig) (*sqliteDb, error) {
+func Init(config *model.Config) (*sqliteDb, error) {
 	conn, err := sqlx.Open("sqlite3", config.DatabaseFile)
 
 	if err != nil {
@@ -48,8 +43,7 @@ func Init(config SqliteConfig) (*sqliteDb, error) {
 	}
 
 	db := &sqliteDb{conn: conn}
-
-	db.SqliteStore, err = sqlitestore.NewSqliteStoreFromConnection(conn, "sessions", "/", 86400, []byte(config.CookieSecretKey))
+	db.SqliteStore, err = sqlitestore.NewSqliteStoreFromConnection(conn, "sessions", "/", config.CookieExpiry, config.CookieSecret)
 	check(err)
 	// timenowquery := `strftime("%Y-%m-%d %H:%M:%f", "now")`
 
@@ -98,6 +92,24 @@ func (db *sqliteDb) InsertUser(user *model.User) error {
 		return userErr
 	}
 	return nil
+}
+
+func (db *sqliteDb) InsertPreference(pref *model.Preference) error {
+	tx, _ := db.conn.Beginx()
+	tx.Exec(`INSERT OR IGNORE INTO Preference (pref, val) VALUES(?, ?)`, pref.Key, pref.Value)
+	tx.Exec(`UPDATE Preference SET val = ? WHERE pref = ?`, pref.Value, pref.Key)
+	return tx.Commit()
+}
+
+func (db *sqliteDb) SelectPreference(key string) (*model.Preference, error) {
+	pref := &model.Preference{}
+	err := db.conn.Select(`SELECT pref, val FROM Preference WHERE key = ?`, key)
+	if err == sql.ErrNoRows {
+		return nil, model.ErrGenericNotFound
+	} else if err != nil {
+		return nil, err
+	}
+	return pref, err
 }
 
 func (db *sqliteDb) SelectArticle(url string) (*model.Article, error) {

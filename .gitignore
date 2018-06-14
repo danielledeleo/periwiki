@@ -2,6 +2,7 @@ vendor/
 iwikii
 iwikii.db
 tmp/
-
+config.yaml
+.cookiesecret.yaml
 
 .DS_Store

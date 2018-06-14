@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -19,14 +20,17 @@ import (
 const UserKey string = "User"
 
 type WikiModel struct {
-	db db
 	*Config
+	db        db
 	sanitizer *bluemonday.Policy
 	// cache, perhaps
 }
 
 type Config struct {
 	MinimumPasswordLength int
+	CookieSecret          []byte
+	CookieExpiry          int
+	DatabaseFile          string
 }
 
 type db interface {
@@ -38,6 +42,8 @@ type db interface {
 	SelectRevisionHistory(url string) ([]*Revision, error)
 	InsertArticle(article *Article) error
 	InsertUser(user *User) error
+	InsertPreference(pref *Preference) error
+	SelectPreference(key string) (*Preference, error)
 
 	// For cookie store, delete isn't part of the interface for some reason
 	sessions.Store
@@ -50,6 +56,10 @@ type db interface {
 type Article struct {
 	URL string
 	*Revision
+}
+
+type Preference struct {
+	Key, Value string
 }
 
 func (article *Article) String() string {
@@ -107,9 +117,23 @@ var ErrEmailTaken = errors.New("email already in use")
 var ErrPasswordTooShort = errors.New("password too short")
 var ErrIncorrectPassword = errors.New("incorrect password")
 var ErrUsernameNotFound = errors.New("username not found")
+var ErrBadUsername = errors.New("username must only contain letters, numbers, -, or _")
+var ErrEmptyUsername = errors.New("username cannot be empty")
 var ErrArticleNotModified = errors.New("article not modified")
 var ErrRevisionNotFound = errors.New("revision not found")
 var ErrGenericNotFound = errors.New("not found")
+
+func (model *WikiModel) UpdatePreference(pref *Preference) error {
+	return model.db.InsertPreference(pref)
+}
+
+func (model *WikiModel) GetPreference(key string) (*Preference, error) {
+	pref, err := model.db.SelectPreference(key)
+	if err != nil {
+		return nil, err
+	}
+	return pref, err
+}
 
 func (model *WikiModel) PostArticle(article *Article) error {
 	x := sha512.Sum384([]byte(article.Title + article.Markdown))
@@ -129,7 +153,9 @@ func (model *WikiModel) PostArticle(article *Article) error {
 	if err != nil {
 		return err
 	}
-
+	strip := bluemonday.StrictPolicy()
+	article.Title = strip.Sanitize(article.Title)
+	article.Comment = strip.Sanitize(article.Comment)
 	article.HTML = model.sanitizer.Sanitize(string(unsafe))
 	err = model.db.InsertArticle(article)
 
@@ -138,10 +164,20 @@ func (model *WikiModel) PostArticle(article *Article) error {
 
 // PostUser inserts attempts to insert a user into the database
 func (model *WikiModel) PostUser(user *User) error {
+	if len(user.ScreenName) == 0 {
+		return ErrEmptyUsername
+	}
+	matched, err := regexp.MatchString(`^[\p{L}0-9-_]+$`, user.ScreenName)
+	if err != nil {
+		return err
+	}
+	if !matched {
+		return ErrBadUsername
+	}
 	if len(user.RawPassword) < model.MinimumPasswordLength {
 		return errors.New(ErrPasswordTooShort.Error() + fmt.Sprintf(" (must be %d characters long)", model.MinimumPasswordLength))
 	}
-	err := user.SetPasswordHash()
+	err = user.SetPasswordHash()
 	if err != nil {
 		return err
 	}

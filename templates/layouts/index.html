@@ -9,20 +9,22 @@
     <link rel="stylesheet" type="text/css" media="screen" href="/static/main.css" />
 </head>
 <body>
-    <div id="login-bar">
-    {{$user := .Context.Value "User" }}
-    {{ if and $user (ne $user.ScreenName "Anonymous") }}
-        <a href="/profile/{{ $user.ScreenName }}">My Profile</a>
-        <a href="/user/settings">Settings</a>
-        <form method="POST" action="/user/logout"><button class="iw-logout-btn" type="submit">Logout</button></form>
-    {{ else }}
-        <a href="/user/login">Login</a>
-        <a href="/user/register">Register</a>
-    {{ end }}
-    </div>
     <div id="flex-container">
         {{template "sidebar" .Sidebar }}
-        {{template "content" . }}
+        <div id="right-panel">
+            <div id="login-bar">
+                {{$user := .Context.Value "User" }}
+                {{ if and $user (ne $user.ScreenName "Anonymous") }}
+                    <a href="/profile/{{ pathEscape $user.ScreenName }}">My Profile</a>
+                    <a href="/user/settings">Settings</a>
+                    <form method="POST" action="/user/logout"><button class="iw-logout-btn" type="submit">Logout</button></form>
+                {{ else }}
+                    <a href="/user/login">Login</a>
+                    <a href="/user/register">Register</a>
+                {{ end }}
+            </div>
+            {{template "content" . }}
+        </div>
     </div>
     <div id="footer"><small class="iw-powered-by">Powered by <a href="https://github.com/jagger27/iwikii">iwikii</a></small></div>
 </body>
