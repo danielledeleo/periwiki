@@ -21,15 +21,18 @@ a:hover {
 
 #login-bar {
   text-align: right;
-  padding: 0.3em 0.8em 0 0;
+  margin: 0.3em 0.8em 0 0;
   font-size: 0.75em;
-  display: flex;
-  justify-content: right;
 }
 #login-bar a, #login-bar .iw-logout-btn {
+  display: inline-block;
   margin: 0 0 0 0.75em;
 }
+#login-bar form {
+  display: inline;
+}
 #login-bar button.iw-logout-btn {
+  display: inline-block;
   background: none;
   color: #0645ad;
   border: none;
@@ -44,7 +47,8 @@ a:hover {
 #sidebar {
   margin: 0 0.75em;
   padding: 0.5em;
-  width: 10em;
+  width: 140px;
+  min-width: 140px;
 }
 #sidebar ul {
   margin: 0;
@@ -56,6 +60,10 @@ a:hover {
   width: 80%;
   margin: 0.4em 0;
   border-bottom: 1px solid #a2a9b1;
+}
+
+#right-panel {
+  width: 100%;
 }
 
 #article-area {
@@ -116,6 +124,11 @@ article h2 {
   margin: 1em 0 0.25em 0;
   font-size: 1.5em;
 }
+article section hr {
+  display: none;
+  border-color: #a2a9b1;
+  background-color: #a2a9b1;
+}
 article div.iw-article-content {
   font-size: 0.875em;
 }
@@ -156,6 +169,17 @@ article #toc li ol > li {
 article #toc li ol > li:before {
   content: counters(item, ".") " ";
 }
+article table {
+  border-collapse: collapse;
+  border-spacing: 0px;
+}
+article table tr:nth-child(2n), article table thead {
+  background-color: #f6f8fa;
+}
+article table td, article table th {
+  border: 1px solid #c6cbd1;
+  padding: 0.4em 1em;
+}
 article code {
   font-family: "Andale Mono", "Consolas", monospace;
   font-size: 1em;
@@ -181,6 +205,12 @@ article ul li {
 }
 article .iw-diff {
   line-height: 1em;
+}
+article .footnote-ref sup::before {
+  content: "[";
+}
+article .footnote-ref sup::after {
+  content: "]";
 }
 
 article.iw-preview {

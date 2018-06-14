@@ -29,7 +29,7 @@ func RenderHTML(markdown string) (string, error) {
 
 	headers := document.Find("h2")
 	if headers.Length() == 0 {
-		return "", nil
+		return string(rawhtml), nil
 	}
 
 	tmpl, err := template.ParseFiles("templates/helpers/helper.html")
