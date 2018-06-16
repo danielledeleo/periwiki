@@ -58,8 +58,27 @@ type Article struct {
 	*Revision
 }
 
+const (
+	IntPref = iota
+	TextPref
+	SelectionPref
+)
+
 type Preference struct {
-	Key, Value string
+	ID               int            `db:"id"`
+	Label            string         `db:"pref_label"`
+	Type             int            `db:"pref_type"`
+	HelpText         sql.NullString `db:"help_text"`
+	IntValue         sql.NullInt64  `db:"pref_int"`
+	TextValue        sql.NullString `db:"pref_text"`
+	SelectionValue   sql.NullInt64  `db:"pref_selection"`
+	SelectionChoices []*PreferenceSelection
+}
+
+type PreferenceSelection struct {
+	PreferenceID int    `db:"pref_id"`
+	Value        int    `db:"val"`
+	Label        string `db:"pref_selection_label"`
 }
 
 func (article *Article) String() string {
@@ -121,6 +140,7 @@ var ErrBadUsername = errors.New("username must only contain letters, numbers, -,
 var ErrEmptyUsername = errors.New("username cannot be empty")
 var ErrArticleNotModified = errors.New("article not modified")
 var ErrRevisionNotFound = errors.New("revision not found")
+var ErrRevisionAlreadyExists = errors.New("revision already exists")
 var ErrGenericNotFound = errors.New("not found")
 
 func (model *WikiModel) UpdatePreference(pref *Preference) error {

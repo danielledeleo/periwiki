@@ -3,6 +3,7 @@ package templater
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -72,6 +73,7 @@ func (t *Templater) Load(baseGlob, mainGlob string) error {
 		"capitalize":  capitalize,
 		"pathEscape":  url.PathEscape,
 		"queryEscape": url.QueryEscape,
+		"statusText":  http.StatusText,
 	}
 
 	// Generate our templates map from our layouts/ and includes/ directories

@@ -115,6 +115,7 @@ article {
 article h1, article h2 {
   line-height: 1.3em;
   margin: 0 0 0.25em 0;
+  overflow: hidden;
   font-family: Georgia, "Times New Roman", Times, serif;
   font-size: 1.8em;
   font-weight: 400;
@@ -124,23 +125,79 @@ article h2 {
   margin: 1em 0 0.25em 0;
   font-size: 1.5em;
 }
-article section hr {
-  display: none;
-  border-color: #a2a9b1;
-  background-color: #a2a9b1;
+article section.footnotes {
+  margin: 2em 0 0 0;
+  font-size: 0.95em;
+}
+article section.footnotes p {
+  margin: 0;
+}
+article section.footnotes hr {
+  border: 0;
+  height: 0;
+  border-bottom: 1px solid #a2a9b1;
+}
+article section.footnotes ol {
+  padding-left: auto !important;
+  margin-bottom: 0;
 }
 article div.iw-article-content {
   font-size: 0.875em;
 }
+article div.iw-article-content > table {
+  border-collapse: collapse;
+  border-spacing: 0px;
+}
+article div.iw-article-content > table tr:nth-child(2n), article div.iw-article-content > table thead {
+  background-color: #f6f8fa;
+}
+article div.iw-article-content > table td, article div.iw-article-content > table th {
+  border: 1px solid #c6cbd1;
+  padding: 0.4em 1em;
+}
 article pre {
+  overflow: hidden;
   border: 1px solid #a7aef9;
   padding: 0.75em;
   background-color: #FBFBFB;
 }
-article #toc {
-  padding: 0.5em 0.75em;
+article .infobox {
+  font-size: 0.95em;
+  width: 14em;
+  float: right;
+  clear: right;
+  margin: 0 0 0.75em 1em;
+  padding: 0.3em;
+  line-height: 1.1;
+}
+article .infobox h1, article .infobox h2, article .infobox h3 {
+  margin: 0.25em 0;
+  text-align: center;
+  font-size: 1.1em;
+  font-weight: bold;
+  font-family: sans-serif;
+}
+article .infobox ul {
+  margin: 0 0.5em 0 1em;
+}
+article .infobox p {
+  margin: 0.25em 0;
+}
+article .infobox figure {
+  margin: 0.5em 0;
+}
+article .infobox figure img {
+  width: 100%;
+}
+article .infobox figure figcaption {
+  text-align: center;
+}
+article #toc, article .infobox {
   border: 1px solid #a2a9b1;
   background-color: #FBFBFB;
+}
+article #toc {
+  padding: 0.3em 0.5em;
   display: inline-block;
   width: auto;
 }
@@ -168,17 +225,6 @@ article #toc li ol > li {
 }
 article #toc li ol > li:before {
   content: counters(item, ".") " ";
-}
-article table {
-  border-collapse: collapse;
-  border-spacing: 0px;
-}
-article table tr:nth-child(2n), article table thead {
-  background-color: #f6f8fa;
-}
-article table td, article table th {
-  border: 1px solid #c6cbd1;
-  padding: 0.4em 1em;
 }
 article code {
   font-family: "Andale Mono", "Consolas", monospace;
@@ -218,6 +264,7 @@ article.iw-preview {
 }
 
 .iw-callout {
+  width: 100%;
   display: inline-block;
   margin: 0.5em 0;
   padding: 10px;

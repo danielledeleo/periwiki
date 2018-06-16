@@ -95,15 +95,21 @@ func (db *sqliteDb) InsertUser(user *model.User) error {
 }
 
 func (db *sqliteDb) InsertPreference(pref *model.Preference) error {
-	tx, _ := db.conn.Beginx()
-	tx.Exec(`INSERT OR IGNORE INTO Preference (pref, val) VALUES(?, ?)`, pref.Key, pref.Value)
-	tx.Exec(`UPDATE Preference SET val = ? WHERE pref = ?`, pref.Value, pref.Key)
-	return tx.Commit()
+	_, err := db.conn.Exec(`INSERT OR REPLACE INTO Preference (pref_label, pref_type, help_text, pref_int, pref_text, pref_selection) 
+		VALUES(?, ?, ?, ?, ?, ?)`,
+		pref.Label,
+		pref.Type,
+		pref.HelpText,
+		pref.IntValue,
+		pref.TextValue,
+		pref.SelectionValue,
+	)
+	return err
 }
 
 func (db *sqliteDb) SelectPreference(key string) (*model.Preference, error) {
 	pref := &model.Preference{}
-	err := db.conn.Select(`SELECT pref, val FROM Preference WHERE key = ?`, key)
+	err := db.conn.Select(`SELECT * FROM Preference WHERE pref_label = ?`, key)
 	if err == sql.ErrNoRows {
 		return nil, model.ErrGenericNotFound
 	} else if err != nil {
@@ -221,9 +227,13 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 		if err != nil {
 			return err
 		}
-		tx.Exec(`INSERT INTO Article (url) VALUES (?);`, article.URL)
-		tx.Exec(`INSERT INTO Revision (title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
-			VALUES (?, ?, ?, ?, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
+		_, err = tx.Exec(`INSERT INTO Article (url) VALUES (?);`, article.URL)
+		if err != nil {
+			log.Println(err)
+		}
+		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
+			VALUES (?, ?, ?, ?, ?, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
+			article.PreviousID+1,
 			article.Title,
 			article.Hash,
 			article.Markdown,
@@ -231,6 +241,11 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 			article.Creator.ID,
 			article.PreviousID,
 			article.Comment)
+		if err != nil {
+			log.Println(err)
+			tx.Commit()
+			return err
+		}
 		if article.Creator.ID == 0 { // Anonymous
 			tx.Exec(`INSERT INTO AnonymousEdit (ip, revision_id) VALUES (?, last_insert_rowid())`,
 				article.Creator.IPAddress)
@@ -245,8 +260,9 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 		if err != nil {
 			return err
 		}
-		tx.Exec(`INSERT INTO Revision (title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
-			VALUES (?, ?, ?, ?, (SELECT id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
+		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
+			VALUES (?, ?, ?, ?, ?, (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
+			article.PreviousID+1,
 			article.Title,
 			article.Hash,
 			article.Markdown,
@@ -255,6 +271,12 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 			article.Creator.ID,
 			article.PreviousID,
 			article.Comment)
+		if err != nil {
+			tx.Commit()
+			if err.Error() == "UNIQUE constraint failed: Revision.id, Revision.article_id" {
+				return model.ErrRevisionAlreadyExists
+			}
+		}
 		if article.Creator.ID == 0 { // Anonymous
 			tx.Exec(`INSERT INTO AnonymousEdit (ip, revision_id) VALUES (?, last_insert_rowid())`,
 				article.Creator.IPAddress)

@@ -8,7 +8,7 @@
     <article>
     {{end}}
     {{with .Error }}
-        <h1>{{.Code}}</h1>
+        <h1>{{.Code}} {{statusText .Code}}</h1>
         <div class="iw-article-content">
             {{range .Errors}}
                 <div>{{print . | capitalize }}</div>

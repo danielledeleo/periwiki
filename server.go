@@ -29,7 +29,7 @@ type app struct {
 func main() {
 	app := Setup()
 
-	router := mux.NewRouter()
+	router := mux.NewRouter().StrictSlash(true)
 
 	router.Use(app.SessionMiddleware)
 
@@ -50,6 +50,13 @@ func main() {
 	router.HandleFunc("/user/login", app.loginPostHander).Methods("POST")
 	router.HandleFunc("/user/logout", app.logoutPostHander).Methods("POST")
 
+	manageRouter := mux.NewRouter().PathPrefix("/manage").Subrouter()
+	manageRouter.HandleFunc("/{page}", func(rw http.ResponseWriter, req *http.Request) {
+		vars := mux.Vars(req)
+		fmt.Fprintln(rw, vars["page"])
+	})
+	router.Handle("/manage/{page}", manageRouter)
+
 	logger := handlers.LoggingHandler(os.Stdout, router)
 	hostport := net.JoinHostPort(viper.GetString("host"), viper.GetString("port"))
 	log.Println("Listening on ", hostport)
@@ -63,6 +70,7 @@ func (a *app) registerHandler(rw http.ResponseWriter, req *http.Request) {
 			"Context": req.Context()})
 	check(err)
 }
+
 func (a *app) registerPostHandler(rw http.ResponseWriter, req *http.Request) {
 	user := &model.User{}
 
@@ -278,7 +286,7 @@ func (a *app) revisionEditHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	other := make(map[string]interface{})
-	other["preview"] = false
+	other["Preview"] = false
 
 	err = a.RenderTemplate(rw, "article_edit.html", "index.html", map[string]interface{}{
 		"Article": article,
@@ -307,6 +315,7 @@ func (a *app) revisionPostHandler(rw http.ResponseWriter, req *http.Request) {
 	article.PreviousID = previousID
 
 	if req.PostFormValue("action") == "preview" {
+		article.ID = previousID
 		a.articlePreviewHandler(article, rw, req)
 		return
 	}
@@ -320,7 +329,7 @@ func (a *app) articlePreviewHandler(article *model.Article, rw http.ResponseWrit
 		return
 	}
 	article.HTML = html
-	// article.Hash = article.PreviousHash
+
 	other := make(map[string]interface{})
 	other["Preview"] = true
 
@@ -332,9 +341,12 @@ func (a *app) articlePreviewHandler(article *model.Article, rw http.ResponseWrit
 	check(err)
 }
 func (a *app) articlePostHandler(article *model.Article, rw http.ResponseWriter, req *http.Request) {
-
 	err := a.PostArticle(article)
 	if err != nil {
+		if err == model.ErrRevisionAlreadyExists {
+			a.errorHandler(http.StatusConflict, rw, req, err)
+			return
+		}
 		a.errorHandler(http.StatusBadRequest, rw, req, err)
 		return
 	}

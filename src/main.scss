@@ -131,7 +131,6 @@ a:hover {
 
 article {
     padding: 20px 24px 24px 24px;
-
     background-color: #ffffff;
     border: 1px solid $iwikii-purple;
     border-right: none;
@@ -140,11 +139,11 @@ article {
     h1, h2 {
         line-height: 1.3em;
         margin: 0 0 .25em 0;
+        overflow: hidden;
 
         font-family: Georgia, 'Times New Roman', Times, serif;
         font-size: 1.8em;
         font-weight: 400;
-
         border-bottom: 1px solid $underline;
     }
     h2 {
@@ -152,28 +151,84 @@ article {
         font-size: 1.5em;
     }
 
-    section hr {
-        display: none;
-        border-color: $underline;
-        background-color: $underline;
+    section.footnotes {
+        margin: 2em 0 0 0;
+        font-size: 0.95em;
+        p {
+            margin: 0;
+        }
+        hr {
+            border: 0;
+            height: 0;
+            border-bottom: 1px solid $underline;
+        }
+        ol {
+            padding-left: auto !important;
+            margin-bottom: 0;
+        }
     }
 
     div.iw-article-content {
         font-size: 0.875em;
+        > table {
+            border-collapse: collapse;
+            border-spacing: 0px;
+            tr:nth-child(2n), thead {
+                background-color: #f6f8fa;
+            }
+            td, th {
+                border: 1px solid #c6cbd1;
+                padding: 0.4em 1em;
+            }
+        }
     }
 
     pre {
+        overflow: hidden;
         border: 1px solid $iwikii-purple;
         padding: 0.75em;
         background-color: #FBFBFB;
     }
-    #toc {
-        padding: 0.5em 0.75em;
+    .infobox {
+        h1, h2, h3 {
+            margin: 0.25em 0;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            font-family: sans-serif;
+        }
+        font-size: 0.95em;
+        width: 14em;
+        float: right;
+        clear: right;
+        margin: 0 0 0.75em 1.0em;
+        padding: 0.3em;
+        line-height: 1.1;
+
+        ul {
+            margin: 0 0.5em 0 1em;
+        }
+        p {
+            margin: 0.25em 0;
+        }
+        figure {
+            margin: 0.5em 0;
+            img {
+                width: 100%;
+            }
+            figcaption {
+                text-align: center;
+            }
+        }
+    }
+    #toc, .infobox {
         border: 1px solid $underline;
         background-color: #FBFBFB;
+    }
+    #toc {
+        padding: 0.3em 0.5em;
         display: inline-block;
         width: auto;
-        
         span {
             display: block;
             text-align: center;
@@ -206,17 +261,7 @@ article {
             content: counters(item, ".") " ";
         }
     }
-    table {
-        border-collapse: collapse;
-        border-spacing: 0px;
-        tr:nth-child(2n), thead {
-            background-color: #f6f8fa;
-        }
-        td, th {
-            border: 1px solid #c6cbd1;
-            padding: 0.4em 1em;
-        }
-    }
+
     code {
         font-family: "Andale Mono", "Consolas", monospace;
         font-size: 1em;
@@ -260,7 +305,7 @@ article.iw-preview {
     margin: 24px 0 0 0;
 }
 .iw-callout {
-    // width: 60%;
+    width: 100%;
     display: inline-block;
     margin: 0.5em 0;
     padding: 10px;
