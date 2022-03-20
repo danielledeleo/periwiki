@@ -1,5 +1,0 @@
-package: github.com/jagger27/wikigogo
-import:
-- package: github.com/gorilla/mux
-- package: github.com/russross/blackfriday
-  version: 2
