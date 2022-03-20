@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"errors"
+	"log"
 	"os"
 
 	"github.com/gorilla/securecookie"
@@ -22,7 +23,7 @@ func SetupConfig() *model.Config {
 	err := viper.ReadInConfig()
 
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	_, err = os.Stat(".cookiesecret.yaml")
 
@@ -32,29 +33,29 @@ func SetupConfig() *model.Config {
 		viper.AddConfigPath(".")
 		err = viper.ReadInConfig()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		secretBytes, err = base64.StdEncoding.DecodeString(viper.GetString("cookie_secret"))
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	} else {
 
 		file, err := os.Create(".cookiesecret.yaml")
 		defer file.Close()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 
 		secretBytes = securecookie.GenerateRandomKey(64)
 		if secretBytes == nil {
-			panic(errors.New("securecookie.GenerateRandomKey returned nil"))
+			log.Fatal(errors.New("securecookie.GenerateRandomKey returned nil"))
 		}
 		secret := base64.StdEncoding.EncodeToString(secretBytes)
 
 		_, err = file.WriteString("cookie_secret: " + secret + "\n")
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}
 
