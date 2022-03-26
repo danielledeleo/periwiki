@@ -24,6 +24,8 @@ type WikiModel struct {
 	db        db
 	sanitizer *bluemonday.Policy
 	// cache, perhaps
+
+	renderer *HTMLRenderer
 }
 
 type Config struct {
@@ -82,7 +84,7 @@ type PreferenceSelection struct {
 }
 
 func (article *Article) String() string {
-	return fmt.Sprintf("%q %q", article.URL, *article.Revision)
+	return fmt.Sprintf("%s %v", article.URL, *article.Revision)
 }
 
 type Revision struct {
@@ -110,15 +112,22 @@ type User struct {
 func (u *User) SetPasswordHash() error {
 	rawHash, err := bcrypt.GenerateFromPassword([]byte(u.RawPassword), bcrypt.MinCost)
 	u.RawPassword = ""
+
 	if err != nil {
 		return err
 	}
+
 	u.PasswordHash = string(rawHash)
 	return nil
 }
 
 func New(db db, conf *Config, s *bluemonday.Policy) *WikiModel {
-	return &WikiModel{db: db, Config: conf, sanitizer: s}
+	return &WikiModel{
+		db:        db,
+		Config:    conf,
+		sanitizer: s,
+		renderer:  NewHTMLRenderer(),
+	}
 }
 
 func (model *WikiModel) GetArticle(url string) (*Article, error) {
@@ -128,6 +137,7 @@ func (model *WikiModel) GetArticle(url string) (*Article, error) {
 	} else if err != nil {
 		return nil, err
 	}
+
 	return article, err
 }
 
@@ -152,7 +162,18 @@ func (model *WikiModel) GetPreference(key string) (*Preference, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return pref, err
+}
+
+func (model *WikiModel) Render(markdown string) (string, error) {
+	unsafe, err := model.renderer.Render(markdown)
+
+	if err != nil {
+		return "", err
+	}
+
+	return model.sanitizer.Sanitize(string(unsafe)), nil
 }
 
 func (model *WikiModel) PostArticle(article *Article) error {
@@ -168,18 +189,23 @@ func (model *WikiModel) PostArticle(article *Article) error {
 		}
 	}
 
-	// unsafe, err := pandoc.MarkdownToHTML(article.Markdown)
-	unsafe, err := RenderHTML(article.Markdown)
+	strip := bluemonday.StrictPolicy()
+
+	article.Title = strip.Sanitize(article.Title)
+	article.Comment = strip.Sanitize(article.Comment)
+
+	html, err := model.Render(article.Markdown)
 	if err != nil {
 		return err
 	}
-	strip := bluemonday.StrictPolicy()
-	article.Title = strip.Sanitize(article.Title)
-	article.Comment = strip.Sanitize(article.Comment)
-	article.HTML = model.sanitizer.Sanitize(string(unsafe))
-	err = model.db.InsertArticle(article)
 
-	return err
+	article.HTML = html
+
+	return model.db.InsertArticle(article)
+}
+
+func (model *WikiModel) PreviewMarkdown(markdown string) (string, error) {
+	return model.Render(markdown)
 }
 
 // PostUser inserts attempts to insert a user into the database
@@ -187,34 +213,30 @@ func (model *WikiModel) PostUser(user *User) error {
 	if len(user.ScreenName) == 0 {
 		return ErrEmptyUsername
 	}
+
 	matched, err := regexp.MatchString(`^[\p{L}0-9-_]+$`, user.ScreenName)
 	if err != nil {
 		return err
 	}
+
 	if !matched {
 		return ErrBadUsername
 	}
+
 	if len(user.RawPassword) < model.MinimumPasswordLength {
 		return errors.New(ErrPasswordTooShort.Error() + fmt.Sprintf(" (must be %d characters long)", model.MinimumPasswordLength))
 	}
+
 	err = user.SetPasswordHash()
 	if err != nil {
 		return err
 	}
+
 	return model.db.InsertUser(user)
 }
 
 func AnonymousUser() *User {
 	return &User{ID: 0}
-}
-
-func (model *WikiModel) PreviewMarkdown(markdown string) (string, error) {
-	unsafe, err := RenderHTML(markdown)
-	if err != nil {
-		return "", err
-	}
-
-	return model.sanitizer.Sanitize(string(unsafe)), nil
 }
 
 // GetCookie wraps gorilla/sessions.Store.Get, as implemented by WikiModel.db
@@ -242,10 +264,12 @@ func (model *WikiModel) CheckUserPassword(u *User) error {
 	if err == sql.ErrNoRows {
 		return ErrUsernameNotFound
 	}
+
 	err = bcrypt.CompareHashAndPassword([]byte(dbUser.PasswordHash), []byte(u.RawPassword))
 	if err == bcrypt.ErrMismatchedHashAndPassword {
 		return ErrIncorrectPassword
 	}
+
 	return err
 }
 
@@ -254,6 +278,7 @@ func (model *WikiModel) GetUserByScreenName(screenname string) (*User, error) {
 	if err == sql.ErrNoRows {
 		return nil, ErrUsernameNotFound
 	}
+
 	return dbUser, err
 }
 
@@ -262,6 +287,7 @@ func (model *WikiModel) GetArticleByRevisionHash(url string, hash string) (*Arti
 	if err == sql.ErrNoRows {
 		return nil, ErrRevisionNotFound
 	}
+
 	return revision, err
 }
 
@@ -270,6 +296,7 @@ func (model *WikiModel) GetArticleByRevisionID(url string, id int) (*Article, er
 	if err == sql.ErrNoRows {
 		return nil, ErrRevisionNotFound
 	}
+
 	return revision, err
 }
 

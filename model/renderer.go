@@ -2,45 +2,68 @@ package model
 
 import (
 	"bytes"
-	"log"
 
 	"html/template"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/pkg/errors"
 
-	"github.com/jagger27/iwikii/pandoc"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
+
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/parser"
 )
 
-type HTMLRenderer struct{}
+type HTMLRenderer struct {
+	md goldmark.Markdown
+}
 
-func RenderHTML(markdown string) (string, error) {
-	rawhtml, err := pandoc.MarkdownToHTML(markdown)
+func NewHTMLRenderer() *HTMLRenderer {
+	r := &HTMLRenderer{
+		md: goldmark.New(
+			goldmark.WithParserOptions(
+				parser.WithAutoHeadingID(),
+			),
+		),
+	}
+
+	return r
+}
+
+func (r *HTMLRenderer) Render(md string) (string, error) {
+	buf := &bytes.Buffer{}
+
+	if err := r.md.Convert([]byte(md), buf); err != nil {
+		return "", errors.Wrap(err, "failed to Convert")
+	}
+	rawhtml := buf.Bytes()
+	htmlreader := bytes.NewReader(rawhtml)
+
+	root, err := html.Parse(htmlreader)
 	if err != nil {
 		return "", err
 	}
-	buf := bytes.NewBuffer(rawhtml)
-	root, err := html.Parse(buf)
-	if err != nil {
-		return "", err
-	}
+
 	document := goquery.NewDocumentFromNode(root)
 
 	headers := document.Find("h2")
 	if headers.Length() == 0 {
+		if err != nil {
+			return "", err
+		}
 		return string(rawhtml), nil
 	}
 
-	tmpl, err := template.ParseFiles("templates/helpers/helper.html")
+	tmpl, err := template.ParseFiles("templates/helpers/toc.html")
 	if err != nil {
-		log.Panic(err)
+		return "", err
 	}
 
 	outbuf := &bytes.Buffer{}
 	err = tmpl.Execute(outbuf, map[string]interface{}{"Headers": headers.Nodes})
 	if err != nil {
-		log.Panic(err)
+		return "", err
 	}
 
 	fakeBody := &html.Node{
@@ -48,16 +71,18 @@ func RenderHTML(markdown string) (string, error) {
 		Data:     "body",
 		DataAtom: atom.Body,
 	}
+
 	newnode, err := html.ParseFragment(outbuf, fakeBody)
 	if err != nil {
-		log.Panic(err)
+		return "", err
 	}
+
 	root.InsertBefore(newnode[0], headers.Nodes[0])
 
 	outbuf.Reset()
 	err = html.Render(outbuf, root)
 	if err != nil {
-		log.Panic(err)
+		return "", err
 	}
 
 	return outbuf.String(), nil
