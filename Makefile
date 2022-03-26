@@ -1,6 +1,6 @@
-all: sass go
+all: static/main.css go
 
-sass:
+static/main.css: src/main.scss
 	sass src/main.scss static/main.css
 
 go:
