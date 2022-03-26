@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
-	"strings"
 	"text/template"
 	"unicode"
 	"unicode/utf8"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // Templater ecapsulates the map to prevent direct access. See RenderTemplate
@@ -68,9 +70,11 @@ func (t *Templater) Load(baseGlob, mainGlob string) error {
 		return err
 	}
 
+	titler := cases.Title(language.AmericanEnglish) // TODO: locales!
+
 	t.funcs = template.FuncMap{
-		"title":       strings.Title,
-		"capitalize":  capitalize,
+		"title":       titler.String,
+		"capitalize":  capitalize, // TODO: maybe replace this with something more robust?
 		"pathEscape":  url.PathEscape,
 		"queryEscape": url.QueryEscape,
 		"statusText":  http.StatusText,

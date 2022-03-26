@@ -7,10 +7,11 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/jagger27/iwikii/model"
 	"github.com/jagger27/iwikii/templater"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -194,7 +195,7 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 	render := map[string]interface{}{}
 	article, err := a.GetArticle(vars["article"])
 
-	if err != nil {
+	if err != model.ErrGenericNotFound && err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
@@ -203,7 +204,7 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 	found := article != nil
 
 	if !found {
-		article = model.NewArticle(vars["article"], strings.Title(vars["article"]), "")
+		article = model.NewArticle(vars["article"], cases.Title(language.AmericanEnglish).String(vars["article"]), "")
 		article.Hash = "new"
 		check(err)
 	}
@@ -279,7 +280,7 @@ func (a *app) revisionEditHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 	article, err := a.GetArticleByRevisionID(vars["article"], revisionID)
 	if err == model.ErrRevisionNotFound {
-		article = model.NewArticle(vars["article"], strings.Title(vars["article"]), "")
+		article = model.NewArticle(vars["article"], cases.Title(language.AmericanEnglish).String(vars["article"]), "")
 		article.Hash = "new"
 	} else if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
@@ -432,5 +433,7 @@ func (a *app) diffHandler(rw http.ResponseWriter, req *http.Request) {
 			"DiffString": pretty,
 		}})
 
-	// fmt.Fprintf(rw, "<pre>%s</pre>", pretty)
+	if err != nil {
+		log.Println(err)
+	}
 }

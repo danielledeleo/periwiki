@@ -11,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/michaeljs1990/sqlitestore"
+	"github.com/pkg/errors"
 )
 
 type sqliteDb struct {
@@ -27,68 +28,89 @@ func Init(config *model.Config) (*sqliteDb, error) {
 	conn, err := sqlx.Open("sqlite3", config.DatabaseFile)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	// defer conn.Close()
 
 	sqlFile, err := ioutil.ReadFile("db/schema.sql")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	sqlStmt := string(sqlFile)
 	_, err = conn.Exec(sqlStmt)
 	if err != nil {
-		log.Fatalf("%q: %s\n", err, sqlStmt)
+		return nil, err
 	}
 
 	db := &sqliteDb{conn: conn}
 	db.SqliteStore, err = sqlitestore.NewSqliteStoreFromConnection(conn, "sessions", "/", config.CookieExpiry, config.CookieSecret)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 
 	// Add prepared statements
 	q := `SELECT url, Revision.id, title, markdown, html, hashval, created, previous_id, comment 
 			FROM Article JOIN Revision ON Article.id = Revision.article_id WHERE Article.url = ?`
 	db.selectArticleByLatestRevisionStmt, err = db.conn.Preparex(q + ` ORDER BY created DESC LIMIT 1`)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 
 	db.selectArticleByRevisionHashStmt, err = db.conn.Preparex(q + ` AND Revision.hashval = ?`)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 
 	db.selectArticleByRevisionIDStmt, err = db.conn.Preparex(q + ` AND Revision.id = ?`)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 
 	db.selectUserScreennameStmt, err = db.conn.Preparex(`SELECT id, screenname, email FROM User WHERE screenname = ?`)
+	if err != nil {
+		return nil, err
+	}
+
 	db.selectUserScreennameWithHashStmt, err = db.conn.Preparex(`
 		SELECT id, screenname, email, passwordhash FROM User JOIN Password ON Password.user_id = User.id WHERE screenname = ?`)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 
-	return db, err
+	return db, nil
 }
 
-func check(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
+func (db *sqliteDb) InsertUser(user *model.User) (err error) {
+	var tx *sqlx.Tx
+	tx, err = db.conn.Beginx()
 
-func (db *sqliteDb) InsertUser(user *model.User) error {
-	tx, err := db.conn.Beginx()
-	_, userErr := tx.Exec(`INSERT INTO User(screenname, email) VALUES (?, ?)`, user.ScreenName, user.Email)
-	_, _ = tx.Exec(`INSERT INTO Password(user_id, passwordhash) VALUES (last_insert_rowid(), ?)`, user.PasswordHash)
+	defer func() {
+		if err != nil {
+			log.Println(err)
+			if rbErr := tx.Rollback(); rbErr != nil {
+				log.Println(rbErr)
+			}
+		} else {
+			if commitErr := tx.Commit(); commitErr != nil {
+				log.Println(commitErr)
+			}
+		}
+	}()
 
-	err = tx.Commit()
+	_, err = tx.Exec(`INSERT INTO User(screenname, email) VALUES (?, ?)`, user.ScreenName, user.Email)
+
 	if err != nil {
-		return err
-	}
-	if userErr != nil {
-		if userErr.Error() == "UNIQUE constraint failed: User.screenname" {
+		if err.Error() == "UNIQUE constraint failed: User.screenname" {
 			return model.ErrUsernameTaken
-		} else if userErr.Error() == "UNIQUE constraint failed: User.email" {
+		} else if err.Error() == "UNIQUE constraint failed: User.email" {
 			return model.ErrEmailTaken
 		}
-		return userErr
+		return
 	}
+	if _, err = tx.Exec(`INSERT INTO Password(user_id, passwordhash) VALUES (last_insert_rowid(), ?)`, user.PasswordHash); err != nil {
+		return
+	}
+
 	return nil
 }
 
@@ -218,18 +240,35 @@ func (db *sqliteDb) SelectUserByScreenname(screenname string, withHash bool) (*m
 	return user, err
 }
 
-func (db *sqliteDb) InsertArticle(article *model.Article) error {
-	testArticle, err := db.SelectArticle(article.URL)
+func (db *sqliteDb) InsertArticle(article *model.Article) (err error) {
+	testArticle, insertErr := db.SelectArticle(article.URL)
 
-	if err == sql.ErrNoRows { // New article.
-		tx, err := db.conn.Beginx()
+	var tx *sqlx.Tx
+	tx, err = db.conn.Beginx()
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	defer func() {
 		if err != nil {
-			return err
+			log.Println(errors.Wrap(err, "failed to InsertArticle"))
+			if rbErr := tx.Rollback(); rbErr != nil {
+				log.Println(rbErr)
+			}
+		} else {
+			if commitErr := tx.Commit(); commitErr != nil {
+				log.Println(commitErr)
+			}
 		}
-		_, err = tx.Exec(`INSERT INTO Article (url) VALUES (?);`, article.URL)
-		if err != nil {
-			log.Println(err)
+	}()
+
+	if insertErr == sql.ErrNoRows { // New article.
+		if _, err = tx.Exec(`INSERT INTO Article (url) VALUES (?);`, article.URL); err != nil {
+			return
 		}
+
 		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
 			VALUES (?, ?, ?, ?, ?, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
 			article.PreviousID+1,
@@ -240,25 +279,20 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 			article.Creator.ID,
 			article.PreviousID,
 			article.Comment)
+
 		if err != nil {
-			log.Println(err)
-			tx.Commit()
-			return err
-		}
-		if article.Creator.ID == 0 { // Anonymous
-			tx.Exec(`INSERT INTO AnonymousEdit (ip, revision_id) VALUES (?, last_insert_rowid())`,
-				article.Creator.IPAddress)
-		}
-		err = tx.Commit()
-		if err != nil {
-			return err
+			return
 		}
 
-	} else if err == nil && testArticle != nil { // New revision to article
-		tx, err := db.conn.Beginx()
-		if err != nil {
-			return err
-		}
+		// if article.Creator.ID == 0 { // Anonymous User
+		// 	if _, err = tx.Exec(`INSERT INTO AnonymousEdit (ip, revision_id) VALUES (?, last_insert_rowid())`,
+		// 		article.Creator.IPAddress); err != nil {
+		// 		return
+		// 	}
+		// }
+
+	} else if insertErr == nil && testArticle != nil { // New revision to article
+
 		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
 			VALUES (?, ?, ?, ?, ?, (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
 			article.PreviousID+1,
@@ -270,20 +304,22 @@ func (db *sqliteDb) InsertArticle(article *model.Article) error {
 			article.Creator.ID,
 			article.PreviousID,
 			article.Comment)
+
 		if err != nil {
-			tx.Commit()
 			if err.Error() == "UNIQUE constraint failed: Revision.id, Revision.article_id" {
 				return model.ErrRevisionAlreadyExists
 			}
 		}
-		if article.Creator.ID == 0 { // Anonymous
-			tx.Exec(`INSERT INTO AnonymousEdit (ip, revision_id) VALUES (?, last_insert_rowid())`,
-				article.Creator.IPAddress)
-		}
-		err = tx.Commit()
-		if err != nil {
-			return err
-		}
+
+		// if article.Creator.ID == 0 { // Anonymous
+		// 	_, err = tx.Exec(`INSERT INTO AnonymousEdit (ip, revision_id) VALUES (?, last_insert_rowid())`,
+		// 		article.Creator.IPAddress)
+		// 	if err != nil {
+		// 		return
+		// 	}
+		// }
 	}
+
+	// Success!
 	return nil
 }

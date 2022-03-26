@@ -11,6 +11,7 @@ Down the line
 - There may be different classes of plugin, e.g. a simple lister widget, versus template file watcher/reloader, thus different interfaces
 - I am not a robot
 - rate limiting
+- Language locales!
 
 Maybe
 - file watcher for template files (maybe as a plugin?)

@@ -16,8 +16,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type ContextKey string
+
 // UserKey is for context.Context
-const UserKey string = "User"
+const UserKey ContextKey = "iwikii.user"
 
 type WikiModel struct {
 	*Config
@@ -134,7 +136,7 @@ func New(db db, conf *Config, s *bluemonday.Policy) *WikiModel {
 func (model *WikiModel) GetArticle(url string) (*Article, error) {
 	article, err := model.db.SelectArticle(url)
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, ErrGenericNotFound
 	} else if err != nil {
 		return nil, err
 	}

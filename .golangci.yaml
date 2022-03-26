@@ -1,0 +1,9 @@
+linters:
+  enable-all: false
+  disable-all: false
+  fast: true
+
+  enable:
+    - sqlclosecheck
+    - nilerr
+    - nilnil

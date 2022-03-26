@@ -52,10 +52,10 @@ func SetupConfig() *model.Config {
 	} else {
 
 		file, err := os.Create(".cookiesecret.yaml")
-		defer file.Close()
 		if err != nil {
 			log.Fatal(err)
 		}
+		defer file.Close()
 
 		secretBytes = securecookie.GenerateRandomKey(64)
 		if secretBytes == nil {

@@ -13,7 +13,7 @@
         {{template "sidebar" .Sidebar }}
         <div id="right-panel">
             <div id="login-bar">
-                {{$user := .Context.Value "User" }}
+                {{$user := .Context.Value "iwikii.user" }}
                 {{ if and $user (ne $user.ScreenName "Anonymous") }}
                     <a href="/profile/{{ pathEscape $user.ScreenName }}">My Profile</a>
                     <a href="/user/settings">Settings</a>
