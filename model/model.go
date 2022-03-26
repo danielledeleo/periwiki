@@ -29,10 +29,11 @@ type WikiModel struct {
 }
 
 type Config struct {
-	MinimumPasswordLength int
-	CookieSecret          []byte
-	CookieExpiry          int
-	DatabaseFile          string
+	CookieSecret          []byte `yaml:"-"`
+	CookieExpiry          int    `yaml:"cookie_expiry"`
+	DatabaseFile          string `yaml:"dbfile"`
+	MinimumPasswordLength int    `yaml:"minimum_password_length"`
+	Host                  string `yaml:"host"`
 }
 
 type db interface {

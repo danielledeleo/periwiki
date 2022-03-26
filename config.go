@@ -5,29 +5,39 @@ import (
 	"errors"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/gorilla/securecookie"
 	"github.com/jagger27/iwikii/model"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
+
+const configFilename = "config.yaml"
 
 func SetupConfig() *model.Config {
 	viper.SetDefault("dbfile", "iwikii.db")
 	viper.SetDefault("min_password_length", 8)
 	viper.SetDefault("cookie_expiry", 86400*7) // a week
-	viper.SetDefault("host", "")
-	viper.SetDefault("port", "8080")
+	viper.SetDefault("host", "0.0.0.0:8080")
 
-	viper.SetConfigFile("config.yaml")
+	viper.SetConfigFile(configFilename)
 	viper.AddConfigPath(".")
 	err := viper.ReadInConfig()
 
+	createDefaultConfigFile := false
+
 	if err != nil {
-		log.Fatal(err)
+		if strings.Contains(err.Error(), "no such file or directory") {
+			createDefaultConfigFile = true
+		} else {
+			log.Fatal(err)
+		}
 	}
-	_, err = os.Stat(".cookiesecret.yaml")
 
 	var secretBytes []byte
+	_, err = os.Stat(".cookiesecret.yaml")
+
 	if err == nil {
 		viper.SetConfigFile(".cookiesecret.yaml")
 		viper.AddConfigPath(".")
@@ -59,10 +69,25 @@ func SetupConfig() *model.Config {
 		}
 	}
 
-	return &model.Config{
+	config := &model.Config{
 		MinimumPasswordLength: viper.GetInt("min_password_length"),
 		DatabaseFile:          viper.GetString("dbfile"),
 		CookieSecret:          secretBytes,
 		CookieExpiry:          viper.GetInt("cookie_expiry"),
+		Host:                  viper.GetString("host"),
 	}
+
+	if createDefaultConfigFile {
+		log.Println("Config not found. Writing defaults to:", configFilename)
+		conf, err := os.Create(configFilename)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := yaml.NewEncoder(conf).Encode(config); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	return config
 }

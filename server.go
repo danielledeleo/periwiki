@@ -4,13 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/spf13/viper"
 
 	"github.com/jagger27/iwikii/model"
 	"github.com/jagger27/iwikii/templater"
@@ -58,9 +55,13 @@ func main() {
 	router.Handle("/manage/{page}", manageRouter)
 
 	logger := handlers.LoggingHandler(os.Stdout, router)
-	hostport := net.JoinHostPort(viper.GetString("host"), viper.GetString("port"))
-	log.Println("Listening on ", hostport)
-	http.ListenAndServe(hostport, logger)
+
+	log.Println("Listening on", app.Config.Host)
+	err := http.ListenAndServe(app.Config.Host, logger)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (a *app) registerHandler(rw http.ResponseWriter, req *http.Request) {
