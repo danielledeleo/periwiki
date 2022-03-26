@@ -74,4 +74,3 @@ CREATE TABLE IF NOT EXISTS PreferencePage (
 );
 
 INSERT OR IGNORE INTO User(id, email, screenname) VALUES (0, "", "Anonymous");
--- INSERT OR IGNORE INTO User(id, email, screenname) VALUES (1, "", "Administrator");

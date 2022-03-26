@@ -5,12 +5,11 @@ $iwikii-grey: #9a9a9a;
 $iwikii-light-grey: #f6f6f6;
     
 body {
-    // display: flex;
     margin: 0;
     padding: 0;
 
     background-color: $iwikii-light-grey;
-    font-family: sans-serif;
+    font-family: "Helvetica", sans-serif;
     line-height: 1.1em;
 }
 
@@ -31,12 +30,9 @@ a:hover {
     text-align: right;
     margin: 0.3em 0.8em 0 0;
     font-size: .75em;
-    // display: flex;
-    // justify-content: right;
 
     a, .iw-logout-btn {
         display: inline-block;
-        // float: left;
         margin: 0 0 0 0.75em;
     }
     form {
@@ -94,7 +90,6 @@ a:hover {
         list-style: none;
         border-left: 1px solid $iwikii-purple;
         li {
-            // display: flex;
             font-size: 0.8em;
             text-align: center;
             padding: 0.5em 0.8em 0.3em 0.8em;
@@ -122,7 +117,6 @@ a:hover {
         font-weight: 400;
     }
     .iw-last-edited {
-        // text-align: center;
         font-size: 0.75em;
         color: $iwikii-grey;
         display: block;
@@ -244,7 +238,6 @@ article {
         ol > li {
             display: table;
             counter-increment: item;
-            // margin-bottom: 0.2em;
         }
           
         ol > li:before {
@@ -271,7 +264,6 @@ article {
             color: black;
         }
         a:hover {
-            // background-color: $iwikii-purple;
             text-decoration: none;
         }
     }

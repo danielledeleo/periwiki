@@ -2,7 +2,7 @@ body {
   margin: 0;
   padding: 0;
   background-color: #f6f6f6;
-  font-family: sans-serif;
+  font-family: "Helvetica", sans-serif;
   line-height: 1.1em;
 }
 
@@ -311,4 +311,4 @@ article.iw-preview {
   transform: rotate(35deg);
 }
 
-/*# sourceMappingURL=static/main.css.map */
+/*# sourceMappingURL=main.css.map */

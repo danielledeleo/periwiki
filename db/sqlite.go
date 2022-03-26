@@ -45,10 +45,8 @@ func Init(config *model.Config) (*sqliteDb, error) {
 	db := &sqliteDb{conn: conn}
 	db.SqliteStore, err = sqlitestore.NewSqliteStoreFromConnection(conn, "sessions", "/", config.CookieExpiry, config.CookieSecret)
 	check(err)
-	// timenowquery := `strftime("%Y-%m-%d %H:%M:%f", "now")`
 
 	// Add prepared statements
-	// q := `select title, markdown, html, hashval, created from Revision where article_id = (select id from Article where url = ?) ORDER BY created DESC LIMIT 1`
 	q := `SELECT url, Revision.id, title, markdown, html, hashval, created, previous_id, comment 
 			FROM Article JOIN Revision ON Article.id = Revision.article_id WHERE Article.url = ?`
 	db.selectArticleByLatestRevisionStmt, err = db.conn.Preparex(q + ` ORDER BY created DESC LIMIT 1`)
@@ -222,6 +220,7 @@ func (db *sqliteDb) SelectUserByScreenname(screenname string, withHash bool) (*m
 
 func (db *sqliteDb) InsertArticle(article *model.Article) error {
 	testArticle, err := db.SelectArticle(article.URL)
+
 	if err == sql.ErrNoRows { // New article.
 		tx, err := db.conn.Beginx()
 		if err != nil {
