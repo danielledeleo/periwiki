@@ -9,9 +9,9 @@ import (
 
 	"github.com/jagger27/periwiki/model"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/michaeljs1990/sqlitestore"
 	"github.com/pkg/errors"
+	_ "modernc.org/sqlite"
 )
 
 type sqliteDb struct {
