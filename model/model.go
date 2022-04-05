@@ -19,7 +19,7 @@ import (
 type ContextKey string
 
 // UserKey is for context.Context
-const UserKey ContextKey = "iwikii.user"
+const UserKey ContextKey = "periwiki.user"
 
 type WikiModel struct {
 	*Config

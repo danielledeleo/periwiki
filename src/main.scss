@@ -1,14 +1,14 @@
 $link-color: #0645ad;
-$iwikii-purple: #a7aef9;
+$periwiki-purple: #a7aef9;
 $underline: #a2a9b1;
-$iwikii-grey: #9a9a9a;
-$iwikii-light-grey: #f6f6f6;
+$periwiki-grey: #9a9a9a;
+$periwiki-light-grey: #f6f6f6;
     
 body {
     margin: 0;
     padding: 0;
 
-    background-color: $iwikii-light-grey;
+    background-color: $periwiki-light-grey;
     font-family: "Helvetica", sans-serif;
     line-height: 1.1em;
 }
@@ -88,14 +88,14 @@ a:hover {
         margin: 0 0 -1px 0;
 
         list-style: none;
-        border-left: 1px solid $iwikii-purple;
+        border-left: 1px solid $periwiki-purple;
         li {
             font-size: 0.8em;
             text-align: center;
             padding: 0.5em 0.8em 0.3em 0.8em;
 
-            border-top: 1px solid $iwikii-purple;
-            border-right: 1px solid $iwikii-purple;
+            border-top: 1px solid $periwiki-purple;
+            border-right: 1px solid $periwiki-purple;
             
         }
         li.iw-active {
@@ -118,7 +118,7 @@ a:hover {
     }
     .iw-last-edited {
         font-size: 0.75em;
-        color: $iwikii-grey;
+        color: $periwiki-grey;
         display: block;
     }
 }
@@ -126,7 +126,7 @@ a:hover {
 article {
     padding: 20px 24px 24px 24px;
     background-color: #ffffff;
-    border: 1px solid $iwikii-purple;
+    border: 1px solid $periwiki-purple;
     border-right: none;
     line-height: 1.6;
 
@@ -179,7 +179,7 @@ article {
 
     pre {
         overflow: hidden;
-        border: 1px solid $iwikii-purple;
+        border: 1px solid $periwiki-purple;
         padding: 0.75em;
         background-color: #FBFBFB;
     }
@@ -269,7 +269,7 @@ article {
     }
     pre.lineNumbers {
         a::before {
-            color: $iwikii-grey;
+            color: $periwiki-grey;
             content: attr(data-line-number) " ";
         }
     }
@@ -332,7 +332,7 @@ article.iw-preview {
     text-align: center;
     margin: 1em 0;
 
-    color: $iwikii-grey;
+    color: $periwiki-grey;
 
     small.iw-powered-by {
         font-size: 0.75em;
@@ -340,7 +340,7 @@ article.iw-preview {
     .iw-powered-by {        
         .iw-heart {
             
-            color: $iwikii-purple;
+            color: $periwiki-purple;
             font-size: 1.4em;
             margin: 0 0 0 1px;
             display: inline-block;

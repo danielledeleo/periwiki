@@ -1,6 +1,6 @@
 make
 if [ $? -eq 0 ]; then
-    ./iwikii
+    ./periwiki
 else
     echo Build failed. Aborting.
 fi

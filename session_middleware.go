@@ -5,13 +5,13 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/jagger27/iwikii/model"
+	"github.com/jagger27/periwiki/model"
 )
 
 func (a *app) SessionMiddleware(handler http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		session, err := a.GetCookie(req, "iwikii-login")
+		session, err := a.GetCookie(req, "periwiki-login")
 		check(err)
 		if session.IsNew {
 			anon := model.AnonymousUser()

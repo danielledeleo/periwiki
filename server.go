@@ -8,8 +8,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/jagger27/iwikii/model"
-	"github.com/jagger27/iwikii/templater"
+	"github.com/jagger27/periwiki/model"
+	"github.com/jagger27/periwiki/templater"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -140,7 +140,7 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	session, err := a.GetCookie(req, "iwikii-login")
+	session, err := a.GetCookie(req, "periwiki-login")
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 		return
@@ -160,7 +160,7 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (a *app) logoutPostHander(rw http.ResponseWriter, req *http.Request) {
-	session, err := a.GetCookie(req, "iwikii-login")
+	session, err := a.GetCookie(req, "periwiki-login")
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 		return
@@ -181,7 +181,7 @@ func (a *app) homeHandler(rw http.ResponseWriter, req *http.Request) {
 	data["Article"] = &model.Article{
 		Revision: &model.Revision{
 			Title: "Home",
-			HTML:  "Welcome to iwikii! Why don't you check out <a href='/wiki/test'>Test</a>?",
+			HTML:  "Welcome to periwiki! Why don't you check out <a href='/wiki/test'>Test</a>?",
 		},
 	}
 	data["Context"] = req.Context()

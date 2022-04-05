@@ -4,9 +4,9 @@ import (
 	"log"
 	"regexp"
 
-	"github.com/jagger27/iwikii/db"
-	"github.com/jagger27/iwikii/model"
-	"github.com/jagger27/iwikii/templater"
+	"github.com/jagger27/periwiki/db"
+	"github.com/jagger27/periwiki/model"
+	"github.com/jagger27/periwiki/templater"
 	"github.com/microcosm-cc/bluemonday"
 )
 

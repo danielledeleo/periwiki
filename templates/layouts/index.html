@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>{{.Article.Title}} — iwikii</title>
+    <title>{{.Article.Title}} — periwiki</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="/static/favicon.ico" />
     <link rel="stylesheet" type="text/css" media="screen" href="/static/main.css" />
@@ -13,7 +13,7 @@
         {{template "sidebar" .Sidebar }}
         <div id="right-panel">
             <div id="login-bar">
-                {{$user := .Context.Value "iwikii.user" }}
+                {{$user := .Context.Value "periwiki.user" }}
                 {{ if and $user (ne $user.ScreenName "Anonymous") }}
                     <a href="/profile/{{ pathEscape $user.ScreenName }}">My Profile</a>
                     <a href="/user/settings">Settings</a>
@@ -26,6 +26,6 @@
             {{template "content" . }}
         </div>
     </div>
-    <div id="footer"><small class="iw-powered-by">Powered by <a href="https://github.com/jagger27/iwikii">iwikii</a></small></div>
+    <div id="footer"><small class="iw-powered-by">Powered by <a href="https://github.com/jagger27/periwiki">periwiki</a></small></div>
 </body>
 </html>
