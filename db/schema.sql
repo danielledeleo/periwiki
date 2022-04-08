@@ -1,4 +1,4 @@
-PRAGMA foreign_keys = ON; -- Jesus that's stupid.
+PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS Article (
     id INTEGER PRIMARY KEY,
