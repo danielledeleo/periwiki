@@ -41,7 +41,7 @@ func (item HTMLItem) Attributes() string {
 }
 
 // AddAttribute creates a key/value pair to represent and format HTML attributes into a string
-// e.g. class="hidden iw-error"
+// e.g. class="hidden pw-error"
 // Setting a key twice overwrites it. Empty keys are ignored.
 func (item HTMLItem) AddAttribute(key string, value ...string) {
 	if key == "" {

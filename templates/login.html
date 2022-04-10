@@ -2,11 +2,11 @@
 <div id="article-area">
     <article>
         <h1>Login</h1>
-        <div class="iw-article-content">
+        <div class="pw-article-content">
             {{ if .calloutMessage }}
-            <div class="iw-callout {{ .calloutClasses }}">{{ .calloutMessage }}</div>
+            <div class="pw-callout {{ .calloutClasses }}">{{ .calloutMessage }}</div>
             {{ end }}
-            <form class="iw-register-form {{ .formClasses }}" action="/user/login" method="POST">
+            <form class="pw-register-form {{ .formClasses }}" action="/user/login" method="POST">
                 <input type="hidden" name="referrer" {{if .referrerValue}} value="{{ .referrerValue }}{{end}}">
                 <table>
                     <tr>

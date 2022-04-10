@@ -1,14 +1,14 @@
 {{define "content"}}
 <div id="article-area">
     {{with .Article}}
-    <ul class="iw-tabs">
+    <ul class="pw-tabs">
         <li><a href="/wiki/{{.URL}}">Article</a></li>
-        <li class="iw-active"><a href="/wiki/{{.URL}}/history">History</a></li>
+        <li class="pw-active"><a href="/wiki/{{.URL}}/history">History</a></li>
     </ul>
     <article>
         <h1>{{.Title}}</h1>
         {{end}}
-        <div class="iw-article-content">
+        <div class="pw-article-content">
             <ul>
             {{range .Revisions}}
                 <li>

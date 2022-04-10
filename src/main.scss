@@ -31,14 +31,14 @@ a:hover {
     margin: 0.3em 0.8em 0 0;
     font-size: .75em;
 
-    a, .iw-logout-btn {
+    a, .pw-logout-btn {
         display: inline-block;
         margin: 0 0 0 0.75em;
     }
     form {
         display: inline;
     }
-    button.iw-logout-btn {
+    button.pw-logout-btn {
         display: inline-block;
         background: none;
         color: $link-color;
@@ -66,7 +66,7 @@ a:hover {
         font-size: .75em;
         list-style: none;
 
-        li.iw-sidebar-title {
+        li.pw-sidebar-title {
             width: 80%;
             margin: 0.4em 0;
             border-bottom: 1px solid $underline;
@@ -82,7 +82,7 @@ a:hover {
     padding: 18px 0 0 0;
     width: 100%;
 
-    ul.iw-tabs {
+    ul.pw-tabs {
         display: flex;
         padding: 0;
         margin: 0 0 -1px 0;
@@ -98,7 +98,7 @@ a:hover {
             border-right: 1px solid $periwiki-purple;
             
         }
-        li.iw-active {
+        li.pw-active {
             background-color: #ffffff;
             border-bottom: 1px solid #ffffff;
         }
@@ -116,7 +116,7 @@ a:hover {
         font-size: 1.8em;
         font-weight: 400;
     }
-    .iw-last-edited {
+    .pw-last-edited {
         font-size: 0.75em;
         color: $periwiki-grey;
         display: block;
@@ -162,7 +162,7 @@ article {
         }
     }
 
-    div.iw-article-content {
+    div.pw-article-content {
         font-size: 0.875em;
         > table {
             border-collapse: collapse;
@@ -280,7 +280,7 @@ article {
             margin: 0 0 0.1em 0;
         }
     }
-    .iw-diff {
+    .pw-diff {
         line-height: 1em;
     }
     .footnote-ref {
@@ -293,10 +293,10 @@ article {
         }
     }
 }
-article.iw-preview {
+article.pw-preview {
     margin: 24px 0 0 0;
 }
-.iw-callout {
+.pw-callout {
     width: 100%;
     display: inline-block;
     margin: 0.5em 0;
@@ -304,22 +304,22 @@ article.iw-preview {
     border: 1px solid;
 }
 
-.iw-green, .iw-success {
+.pw-green, .pw-success {
     border-color: #8ed28e;
     background-color: #f4ffe2;;
 }
 
-.iw-red, .iw-error {
+.pw-red, .pw-error {
     border-color: #d28e8e;
     background-color: #ffe2e2;
 }
 
-.iw-blue, .iw-info {
+.pw-blue, .pw-info {
     border-color: #8ebfd2;
     background-color: #e2f7ff;
 }
 
-.iw-grey {
+.pw-grey {
     border-color: #d7d7d7;
     background-color: #f9f9f9;
 }
@@ -334,11 +334,11 @@ article.iw-preview {
 
     color: $periwiki-grey;
 
-    small.iw-powered-by {
+    small.pw-powered-by {
         font-size: 0.75em;
     }
-    .iw-powered-by {        
-        .iw-heart {
+    .pw-powered-by {        
+        .pw-heart {
             
             color: $periwiki-purple;
             font-size: 1.4em;

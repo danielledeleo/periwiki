@@ -82,7 +82,7 @@ func (a *app) registerPostHandler(rw http.ResponseWriter, req *http.Request) {
 
 	render := map[string]interface{}{
 		"Article":        map[string]string{"Title": "Register"},
-		"calloutClasses": "iw-success",
+		"calloutClasses": "pw-success",
 		"calloutMessage": "Successfully registered!",
 		"formClasses":    "hidden",
 		"Context":        req.Context(),
@@ -92,7 +92,7 @@ func (a *app) registerPostHandler(rw http.ResponseWriter, req *http.Request) {
 	err := a.PostUser(user)
 	if err != nil {
 		render["calloutMessage"] = err.Error()
-		render["calloutClasses"] = "iw-error"
+		render["calloutClasses"] = "pw-error"
 		render["formClasses"] = ""
 		render["screennameValue"] = user.ScreenName
 		render["emailValue"] = user.Email
@@ -124,7 +124,7 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 
 	render := map[string]interface{}{
 		"Title":          "Login",
-		"calloutClasses": "iw-success",
+		"calloutClasses": "pw-success",
 		"calloutMessage": "Successfully logged in!",
 		"formClasses":    "hidden",
 		"Context":        req.Context(),
@@ -132,7 +132,7 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		render["calloutMessage"] = err.Error()
-		render["calloutClasses"] = "iw-error"
+		render["calloutClasses"] = "pw-error"
 		render["formClasses"] = ""
 		render["screennameValue"] = user.ScreenName
 		err = a.RenderTemplate(rw, "login.html", "index.html", map[string]interface{}{"Article": render})

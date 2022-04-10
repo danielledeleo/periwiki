@@ -1,14 +1,14 @@
 {{define "content"}}
 {{with .Article}}
 <div id="article-area">
-    <ul class="iw-tabs">
-        <li class="iw-active"><a href="/wiki/{{.URL}}">Article</a></li>
+    <ul class="pw-tabs">
+        <li class="pw-active"><a href="/wiki/{{.URL}}">Article</a></li>
         <li><a href="/wiki/{{.URL}}/r/{{.ID}}/edit">Edit</a></li>
         <li><a href="/wiki/{{.URL}}/history">History</a></li>
     </ul>
     <article>
         <h1>{{.Title}}</h1>
-        <div class="iw-article-content">
+        <div class="pw-article-content">
             <p>This article does not exist yet.</p>
         </div>
     </article>

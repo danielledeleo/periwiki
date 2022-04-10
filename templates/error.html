@@ -2,14 +2,14 @@
 <div id="article-area">
     {{with .Article }}
 
-    <ul class="iw-tabs">
+    <ul class="pw-tabs">
         <li><a href="/">Home</a></li>
     </ul>
     <article>
     {{end}}
     {{with .Error }}
         <h1>{{.Code}} {{statusText .Code}}</h1>
-        <div class="iw-article-content">
+        <div class="pw-article-content">
             {{range .Errors}}
                 <div>{{print . | capitalize }}</div>
             {{end}}

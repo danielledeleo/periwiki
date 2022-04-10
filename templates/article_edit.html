@@ -1,16 +1,16 @@
 {{define "content"}}
 <div id="article-area">
     {{ with .Article }}
-    <ul class="iw-tabs">
+    <ul class="pw-tabs">
         <li><a href="/wiki/{{.URL}}">Article</a></li>
-        <li class="iw-active"><a href="/wiki/{{.URL}}/r/{{.ID}}/edit">Edit</a></li>
+        <li class="pw-active"><a href="/wiki/{{.URL}}/r/{{.ID}}/edit">Edit</a></li>
         <li><a href="/wiki/{{.URL}}/history">History</a></li>
     </ul>
 
     <article>
         <form action="/wiki/{{.URL}}/r/{{.ID}}" method="POST">
         <input name="title" id="title-edit" type="text" value="{{.Title}}" />
-        <div class="iw-article-content">
+        <div class="pw-article-content">
             <textarea name="body" id="body-edit">{{.Markdown}}</textarea>
             <input type="text" name="comment" placeholder="Describe your changes..." {{ if $.Other.Preview }}value="{{.Comment}}"{{end}}/>
             <button name="action" value="submit">Submit</button>
@@ -20,10 +20,10 @@
     </article>
     {{ end }}
     {{ if .Other.Preview }}
-    <article class="iw-preview">
-        <div class="iw-callout iw-error">This is a preview. Nothing has been saved yet.</div>
+    <article class="pw-preview">
+        <div class="pw-callout pw-error">This is a preview. Nothing has been saved yet.</div>
         <h1>{{.Article.Title}}</h1>
-        <div class="iw-article-content">
+        <div class="pw-article-content">
             {{.Article.HTML}}
         </div>
     </article>
