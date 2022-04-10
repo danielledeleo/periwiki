@@ -2,9 +2,9 @@
 <div id="article-area">
     {{with .Article }}
     <ul class="iw-tabs">
-        <a href="/wiki/{{.URL}}"><li>Article</li></a>
-        <a href="/wiki/{{.URL}}/r/{{.Hash}}/edit"><li>Edit</li></a>
-        <a href="/wiki/{{.URL}}/history"><li>History</li></a>
+        <li><a href="/wiki/{{.URL}}">Article</a></li>
+        <li><a href="/wiki/{{.URL}}/r/{{.ID}}/edit">Edit</a></li>
+        <li class="iw-active"><a href="/wiki/{{.URL}}/history">History</a></li>
     </ul>
     <article>
         <h1>Diff of {{.Title}}</h1>

@@ -2,8 +2,8 @@
 <div id="article-area">
     {{with .Article}}
     <ul class="iw-tabs">
-        <a href="/wiki/{{.URL}}"><li>Article</li></a>
-        <a href="/wiki/{{.URL}}/history"><li class="iw-active">History</li></a>
+        <li><a href="/wiki/{{.URL}}">Article</a></li>
+        <li class="iw-active"><a href="/wiki/{{.URL}}/history">History</a></li>
     </ul>
     <article>
         <h1>{{.Title}}</h1>
