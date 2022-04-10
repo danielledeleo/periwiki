@@ -27,7 +27,7 @@ Requirements: `make`, and `go`. `sass` is optional unless you make any edits to 
 `./periwiki`
 
 ## Anything else?
-See [TODO](TODO.md) for a little insight on what's on the road map.
+See [TODO](docs/TODO.md) for a little insight on what's on the road map.
 
 <sub>1: Mostly because of this wonderful intro to Go web apps, [Writing Web Applications](https://golang.org/doc/articles/wiki/).</sub>
 
