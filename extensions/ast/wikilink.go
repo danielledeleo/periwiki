@@ -1,21 +1,25 @@
 package ast
 
 import (
+	"fmt"
+
 	gast "github.com/yuin/goldmark/ast"
 )
 
 type WikiLink struct {
 	gast.BaseInline
-	Destination []byte
-	Title       []byte
-	// title       *ast.Text
+	Link         *gast.Link
+	OriginalDest []byte
+	Classes      [][]byte
 }
 
 // Dump implements Node.Dump.
 func (l *WikiLink) Dump(source []byte, level int) {
 	m := map[string]string{}
-	m["Destination"] = string(l.Destination)
-	m["Title"] = string(l.Title)
+	m["Destination(actual)"] = string(l.Link.Destination)
+	m["Destination(original)"] = string(l.OriginalDest)
+	m["Title"] = string(l.Link.Title)
+	m["Classes"] = fmt.Sprintf("%s", l.Classes)
 
 	gast.DumpHelper(l, source, level, m, nil)
 }
@@ -29,10 +33,15 @@ func (l *WikiLink) Kind() gast.NodeKind {
 }
 
 // NewWikiLink returns a new WikiLink node.
-func NewWikiLink(dest, title []byte) *WikiLink {
+func NewWikiLink(title, originalDest, actualDest []byte, classes [][]byte) *WikiLink {
+	link := gast.NewLink()
+	link.Destination = actualDest
+	link.Title = title
+
 	return &WikiLink{
-		BaseInline:  gast.BaseInline{},
-		Destination: dest,
-		Title:       title,
+		BaseInline:   gast.BaseInline{},
+		Link:         link,
+		OriginalDest: originalDest,
+		Classes:      classes,
 	}
 }
