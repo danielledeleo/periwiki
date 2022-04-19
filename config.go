@@ -8,14 +8,14 @@ import (
 	"strings"
 
 	"github.com/gorilla/securecookie"
-	"github.com/jagger27/periwiki/model"
+	"github.com/jagger27/periwiki/wiki"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
 const configFilename = "config.yaml"
 
-func SetupConfig() *model.Config {
+func SetupConfig() *wiki.Config {
 	viper.SetDefault("dbfile", "periwiki.db")
 	viper.SetDefault("min_password_length", 8)
 	viper.SetDefault("cookie_expiry", 86400*7) // a week
@@ -69,7 +69,7 @@ func SetupConfig() *model.Config {
 		}
 	}
 
-	config := &model.Config{
+	config := &wiki.Config{
 		MinimumPasswordLength: viper.GetInt("min_password_length"),
 		DatabaseFile:          viper.GetString("dbfile"),
 		CookieSecret:          secretBytes,

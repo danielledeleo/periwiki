@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS Password (
 );
 
 CREATE TABLE IF NOT EXISTS AnonymousEdit (
+    id INT PRIMARY KEY NOT NULL,
     ip TEXT NOT NULL,
     revision_id INT NOT NULL,
     FOREIGN KEY(revision_id) REFERENCES Revision(id)
@@ -58,6 +59,7 @@ CREATE TABLE IF NOT EXISTS PreferenceSelection (
 );
 
 CREATE TABLE IF NOT EXISTS PreferenceGroup (
+    id INT PRIMARY KEY NOT NULL,
     group_id INT NOT NULL,
     pref_id INT NOT NULL,
     FOREIGN KEY (pref_id) REFERENCES Preference(id)

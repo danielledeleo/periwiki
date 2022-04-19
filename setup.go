@@ -5,8 +5,8 @@ import (
 	"regexp"
 
 	"github.com/jagger27/periwiki/db"
-	"github.com/jagger27/periwiki/model"
 	"github.com/jagger27/periwiki/templater"
+	"github.com/jagger27/periwiki/wiki"
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -32,6 +32,6 @@ func Setup() *app {
 
 	database, err := db.Init(modelConf)
 	check(err)
-	model := model.New(database, modelConf, bm)
+	model := wiki.New(database, modelConf, bm)
 	return &app{t, model}
 }

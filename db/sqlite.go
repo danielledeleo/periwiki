@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/jagger27/periwiki/model"
+	"github.com/jagger27/periwiki/wiki"
 	"github.com/jmoiron/sqlx"
 	"github.com/michaeljs1990/sqlitestore"
 	"github.com/pkg/errors"
@@ -24,7 +24,7 @@ type sqliteDb struct {
 	selectUserScreennameWithHashStmt  *sqlx.Stmt
 }
 
-func Init(config *model.Config) (*sqliteDb, error) {
+func Init(config *wiki.Config) (*sqliteDb, error) {
 	conn, err := sqlx.Open("sqlite3", config.DatabaseFile)
 
 	if err != nil {
@@ -80,7 +80,7 @@ func Init(config *model.Config) (*sqliteDb, error) {
 	return db, nil
 }
 
-func (db *sqliteDb) InsertUser(user *model.User) (err error) {
+func (db *sqliteDb) InsertUser(user *wiki.User) (err error) {
 	var tx *sqlx.Tx
 	tx, err = db.conn.Beginx()
 
@@ -101,9 +101,9 @@ func (db *sqliteDb) InsertUser(user *model.User) (err error) {
 
 	if err != nil {
 		if err.Error() == "UNIQUE constraint failed: User.screenname" {
-			return model.ErrUsernameTaken
+			return wiki.ErrUsernameTaken
 		} else if err.Error() == "UNIQUE constraint failed: User.email" {
-			return model.ErrEmailTaken
+			return wiki.ErrEmailTaken
 		}
 		return
 	}
@@ -114,7 +114,7 @@ func (db *sqliteDb) InsertUser(user *model.User) (err error) {
 	return nil
 }
 
-func (db *sqliteDb) InsertPreference(pref *model.Preference) error {
+func (db *sqliteDb) InsertPreference(pref *wiki.Preference) error {
 	_, err := db.conn.Exec(`INSERT OR REPLACE INTO Preference (pref_label, pref_type, help_text, pref_int, pref_text, pref_selection) 
 		VALUES(?, ?, ?, ?, ?, ?)`,
 		pref.Label,
@@ -127,20 +127,20 @@ func (db *sqliteDb) InsertPreference(pref *model.Preference) error {
 	return err
 }
 
-func (db *sqliteDb) SelectPreference(key string) (*model.Preference, error) {
-	pref := &model.Preference{}
+func (db *sqliteDb) SelectPreference(key string) (*wiki.Preference, error) {
+	pref := &wiki.Preference{}
 	err := db.conn.Select(`SELECT * FROM Preference WHERE pref_label = ?`, key)
 	if err == sql.ErrNoRows {
-		return nil, model.ErrGenericNotFound
+		return nil, wiki.ErrGenericNotFound
 	} else if err != nil {
 		return nil, err
 	}
 	return pref, err
 }
 
-func (db *sqliteDb) SelectArticle(url string) (*model.Article, error) {
-	article := &model.Article{}
-	article.Revision = &model.Revision{}
+func (db *sqliteDb) SelectArticle(url string) (*wiki.Article, error) {
+	article := &wiki.Article{}
+	article.Revision = &wiki.Revision{}
 	err := db.selectArticleByLatestRevisionStmt.Get(article, url)
 	if err != nil {
 		return nil, err
@@ -148,9 +148,9 @@ func (db *sqliteDb) SelectArticle(url string) (*model.Article, error) {
 	return article, err
 }
 
-func (db *sqliteDb) SelectArticleByRevisionHash(url string, hash string) (*model.Article, error) {
-	article := &model.Article{}
-	article.Revision = &model.Revision{}
+func (db *sqliteDb) SelectArticleByRevisionHash(url string, hash string) (*wiki.Article, error) {
+	article := &wiki.Article{}
+	article.Revision = &wiki.Revision{}
 
 	err := db.selectArticleByRevisionHashStmt.Get(article, url, hash)
 	if err != nil {
@@ -160,9 +160,9 @@ func (db *sqliteDb) SelectArticleByRevisionHash(url string, hash string) (*model
 	return article, err
 }
 
-func (db *sqliteDb) SelectArticleByRevisionID(url string, id int) (*model.Article, error) {
-	article := &model.Article{}
-	article.Revision = &model.Revision{}
+func (db *sqliteDb) SelectArticleByRevisionID(url string, id int) (*wiki.Article, error) {
+	article := &wiki.Article{}
+	article.Revision = &wiki.Revision{}
 
 	err := db.selectArticleByRevisionIDStmt.Get(article, url, id)
 	if err != nil {
@@ -172,8 +172,8 @@ func (db *sqliteDb) SelectArticleByRevisionID(url string, id int) (*model.Articl
 	return article, err
 }
 
-func (db *sqliteDb) SelectRevision(hash string) (*model.Revision, error) {
-	r := &model.Revision{}
+func (db *sqliteDb) SelectRevision(hash string) (*wiki.Revision, error) {
+	r := &wiki.Revision{}
 	x := &struct {
 		ID         int
 		Title      sql.NullString
@@ -190,7 +190,7 @@ func (db *sqliteDb) SelectRevision(hash string) (*model.Revision, error) {
 	return r, err
 }
 
-func (db *sqliteDb) SelectRevisionHistory(url string) ([]*model.Revision, error) {
+func (db *sqliteDb) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 	rows, err := db.conn.Queryx(
 		`SELECT Revision.id, title, hashval, created, comment, User.screenname, length(markdown)
 			FROM Article JOIN Revision ON Article.id = Revision.article_id 
@@ -205,9 +205,9 @@ func (db *sqliteDb) SelectRevisionHistory(url string) ([]*model.Revision, error)
 		Length                              int `db:"length(markdown)"`
 		Created                             time.Time
 	}{}
-	results := make([]*model.Revision, 0)
+	results := make([]*wiki.Revision, 0)
 	for rows.Next() {
-		rev := &model.Revision{Creator: &model.User{}}
+		rev := &wiki.Revision{Creator: &wiki.User{}}
 		err := rows.StructScan(&result)
 		if err != nil {
 			return nil, err
@@ -222,13 +222,13 @@ func (db *sqliteDb) SelectRevisionHistory(url string) ([]*model.Revision, error)
 		results = append(results, rev)
 	}
 	if len(results) < 1 {
-		return nil, model.ErrGenericNotFound
+		return nil, wiki.ErrGenericNotFound
 	}
 	return results, nil
 }
 
-func (db *sqliteDb) SelectUserByScreenname(screenname string, withHash bool) (*model.User, error) {
-	user := &model.User{}
+func (db *sqliteDb) SelectUserByScreenname(screenname string, withHash bool) (*wiki.User, error) {
+	user := &wiki.User{}
 
 	var err error
 	if withHash {
@@ -240,7 +240,7 @@ func (db *sqliteDb) SelectUserByScreenname(screenname string, withHash bool) (*m
 	return user, err
 }
 
-func (db *sqliteDb) InsertArticle(article *model.Article) (err error) {
+func (db *sqliteDb) InsertArticle(article *wiki.Article) (err error) {
 	testArticle, insertErr := db.SelectArticle(article.URL)
 
 	var tx *sqlx.Tx
@@ -307,7 +307,7 @@ func (db *sqliteDb) InsertArticle(article *model.Article) (err error) {
 
 		if err != nil {
 			if err.Error() == "UNIQUE constraint failed: Revision.id, Revision.article_id" {
-				return model.ErrRevisionAlreadyExists
+				return wiki.ErrRevisionAlreadyExists
 			}
 		}
 

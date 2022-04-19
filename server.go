@@ -8,8 +8,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/jagger27/periwiki/model"
 	"github.com/jagger27/periwiki/templater"
+	"github.com/jagger27/periwiki/wiki"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -21,7 +21,7 @@ import (
 
 type app struct {
 	*templater.Templater
-	*model.WikiModel
+	*wiki.WikiModel
 }
 
 func main() {
@@ -74,7 +74,7 @@ func (a *app) registerHandler(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (a *app) registerPostHandler(rw http.ResponseWriter, req *http.Request) {
-	user := &model.User{}
+	user := &wiki.User{}
 
 	user.Email = req.PostFormValue("email")
 	user.ScreenName = req.PostFormValue("screenname")
@@ -115,7 +115,7 @@ func (a *app) loginHander(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
-	user := &model.User{}
+	user := &wiki.User{}
 	user.ScreenName = req.PostFormValue("screenname")
 	user.RawPassword = req.PostFormValue("password")
 	referrer := req.PostFormValue("referrer")
@@ -178,8 +178,8 @@ func (a *app) logoutPostHander(rw http.ResponseWriter, req *http.Request) {
 func (a *app) homeHandler(rw http.ResponseWriter, req *http.Request) {
 	data := make(map[string]interface{})
 
-	data["Article"] = &model.Article{
-		Revision: &model.Revision{
+	data["Article"] = &wiki.Article{
+		Revision: &wiki.Revision{
 			Title: "Home",
 			HTML:  "Welcome to periwiki! Why don't you check out <a href='/wiki/test'>Test</a>?",
 		},
@@ -195,26 +195,26 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 	render := map[string]interface{}{}
 	article, err := a.GetArticle(vars["article"])
 
-	if err != model.ErrGenericNotFound && err != nil {
+	if err != wiki.ErrGenericNotFound && err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
-	user := req.Context().Value(model.UserKey)
+	user := req.Context().Value(wiki.UserKey)
 
 	found := article != nil
 
 	if !found {
-		article = model.NewArticle(vars["article"], cases.Title(language.AmericanEnglish).String(vars["article"]), "")
+		article = wiki.NewArticle(vars["article"], cases.Title(language.AmericanEnglish).String(vars["article"]), "")
 		article.Hash = "new"
 		check(err)
 	}
 
 	if req.Method == "POST" {
-		article.Revision = &model.Revision{}
+		article.Revision = &wiki.Revision{}
 
 		article.Title = req.PostFormValue("title")
 		article.Markdown = req.PostFormValue("body")
-		article.Creator = user.(*model.User)
+		article.Creator = user.(*wiki.User)
 		a.articlePostHandler(article, rw, req)
 		return
 	}
@@ -279,8 +279,8 @@ func (a *app) revisionEditHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	article, err := a.GetArticleByRevisionID(vars["article"], revisionID)
-	if err == model.ErrRevisionNotFound {
-		article = model.NewArticle(vars["article"], cases.Title(language.AmericanEnglish).String(vars["article"]), "")
+	if err == wiki.ErrRevisionNotFound {
+		article = wiki.NewArticle(vars["article"], cases.Title(language.AmericanEnglish).String(vars["article"]), "")
 		article.Hash = "new"
 	} else if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
@@ -299,16 +299,16 @@ func (a *app) revisionEditHandler(rw http.ResponseWriter, req *http.Request) {
 
 func (a *app) revisionPostHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	article := &model.Article{}
+	article := &wiki.Article{}
 
 	article.URL = vars["article"]
-	article.Revision = &model.Revision{}
+	article.Revision = &wiki.Revision{}
 
 	article.Title = req.PostFormValue("title")
 	article.Markdown = req.PostFormValue("body")
 	article.Comment = req.PostFormValue("comment")
 
-	article.Creator = req.Context().Value(model.UserKey).(*model.User)
+	article.Creator = req.Context().Value(wiki.UserKey).(*wiki.User)
 	previousID, err := strconv.Atoi(vars["revision"])
 	if err != nil {
 		a.errorHandler(http.StatusBadRequest, rw, req, err)
@@ -324,7 +324,7 @@ func (a *app) revisionPostHandler(rw http.ResponseWriter, req *http.Request) {
 	a.articlePostHandler(article, rw, req)
 }
 
-func (a *app) articlePreviewHandler(article *model.Article, rw http.ResponseWriter, req *http.Request) {
+func (a *app) articlePreviewHandler(article *wiki.Article, rw http.ResponseWriter, req *http.Request) {
 	html, err := a.PreviewMarkdown(article.Markdown)
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
@@ -342,10 +342,10 @@ func (a *app) articlePreviewHandler(article *model.Article, rw http.ResponseWrit
 			"Other":   other})
 	check(err)
 }
-func (a *app) articlePostHandler(article *model.Article, rw http.ResponseWriter, req *http.Request) {
+func (a *app) articlePostHandler(article *wiki.Article, rw http.ResponseWriter, req *http.Request) {
 	err := a.PostArticle(article)
 	if err != nil {
-		if err == model.ErrRevisionAlreadyExists {
+		if err == wiki.ErrRevisionAlreadyExists {
 			a.errorHandler(http.StatusConflict, rw, req, err)
 			return
 		}
@@ -365,7 +365,7 @@ func (a *app) errorHandler(responseCode int, rw http.ResponseWriter, req *http.R
 	rw.WriteHeader(responseCode)
 	err := a.RenderTemplate(rw, "error.html", "index.html",
 		map[string]interface{}{
-			"Article": &model.Article{Revision: &model.Revision{Title: fmt.Sprintf("%d: %s", responseCode, http.StatusText(responseCode))}},
+			"Article": &wiki.Article{Revision: &wiki.Revision{Title: fmt.Sprintf("%d: %s", responseCode, http.StatusText(responseCode))}},
 			"Context": req.Context(),
 			"Error": map[string]interface{}{
 				"Code":       responseCode,

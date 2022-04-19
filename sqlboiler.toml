@@ -1,0 +1,7 @@
+output      = "model"
+wipe        = true
+no-tests    = true
+pkgname     = "model"
+
+[sqlite3]
+  dbname = "db/skeleton.db"

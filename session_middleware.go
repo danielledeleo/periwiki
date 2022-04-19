@@ -5,7 +5,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/jagger27/periwiki/model"
+	"github.com/jagger27/periwiki/wiki"
 )
 
 func (a *app) SessionMiddleware(handler http.Handler) http.Handler {
@@ -14,13 +14,13 @@ func (a *app) SessionMiddleware(handler http.Handler) http.Handler {
 		session, err := a.GetCookie(req, "periwiki-login")
 		check(err)
 		if session.IsNew {
-			anon := model.AnonymousUser()
+			anon := wiki.AnonymousUser()
 			ip, _, _ := net.SplitHostPort(req.RemoteAddr)
 
 			anon.ScreenName = "Anonymous"
 			anon.IPAddress = ip
 
-			ctx := context.WithValue(req.Context(), model.UserKey, anon)
+			ctx := context.WithValue(req.Context(), wiki.UserKey, anon)
 			handler.ServeHTTP(rw, req.WithContext(ctx))
 			// Add some sort of "access denied context to req"
 			return
@@ -28,7 +28,7 @@ func (a *app) SessionMiddleware(handler http.Handler) http.Handler {
 		screenname := session.Values["username"].(string)
 		user, err := a.GetUserByScreenName(screenname)
 		check(err)
-		ctx := context.WithValue(req.Context(), model.UserKey, user)
+		ctx := context.WithValue(req.Context(), wiki.UserKey, user)
 		handler.ServeHTTP(rw, req.WithContext(ctx))
 	})
 }

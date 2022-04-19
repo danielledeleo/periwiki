@@ -1,8 +1,10 @@
 vendor/
-periwiki
-*.db
 tmp/
 static/images
+model/
+
+periwiki
+*.db
 config.yaml
 .cookiesecret.yaml
 

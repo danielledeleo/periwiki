@@ -1,4 +1,4 @@
-package model
+package wiki
 
 import (
 	"crypto/sha512"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/sessions"
+	"github.com/jagger27/periwiki/render"
 
 	"github.com/microcosm-cc/bluemonday"
 	"golang.org/x/crypto/bcrypt"
@@ -27,7 +28,7 @@ type WikiModel struct {
 	sanitizer *bluemonday.Policy
 	// cache, perhaps
 
-	renderer *HTMLRenderer
+	renderer *render.HTMLRenderer
 }
 
 type Config struct {
@@ -56,11 +57,6 @@ type db interface {
 
 	// SetArticle(*Article) error
 	// UpdateArticle(*Article) error
-}
-
-type Article struct {
-	URL string
-	*Revision
 }
 
 const (
@@ -129,7 +125,7 @@ func New(db db, conf *Config, s *bluemonday.Policy) *WikiModel {
 		db:        db,
 		Config:    conf,
 		sanitizer: s,
-		renderer:  NewHTMLRenderer(),
+		renderer:  render.NewHTMLRenderer(),
 	}
 }
 
