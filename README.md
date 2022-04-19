@@ -18,13 +18,15 @@ That is not an accident. It is what a wiki should look like.
 The [Mozilla Public License](LICENSE). Share what you do with it!
 
 ## Build/Run
-Requirements: `make`, and `go`. `sass` is optional unless you make any edits to the .scss as a compiled .css file is included. 
+Requirements: `make`, `sqlite3`, and `go`. `sass` is optional unless you make any edits to the .scss as a compiled .css file is included. 
 
-`git clone github.com/jagger27/periwiki`
+```bash
+git clone github.com/jagger27/periwiki
 
-`make` (or just `go build`)
+make
+make run
 
-`./periwiki`
+```
 
 ## Anything else?
 See [TODO](docs/TODO.md) for a little insight on what's on the road map.

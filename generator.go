@@ -1,2 +1,2 @@
-//go:generate sqlboiler sqlite3 --wipe
+//go:generate .bin/sqlboiler sqlite3 --wipe
 package main
