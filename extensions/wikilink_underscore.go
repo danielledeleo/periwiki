@@ -10,7 +10,7 @@ var underscoreRegexp = regexp.MustCompile(`\s+`)
 type underscoreResolver struct{}
 
 func (r *underscoreResolver) Resolve(original []byte) ([]byte, [][]byte) {
-	return underscoreRegexp.ReplaceAll(bytes.Trim(original, " \t"), []byte{'_'}), nil
+	return append([]byte("/wiki/"), underscoreRegexp.ReplaceAll(bytes.Trim(original, " \t"), []byte{'_'})...), nil
 }
 
 // WithUnderscoreResolver replaces all whitespace in WikiLinks with

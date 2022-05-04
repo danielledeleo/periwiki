@@ -82,6 +82,9 @@ func TestWikiLinkDefaultUnderscoreResolver(t *testing.T) {
 		{name: "multiple", md: "[[List of Canadian provinces]]"},
 		{name: "leading spaces", md: "[[ 	List of Canadian provinces ]]"},
 		{name: "replaced", md: "[[Disambiguation (Disambiguation)|Disambiguation]]"},
+		{name: "inner spaces", md: "[[From   here ]]"},
+		{name: "inner tabs and spaces", md: "[[ From  		 here ]]"},
+		{name: "everything", md: "[[From   here|  To 	here]]"},
 	}
 
 	markdown := goldmark.New(

@@ -13,6 +13,8 @@ import (
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/parser"
+
+	"github.com/jagger27/periwiki/extensions"
 )
 
 type HTMLRenderer struct {
@@ -24,6 +26,11 @@ func NewHTMLRenderer() *HTMLRenderer {
 		md: goldmark.New(
 			goldmark.WithParserOptions(
 				parser.WithAutoHeadingID(),
+			),
+			goldmark.WithExtensions(
+				extensions.NewWikiLinker(
+					extensions.WithUnderscoreResolver(),
+				),
 			),
 		),
 	}

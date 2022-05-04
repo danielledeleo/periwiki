@@ -23,7 +23,7 @@ const (
 )
 
 // WikiLinkResolver resolves link destinations. If actual == nil parsing
-// is skipped. CSS classes return here are applied to the resulting <a>.
+// is skipped. CSS classes returned here are applied to the resulting <a>.
 type WikiLinkResolver interface {
 	Resolve(dest []byte) (actual []byte, classes [][]byte)
 }
@@ -192,7 +192,7 @@ func (r *wikiLinkerHTMLRenderer) renderWikiLinker(w util.BufWriter, source []byt
 		_ = w.WriteByte('"')
 
 		if node.Link.Title != nil {
-			node.SetAttributeString("title", node.Link.Title)
+			node.SetAttributeString("title", node.OriginalDest)
 		}
 
 		if node.Classes != nil {
