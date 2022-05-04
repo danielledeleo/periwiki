@@ -1,5 +1,7 @@
 all: static/main.css periwiki
 
+gosources := $(wildcard *.go) $(wildcard **/*.go) go.sum go.mod
+
 static/main.css: src/main.scss
 	sass src/main.scss static/main.css
 
@@ -12,13 +14,13 @@ static/main.css: src/main.scss
 	GOBIN=$(shell pwd)/.bin go install github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-sqlite3@latest
 
 db/skeleton.db: db/schema.sql
-	rm db/skeleton.db
+	rm -f db/skeleton.db
 	sqlite3 -init db/schema.sql db/skeleton.db ""
 
 model: db/skeleton.db sqlboiler.toml .bin/sqlboiler .bin/sqlboiler-sqlite3
-	go generate
+	PATH="$(shell pwd)/.bin:$(PATH)" go generate
 
-periwiki: model
+periwiki: model $(gosources)
 	go build
 
 run: periwiki
