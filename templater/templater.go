@@ -1,6 +1,7 @@
 package templater
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/jagger27/periwiki/wiki"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -89,7 +91,7 @@ func (t *Templater) Load(baseGlob, mainGlob string) error {
 }
 
 // RenderTemplate makes sure templates exist and renders them. Don't mix up name and base!
-func (t *Templater) RenderTemplate(w io.Writer, name string, base string, data interface{}) error {
+func (t *Templater) RenderTemplate(w io.Writer, name string, base string, data map[string]interface{}) error {
 	// Ensure the template exists in the map.
 	tmpl, ok := t.templates[name]
 	if !ok {
@@ -100,6 +102,11 @@ func (t *Templater) RenderTemplate(w io.Writer, name string, base string, data i
 	if b == nil {
 		return fmt.Errorf("base template %s does not exist", name)
 	}
+
+	if data["Context"] != nil {
+		data["User"] = data["Context"].(context.Context).Value(wiki.UserKey).(*wiki.User)
+	}
+
 	return tmpl.ExecuteTemplate(w, base, data)
 }
 

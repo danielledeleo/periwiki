@@ -57,7 +57,7 @@ func main() {
 
 	logger := handlers.LoggingHandler(os.Stdout, router)
 
-	log.Println("Listening on", app.Config.Host)
+	log.Println("Listening on", "http://"+app.Config.Host)
 	err := http.ListenAndServe(app.Config.Host, logger)
 
 	if err != nil {
@@ -199,7 +199,7 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
-	user := req.Context().Value(wiki.UserKey)
+	user := req.Context().Value(wiki.UserKey).(*wiki.User)
 
 	found := article != nil
 
@@ -214,7 +214,7 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 
 		article.Title = req.PostFormValue("title")
 		article.Markdown = req.PostFormValue("body")
-		article.Creator = user.(*wiki.User)
+		article.Creator = user
 		a.articlePostHandler(article, rw, req)
 		return
 	}

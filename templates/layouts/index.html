@@ -13,9 +13,8 @@
         {{template "sidebar" .Sidebar }}
         <div id="right-panel">
             <div id="login-bar">
-                {{$user := .Context.Value "periwiki.user" }}
-                {{ if and $user (ne $user.ScreenName "Anonymous") }}
-                    <a href="/profile/{{ pathEscape $user.ScreenName }}">My Profile</a>
+                {{ if and .User (ne .User.ScreenName "Anonymous") }}
+                    <a href="/profile/{{ pathEscape .User.ScreenName }}">My Profile</a>
                     <a href="/user/settings">Settings</a>
                     <form method="POST" action="/user/logout"><button class="pw-logout-btn" type="submit">Logout</button></form>
                 {{ else }}
