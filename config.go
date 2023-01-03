@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/gorilla/securecookie"
-	"github.com/jagger27/periwiki/wiki"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )

@@ -5,7 +5,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/jagger27/periwiki/wiki"
+	"github.com/danielledeleo/periwiki/wiki"
 )
 
 func (a *app) SessionMiddleware(handler http.Handler) http.Handler {

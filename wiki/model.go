@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/danielledeleo/periwiki/render"
 	"github.com/gorilla/sessions"
-	"github.com/jagger27/periwiki/render"
 
 	"github.com/microcosm-cc/bluemonday"
 	"golang.org/x/crypto/bcrypt"

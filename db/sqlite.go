@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/jagger27/periwiki/wiki"
+	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/jmoiron/sqlx"
 	"github.com/michaeljs1990/sqlitestore"
 	"github.com/pkg/errors"

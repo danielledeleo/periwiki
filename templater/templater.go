@@ -11,7 +11,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/jagger27/periwiki/wiki"
+	"github.com/danielledeleo/periwiki/wiki"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )

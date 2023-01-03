@@ -8,8 +8,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/jagger27/periwiki/templater"
-	"github.com/jagger27/periwiki/wiki"
+	"github.com/danielledeleo/periwiki/templater"
+	"github.com/danielledeleo/periwiki/wiki"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 

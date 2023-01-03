@@ -14,7 +14,7 @@ import (
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/parser"
 
-	"github.com/jagger27/periwiki/extensions"
+	"github.com/danielledeleo/periwiki/extensions"
 )
 
 type HTMLRenderer struct {

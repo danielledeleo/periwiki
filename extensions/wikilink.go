@@ -3,7 +3,7 @@ package extensions
 import (
 	"bytes"
 
-	"github.com/jagger27/periwiki/extensions/ast"
+	"github.com/danielledeleo/periwiki/extensions/ast"
 
 	"github.com/yuin/goldmark"
 	gast "github.com/yuin/goldmark/ast"

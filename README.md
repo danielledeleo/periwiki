@@ -21,7 +21,7 @@ The [Mozilla Public License](LICENSE). Share what you do with it!
 Requirements: `make`, `sqlite3`, and `go`. `sass` is optional unless you make any edits to the .scss as a compiled .css file is included. 
 
 ```bash
-git clone github.com/jagger27/periwiki
+git clone github.com/danielledeleo/periwiki
 
 make
 make run
@@ -33,4 +33,4 @@ See [TODO](docs/TODO.md) for a little insight on what's on the road map.
 
 <sub>1: Mostly because of this wonderful intro to Go web apps, [Writing Web Applications](https://golang.org/doc/articles/wiki/).</sub>
 
-<sub>2: This project [used to be called iwikii](https://github.com/jagger27/periwiki/commit/1cab3f24ae07390975d06be4343b7b3deea11cad).</sub>
+<sub>2: This project [used to be called iwikii](https://github.com/danielledeleo/periwiki/commit/1cab3f24ae07390975d06be4343b7b3deea11cad).</sub>
