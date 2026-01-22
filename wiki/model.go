@@ -50,6 +50,7 @@ type db interface {
 	InsertUser(user *User) error
 	InsertPreference(pref *Preference) error
 	SelectPreference(key string) (*Preference, error)
+	SelectRandomArticleURL() (string, error)
 
 	// For cookie store, delete isn't part of the interface for some reason
 	sessions.Store
@@ -151,6 +152,7 @@ var ErrArticleNotModified = errors.New("article not modified")
 var ErrRevisionNotFound = errors.New("revision not found")
 var ErrRevisionAlreadyExists = errors.New("revision already exists")
 var ErrGenericNotFound = errors.New("not found")
+var ErrNoArticles = errors.New("no articles exist")
 
 func (model *WikiModel) UpdatePreference(pref *Preference) error {
 	return model.db.InsertPreference(pref)
@@ -301,4 +303,12 @@ func (model *WikiModel) GetArticleByRevisionID(url string, id int) (*Article, er
 
 func (model *WikiModel) GetRevisionHistory(url string) ([]*Revision, error) {
 	return model.db.SelectRevisionHistory(url)
+}
+
+func (model *WikiModel) GetRandomArticleURL() (string, error) {
+	url, err := model.db.SelectRandomArticleURL()
+	if err == sql.ErrNoRows {
+		return "", ErrNoArticles
+	}
+	return url, err
 }

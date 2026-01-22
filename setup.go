@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/danielledeleo/periwiki/db"
+	"github.com/danielledeleo/periwiki/special"
 	"github.com/danielledeleo/periwiki/templater"
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/microcosm-cc/bluemonday"
@@ -33,5 +34,9 @@ func Setup() *app {
 	database, err := db.Init(modelConf)
 	check(err)
 	model := wiki.New(database, modelConf, bm)
-	return &app{t, model}
+
+	specialPages := special.NewRegistry()
+	specialPages.Register("Random", special.NewRandomPage(model))
+
+	return &app{t, model, specialPages}
 }

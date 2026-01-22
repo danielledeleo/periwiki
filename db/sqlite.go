@@ -3,8 +3,8 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"time"
 
 	"github.com/danielledeleo/periwiki/wiki"
@@ -31,7 +31,7 @@ func Init(config *wiki.Config) (*sqliteDb, error) {
 		return nil, err
 	}
 
-	sqlFile, err := ioutil.ReadFile("db/schema.sql")
+	sqlFile, err := os.ReadFile("db/schema.sql")
 	if err != nil {
 		return nil, err
 	}
@@ -225,6 +225,12 @@ func (db *sqliteDb) SelectRevisionHistory(url string) ([]*wiki.Revision, error) 
 		return nil, wiki.ErrGenericNotFound
 	}
 	return results, nil
+}
+
+func (db *sqliteDb) SelectRandomArticleURL() (string, error) {
+	var url string
+	err := db.conn.Get(&url, `SELECT url FROM Article ORDER BY ABS(RANDOM()) LIMIT 1`)
+	return url, err
 }
 
 func (db *sqliteDb) SelectUserByScreenname(screenname string, withHash bool) (*wiki.User, error) {

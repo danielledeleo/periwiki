@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/danielledeleo/periwiki/special"
 	"github.com/danielledeleo/periwiki/templater"
 	"github.com/danielledeleo/periwiki/wiki"
 	"golang.org/x/text/cases"
@@ -23,6 +24,7 @@ import (
 type app struct {
 	*templater.Templater
 	*wiki.WikiModel
+	specialPages *special.Registry
 }
 
 func main() {
@@ -35,6 +37,8 @@ func main() {
 	fs := http.FileServer(http.Dir("./static"))
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
 	router.HandleFunc("/", app.homeHandler).Methods("GET")
+
+	router.HandleFunc("/wiki/Special:{page}", app.specialPageHandler).Methods("GET")
 
 	router.HandleFunc("/wiki/{article}", app.articleHandler).Methods("GET")
 	router.HandleFunc("/wiki/{article}/history", app.articleHistoryHandler).Methods("GET")
@@ -446,4 +450,18 @@ func (a *app) diffHandler(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+func (a *app) specialPageHandler(rw http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	pageName := vars["page"]
+
+	handler, ok := a.specialPages.Get(pageName)
+	if !ok {
+		a.errorHandler(http.StatusNotFound, rw, req,
+			fmt.Errorf("special page '%s' does not exist", pageName))
+		return
+	}
+
+	handler.Handle(rw, req)
 }
