@@ -18,14 +18,23 @@ That is not an accident. It is what a wiki should look like.
 The [Mozilla Public License](LICENSE). Share what you do with it!
 
 ## Build/Run
-Requirements: `make`, `sqlite3`, and `go`. `sass` is optional unless you make any edits to the .scss as a compiled .css file is included. 
+Requirements: `make`, `sqlite3`, and `go`. `sass` is optional unless you make any edits to the .scss as a compiled .css file is included.
 
 ```bash
 git clone github.com/danielledeleo/periwiki
 
 make
 make run
+```
 
+## Testing
+
+```bash
+make test              # Run all tests
+make test-verbose      # Run tests with verbose output
+make test-coverage     # Show coverage percentages
+make test-coverage-html # Generate HTML coverage report
+make test-race         # Run tests with race detector
 ```
 
 ## Anything else?

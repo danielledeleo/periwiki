@@ -11,3 +11,7 @@ config.yaml
 .cookiesecret.yaml
 
 .DS_Store
+
+# Test coverage
+coverage.out
+coverage.html

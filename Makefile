@@ -24,11 +24,26 @@ run: periwiki
 	./periwiki
 
 test: model
+	go test ./...
+
+test-verbose: model
 	go test -v ./...
+
+test-coverage: model
+	go test -cover ./...
+
+test-coverage-html: model
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+test-race: model
+	go test -race ./...
 
 clean:
 	rm -rf .bin
 	rm -rf db/skeleton.db
 	rm -rf model
+	rm -f coverage.out coverage.html
 
-.PHONY: all run test clean
+.PHONY: all run test test-verbose test-coverage test-coverage-html test-race clean
