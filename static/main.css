@@ -4,6 +4,7 @@
     --underline: #a2a9b1;
     --periwiki-grey: #9a9a9a;
     --periwiki-light-grey: #f6f6f6;
+    --pw-deadlink-color: #bf3c2c;
 }
 
 body {
@@ -21,6 +22,11 @@ a {
 }
 a:hover {
     text-decoration: underline;
+}
+
+/* WikiLink to non-existent page (deadlink) */
+a.pw-deadlink {
+    color: var(--pw-deadlink-color);
 }
 
 #flex-container {

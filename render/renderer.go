@@ -21,16 +21,23 @@ type HTMLRenderer struct {
 	md goldmark.Markdown
 }
 
-func NewHTMLRenderer() *HTMLRenderer {
+// NewHTMLRenderer creates a new HTMLRenderer. If existenceChecker is provided,
+// WikiLinks to non-existent pages will be styled with the pw-deadlink class.
+func NewHTMLRenderer(existenceChecker extensions.ExistenceChecker) *HTMLRenderer {
+	var wikiLinkerOpt extensions.WikiLinkerOption
+	if existenceChecker != nil {
+		wikiLinkerOpt = extensions.WithExistenceAwareResolver(existenceChecker)
+	} else {
+		wikiLinkerOpt = extensions.WithUnderscoreResolver()
+	}
+
 	r := &HTMLRenderer{
 		md: goldmark.New(
 			goldmark.WithParserOptions(
 				parser.WithAutoHeadingID(),
 			),
 			goldmark.WithExtensions(
-				extensions.NewWikiLinker(
-					extensions.WithUnderscoreResolver(),
-				),
+				extensions.NewWikiLinker(wikiLinkerOpt),
 			),
 		),
 	}

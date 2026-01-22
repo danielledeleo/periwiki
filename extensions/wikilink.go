@@ -22,6 +22,10 @@ const (
 	optWikiLinkerResolver parser.OptionName = "WikiLinkResolver"
 )
 
+// ExistenceChecker is a function that checks if a page exists at the given URL.
+// It is used by resolvers to determine if a WikiLink points to an existing page.
+type ExistenceChecker func(url string) bool
+
 // WikiLinkResolver resolves link destinations. If actual == nil parsing
 // is skipped. CSS classes returned here are applied to the resulting <a>.
 type WikiLinkResolver interface {

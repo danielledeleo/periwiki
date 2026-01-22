@@ -1,8 +1,10 @@
 package extensions
 
 import (
+	"bytes"
 	"log"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/yuin/goldmark"
@@ -178,5 +180,94 @@ func TestWikiLinkCustomResolver(t *testing.T) {
 				t.Error(err)
 			}
 		})
+	}
+}
+
+func TestWikiLinkExistenceAwareResolver(t *testing.T) {
+	// Mock existence checker: only "Existing_Page" exists
+	existingPages := map[string]bool{
+		"/wiki/Existing_Page": true,
+	}
+	checker := func(url string) bool {
+		return existingPages[url]
+	}
+
+	tests := []struct {
+		name           string
+		md             string
+		expectDeadlink bool
+	}{
+		{name: "existing page", md: "[[Existing Page]]", expectDeadlink: false},
+		{name: "non-existing page", md: "[[Non Existing Page]]", expectDeadlink: true},
+		{name: "existing with display text", md: "[[Existing Page|Click here]]", expectDeadlink: false},
+		{name: "non-existing with display text", md: "[[Dead Link|Click here]]", expectDeadlink: true},
+	}
+
+	markdown := goldmark.New(
+		goldmark.WithRendererOptions(
+			html.WithUnsafe(),
+		),
+		goldmark.WithExtensions(
+			NewWikiLinker(
+				WithExistenceAwareResolver(checker),
+			),
+		),
+	)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			source := []byte(test.md)
+			reader := text.NewReader(source)
+			node := markdown.Parser().Parse(reader)
+
+			if node == nil {
+				t.Fatal("empty node")
+			}
+
+			var buf bytes.Buffer
+			if err := markdown.Renderer().Render(&buf, source, node); err != nil {
+				t.Error(err)
+			}
+
+			result := buf.String()
+			hasDeadlinkClass := strings.Contains(result, `class="pw-deadlink"`)
+
+			if test.expectDeadlink && !hasDeadlinkClass {
+				t.Errorf("expected deadlink class in output, got: %s", result)
+			}
+			if !test.expectDeadlink && hasDeadlinkClass {
+				t.Errorf("did not expect deadlink class in output, got: %s", result)
+			}
+
+			t.Logf("output: %s", result)
+		})
+	}
+}
+
+func TestWikiLinkExistenceAwareResolver_NilChecker(t *testing.T) {
+	// Test with nil checker - should not mark any links as dead
+	markdown := goldmark.New(
+		goldmark.WithRendererOptions(
+			html.WithUnsafe(),
+		),
+		goldmark.WithExtensions(
+			NewWikiLinker(
+				WithExistenceAwareResolver(nil),
+			),
+		),
+	)
+
+	source := []byte("[[Some Page]]")
+	reader := text.NewReader(source)
+	node := markdown.Parser().Parse(reader)
+
+	var buf bytes.Buffer
+	if err := markdown.Renderer().Render(&buf, source, node); err != nil {
+		t.Error(err)
+	}
+
+	result := buf.String()
+	if strings.Contains(result, `class="pw-deadlink"`) {
+		t.Errorf("with nil checker, should not have deadlink class, got: %s", result)
 	}
 }

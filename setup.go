@@ -24,6 +24,7 @@ func Setup() *app {
 	bm.AllowAttrs("class").Matching(regexp.MustCompile(`^footnote-ref$`)).OnElements("a")
 	bm.AllowAttrs("class").Matching(regexp.MustCompile(`^footnotes$`)).OnElements("section")
 	bm.AllowAttrs("style").Matching(regexp.MustCompile(`^text-align:\s+(left|right|center);$`)).OnElements("td", "th")
+	bm.AllowAttrs("class").Matching(regexp.MustCompile(`^pw-deadlink$`)).OnElements("a")
 
 	t := templater.New()
 
