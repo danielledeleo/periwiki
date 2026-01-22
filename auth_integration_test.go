@@ -253,9 +253,9 @@ func TestLoginInvalidCredentials(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		// Should stay on login page (200), not redirect
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("expected status 200, got %d", resp.StatusCode)
+		// Should stay on login page with 401 Unauthorized, not redirect
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("expected status 401 Unauthorized, got %d", resp.StatusCode)
 		}
 
 		bodyBytes, _ := io.ReadAll(resp.Body)
@@ -285,10 +285,9 @@ func TestLoginInvalidCredentials(t *testing.T) {
 			t.Error("login should fail for non-existent user, but got redirect")
 		}
 
-		// As long as we didn't get redirected, the login failed as expected
-		// The page should still render (status 200 or similar)
-		if resp.StatusCode != http.StatusOK {
-			t.Logf("Note: got status %d for failed login", resp.StatusCode)
+		// Should return 401 Unauthorized for failed login
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("expected status 401 Unauthorized, got %d", resp.StatusCode)
 		}
 	})
 }
