@@ -9,19 +9,22 @@
     <link rel="stylesheet" type="text/css" media="screen" href="/static/main.css" />
 </head>
 <body>
+    <nav id="navbar">
+        <a href="/" id="logo-link"><img id="logo" src="/static/logo.svg" alt="periwiki" /></a>
+        <div id="login-bar">
+            {{ if and .User (ne .User.ScreenName "Anonymous") }}
+                <a href="/profile/{{ pathEscape .User.ScreenName }}">My Profile</a>
+                <a href="/user/settings">Settings</a>
+                <form method="POST" action="/user/logout"><button class="pw-logout-btn" type="submit">Logout</button></form>
+            {{ else }}
+                <a href="/user/login">Login</a>
+                <a href="/user/register">Register</a>
+            {{ end }}
+        </div>
+    </nav>
     <div id="flex-container">
         {{template "sidebar" .Sidebar }}
         <div id="right-panel">
-            <div id="login-bar">
-                {{ if and .User (ne .User.ScreenName "Anonymous") }}
-                    <a href="/profile/{{ pathEscape .User.ScreenName }}">My Profile</a>
-                    <a href="/user/settings">Settings</a>
-                    <form method="POST" action="/user/logout"><button class="pw-logout-btn" type="submit">Logout</button></form>
-                {{ else }}
-                    <a href="/user/login">Login</a>
-                    <a href="/user/register">Register</a>
-                {{ end }}
-            </div>
             {{template "content" . }}
         </div>
     </div>

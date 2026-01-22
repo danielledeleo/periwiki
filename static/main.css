@@ -29,13 +29,31 @@ a.pw-deadlink {
     color: var(--pw-deadlink-color);
 }
 
+#navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0.5em 0.75em 0 0.75em;
+}
+
+#navbar #logo-link {
+    display: block;
+    width: 140px;
+    margin: 0 0.5em;
+}
+
+#navbar #logo {
+    max-width: 12em;
+    width: auto;
+}
+
 #flex-container {
     display: flex;
 }
 
 #login-bar {
+    align-self: flex-start;
     text-align: right;
-    margin: 0.3em 0.8em 0 0;
     font-size: .75em;
 }
 
@@ -89,7 +107,6 @@ a.pw-deadlink {
 }
 
 #article-area {
-    padding: 18px 0 0 0;
     width: 100%;
 }
 
@@ -386,4 +403,130 @@ article.pw-preview {
     margin: 0 0 0 1px;
     display: inline-block;
     transform: rotate(35deg);
+}
+
+/* ==========================================================================
+   Responsive Styles
+   ========================================================================== */
+
+/* Tablet Breakpoint (768px) */
+@media screen and (max-width: 768px) {
+    /* Navbar: adjust for mobile, smaller logo */
+    #navbar {
+        width: auto;
+        margin: 0.5em 0.75em;
+        padding: 0;
+    }
+
+    #navbar #logo {
+        max-width: 8em;
+    }
+
+    /* Stack layout vertically */
+    #flex-container {
+        flex-direction: column;
+    }
+
+    /* Hide sidebar */
+    #sidebar {
+        display: none;
+    }
+
+    /* Login bar: slightly larger font on tablet */
+    #login-bar {
+        font-size: 0.85em;
+    }
+
+    /* Tabs: keep left-justified, remove left border */
+    #article-area ul.pw-tabs {
+        border-left: none;
+    }
+
+    /* Article: Remove left/right borders, adjust padding */
+    article {
+        padding: 16px;
+        border-left: none;
+        border-right: none;
+    }
+
+    /* Infobox: Full width, stack above content */
+    article .infobox {
+        float: none;
+        width: 100%;
+        margin: 0 0 1em 0;
+    }
+
+    /* TOC: Full width */
+    article #toc {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Textarea: Full width */
+    #article-area textarea#body-edit {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Tables: Horizontal scroll */
+    article div.pw-article-content > table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Code blocks: Horizontal scroll */
+    article pre {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Mobile Breakpoint (480px) */
+@media screen and (max-width: 480px) {
+    /* Smaller tabs */
+    #article-area ul.pw-tabs li {
+        padding: 0.5em 0.4em 0.3em 0.4em;
+        font-size: 0.75em;
+    }
+
+    /* Tighter article padding */
+    article {
+        padding: 12px;
+    }
+
+    /* Smaller headings */
+    article h1 {
+        font-size: 1.4em;
+    }
+
+    article h2 {
+        font-size: 1.2em;
+    }
+
+    /* Edit form adjustments */
+    #article-area textarea#body-edit {
+        height: 200px;
+        min-height: 120px;
+    }
+
+    #article-area input#title-edit {
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 1.4em;
+    }
+
+    /* Stack form table cells */
+    article table td {
+        display: block;
+        width: 100%;
+    }
+
+    article table input[type="text"],
+    article table input[type="password"] {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 0.5em;
+    }
 }
