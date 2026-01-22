@@ -1,9 +1,6 @@
-all: static/main.css periwiki
+all: periwiki
 
 gosources := $(wildcard *.go) $(wildcard **/*.go) go.sum go.mod
-
-static/main.css: src/main.scss
-	sass src/main.scss static/main.css
 
 .bin:
 	mkdir -p .bin

@@ -1,314 +1,383 @@
+:root {
+    --link-color: #0645ad;
+    --periwiki-purple: #a7aef9;
+    --underline: #a2a9b1;
+    --periwiki-grey: #9a9a9a;
+    --periwiki-light-grey: #f6f6f6;
+}
+
 body {
-  margin: 0;
-  padding: 0;
-  background-color: #f6f6f6;
-  font-family: "Helvetica", sans-serif;
-  line-height: 1.1em;
+    margin: 0;
+    padding: 0;
+
+    background-color: var(--periwiki-light-grey);
+    font-family: "Helvetica", sans-serif;
+    line-height: 1.1em;
 }
 
 a {
-  color: #0645ad;
-  text-decoration: none;
+    color: var(--link-color);
+    text-decoration: none;
 }
-
 a:hover {
-  text-decoration: underline;
+    text-decoration: underline;
 }
 
 #flex-container {
-  display: flex;
+    display: flex;
 }
 
 #login-bar {
-  text-align: right;
-  margin: 0.3em 0.8em 0 0;
-  font-size: 0.75em;
+    text-align: right;
+    margin: 0.3em 0.8em 0 0;
+    font-size: .75em;
 }
-#login-bar a, #login-bar .pw-logout-btn {
-  display: inline-block;
-  margin: 0 0 0 0.75em;
+
+#login-bar a,
+#login-bar .pw-logout-btn {
+    display: inline-block;
+    margin: 0 0 0 0.75em;
 }
+
 #login-bar form {
-  display: inline;
+    display: inline;
 }
+
 #login-bar button.pw-logout-btn {
-  display: inline-block;
-  background: none;
-  color: #0645ad;
-  border: none;
-  padding: 0;
-  font: inherit;
-  cursor: pointer;
+    display: inline-block;
+    background: none;
+    color: var(--link-color);
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
 }
+
 #login-bar button.pw-logout-btn:hover {
-  text-decoration: underline;
+    text-decoration: underline;
 }
 
 #sidebar {
-  margin: 0 0.75em;
-  padding: 0.5em;
-  width: 140px;
-  min-width: 140px;
+    margin: 0 0.75em;
+    padding: 0.5em;
+    width: 140px;
+    min-width: 140px;
 }
+
 #sidebar ul {
-  margin: 0;
-  padding: 0;
-  font-size: 0.75em;
-  list-style: none;
+    margin: 0;
+    padding: 0;
+
+    font-size: .75em;
+    list-style: none;
 }
+
 #sidebar ul li.pw-sidebar-title {
-  width: 80%;
-  margin: 0.4em 0;
-  border-bottom: 1px solid #a2a9b1;
+    width: 80%;
+    margin: 0.4em 0;
+    border-bottom: 1px solid var(--underline);
 }
 
 #right-panel {
-  width: 100%;
+    width: 100%;
 }
 
 #article-area {
-  padding: 18px 0 0 0;
-  width: 100%;
+    padding: 18px 0 0 0;
+    width: 100%;
 }
+
 #article-area ul.pw-tabs {
-  display: flex;
-  padding: 0;
-  margin: 0 0 -1px 0;
-  list-style: none;
-  border-left: 1px solid #a7aef9;
+    display: flex;
+    padding: 0;
+    margin: 0 0 -1px 0;
+
+    list-style: none;
+    border-left: 1px solid var(--periwiki-purple);
 }
+
 #article-area ul.pw-tabs li {
-  font-size: 0.8em;
-  text-align: center;
-  padding: 0.5em 0.8em 0.3em 0.8em;
-  border-top: 1px solid #a7aef9;
-  border-right: 1px solid #a7aef9;
+    font-size: 0.8em;
+    text-align: center;
+    padding: 0.5em 0.8em 0.3em 0.8em;
+
+    border-top: 1px solid var(--periwiki-purple);
+    border-right: 1px solid var(--periwiki-purple);
 }
+
 #article-area ul.pw-tabs li.pw-active {
-  background-color: #ffffff;
-  border-bottom: 1px solid #ffffff;
+    background-color: #ffffff;
+    border-bottom: 1px solid #ffffff;
 }
+
 #article-area textarea#body-edit {
-  display: block;
-  width: 80%;
-  min-height: 160px;
-  height: 320px;
+    display: block;
+    width: 80%;
+    min-height: 160px;
+    height: 320px;
 }
+
 #article-area input#title-edit {
-  font-family: Georgia, "Times New Roman", Times, serif;
-  font-size: 1.8em;
-  font-weight: 400;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 1.8em;
+    font-weight: 400;
 }
+
 #article-area .pw-last-edited {
-  font-size: 0.75em;
-  color: #9a9a9a;
-  display: block;
+    font-size: 0.75em;
+    color: var(--periwiki-grey);
+    display: block;
 }
 
 article {
-  padding: 20px 24px 24px 24px;
-  background-color: #ffffff;
-  border: 1px solid #a7aef9;
-  border-right: none;
-  line-height: 1.6;
+    padding: 20px 24px 24px 24px;
+    background-color: #ffffff;
+    border: 1px solid var(--periwiki-purple);
+    border-right: none;
+    line-height: 1.6;
 }
-article h1, article h2 {
-  line-height: 1.3em;
-  margin: 0 0 0.25em 0;
-  overflow: hidden;
-  font-family: Georgia, "Times New Roman", Times, serif;
-  font-size: 1.8em;
-  font-weight: 400;
-  border-bottom: 1px solid #a2a9b1;
-}
+
+article h1,
 article h2 {
-  margin: 1em 0 0.25em 0;
-  font-size: 1.5em;
+    line-height: 1.3em;
+    margin: 0 0 .25em 0;
+    overflow: hidden;
+
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 1.8em;
+    font-weight: 400;
+    border-bottom: 1px solid var(--underline);
 }
+
+article h2 {
+    margin: 1em 0 .25em 0;
+    font-size: 1.5em;
+}
+
 article section.footnotes {
-  margin: 2em 0 0 0;
-  font-size: 0.95em;
+    margin: 2em 0 0 0;
+    font-size: 0.95em;
 }
+
 article section.footnotes p {
-  margin: 0;
+    margin: 0;
 }
+
 article section.footnotes hr {
-  border: 0;
-  height: 0;
-  border-bottom: 1px solid #a2a9b1;
+    border: 0;
+    height: 0;
+    border-bottom: 1px solid var(--underline);
 }
+
 article section.footnotes ol {
-  padding-left: auto !important;
-  margin-bottom: 0;
+    padding-left: auto !important;
+    margin-bottom: 0;
 }
+
 article div.pw-article-content {
-  font-size: 0.875em;
+    font-size: 0.875em;
 }
+
 article div.pw-article-content > table {
-  border-collapse: collapse;
-  border-spacing: 0px;
+    border-collapse: collapse;
+    border-spacing: 0px;
 }
-article div.pw-article-content > table tr:nth-child(2n), article div.pw-article-content > table thead {
-  background-color: #f6f8fa;
+
+article div.pw-article-content > table tr:nth-child(2n),
+article div.pw-article-content > table thead {
+    background-color: #f6f8fa;
 }
-article div.pw-article-content > table td, article div.pw-article-content > table th {
-  border: 1px solid #c6cbd1;
-  padding: 0.4em 1em;
+
+article div.pw-article-content > table td,
+article div.pw-article-content > table th {
+    border: 1px solid #c6cbd1;
+    padding: 0.4em 1em;
 }
+
 article pre {
-  overflow: hidden;
-  border: 1px solid #a7aef9;
-  padding: 0.75em;
-  background-color: #FBFBFB;
+    overflow: hidden;
+    border: 1px solid var(--periwiki-purple);
+    padding: 0.75em;
+    background-color: #FBFBFB;
 }
+
 article .infobox {
-  font-size: 0.95em;
-  width: 14em;
-  float: right;
-  clear: right;
-  margin: 0 0 0.75em 1em;
-  padding: 0.3em;
-  line-height: 1.1;
+    font-size: 0.95em;
+    width: 14em;
+    float: right;
+    clear: right;
+    margin: 0 0 0.75em 1.0em;
+    padding: 0.3em;
+    line-height: 1.1;
 }
-article .infobox h1, article .infobox h2, article .infobox h3 {
-  margin: 0.25em 0;
-  text-align: center;
-  font-size: 1.1em;
-  font-weight: bold;
-  font-family: sans-serif;
+
+article .infobox h1,
+article .infobox h2,
+article .infobox h3 {
+    margin: 0.25em 0;
+    text-align: center;
+    font-size: 1.1em;
+    font-weight: bold;
+    font-family: sans-serif;
 }
+
 article .infobox ul {
-  margin: 0 0.5em 0 1em;
+    margin: 0 0.5em 0 1em;
 }
+
 article .infobox p {
-  margin: 0.25em 0;
+    margin: 0.25em 0;
 }
+
 article .infobox figure {
-  margin: 0.5em 0;
+    margin: 0.5em 0;
 }
+
 article .infobox figure img {
-  width: 100%;
+    width: 100%;
 }
+
 article .infobox figure figcaption {
-  text-align: center;
+    text-align: center;
 }
-article #toc, article .infobox {
-  border: 1px solid #a2a9b1;
-  background-color: #FBFBFB;
+
+article #toc,
+article .infobox {
+    border: 1px solid var(--underline);
+    background-color: #FBFBFB;
 }
+
 article #toc {
-  padding: 0.3em 0.5em;
-  display: inline-block;
-  width: auto;
+    padding: 0.3em 0.5em;
+    display: inline-block;
+    width: auto;
 }
+
 article #toc span {
-  display: block;
-  text-align: center;
+    display: block;
+    text-align: center;
 }
+
 article #toc ol {
-  list-style-type: none;
-  counter-reset: item;
-  margin: 0;
-  padding: 0;
+    list-style-type: none;
+    counter-reset: item;
+    margin: 0;
+    padding: 0;
 }
+
 article #toc ol > li {
-  display: table;
-  counter-increment: item;
+    display: table;
+    counter-increment: item;
 }
+
 article #toc ol > li:before {
-  content: counters(item, ".") " ";
-  display: table-cell;
-  padding-right: 0.6em;
+    content: counters(item, ".") " ";
+    display: table-cell;
+    padding-right: 0.6em;
 }
+
 article #toc li ol > li {
-  margin: 0;
+    margin: 0;
 }
+
 article #toc li ol > li:before {
-  content: counters(item, ".") " ";
+    content: counters(item, ".") " ";
 }
+
 article code {
-  font-family: "Andale Mono", "Consolas", monospace;
-  font-size: 1em;
+    font-family: "Andale Mono", "Consolas", monospace;
+    font-size: 1em;
 }
+
 article code a {
-  display: inline-block;
-  width: 100%;
-  color: black;
+    display: inline-block;
+    width: 100%;
+    color: black;
 }
+
 article code a:hover {
-  text-decoration: none;
+    text-decoration: none;
 }
+
 article pre.lineNumbers a::before {
-  color: #9a9a9a;
-  content: attr(data-line-number) " ";
+    color: var(--periwiki-grey);
+    content: attr(data-line-number) " ";
 }
+
 article ul {
-  margin: 0.3em 0 0 1.6em;
-  padding: 0;
+    margin: 0.3em 0 0 1.6em;
+    padding: 0;
 }
+
 article ul li {
-  margin: 0 0 0.1em 0;
+    margin: 0 0 0.1em 0;
 }
+
 article .pw-diff {
-  line-height: 1em;
+    line-height: 1em;
 }
+
 article .footnote-ref sup::before {
-  content: "[";
+    content: "[";
 }
+
 article .footnote-ref sup::after {
-  content: "]";
+    content: "]";
 }
 
 article.pw-preview {
-  margin: 24px 0 0 0;
+    margin: 24px 0 0 0;
 }
 
 .pw-callout {
-  width: 100%;
-  display: inline-block;
-  margin: 0.5em 0;
-  padding: 10px;
-  border: 1px solid;
+    width: 100%;
+    display: inline-block;
+    margin: 0.5em 0;
+    padding: 10px;
+    border: 1px solid;
 }
 
-.pw-green, .pw-success {
-  border-color: #8ed28e;
-  background-color: #f4ffe2;
+.pw-green,
+.pw-success {
+    border-color: #8ed28e;
+    background-color: #f4ffe2;
 }
 
-.pw-red, .pw-error {
-  border-color: #d28e8e;
-  background-color: #ffe2e2;
+.pw-red,
+.pw-error {
+    border-color: #d28e8e;
+    background-color: #ffe2e2;
 }
 
-.pw-blue, .pw-info {
-  border-color: #8ebfd2;
-  background-color: #e2f7ff;
+.pw-blue,
+.pw-info {
+    border-color: #8ebfd2;
+    background-color: #e2f7ff;
 }
 
 .pw-grey {
-  border-color: #d7d7d7;
-  background-color: #f9f9f9;
+    border-color: #d7d7d7;
+    background-color: #f9f9f9;
 }
 
 .hidden {
-  display: none;
+    display: none;
 }
 
 #footer {
-  text-align: center;
-  margin: 1em 0;
-  color: #9a9a9a;
-}
-#footer small.pw-powered-by {
-  font-size: 0.75em;
-}
-#footer .pw-powered-by .pw-heart {
-  color: #a7aef9;
-  font-size: 1.4em;
-  margin: 0 0 0 1px;
-  display: inline-block;
-  transform: rotate(35deg);
+    text-align: center;
+    margin: 1em 0;
+    color: var(--periwiki-grey);
 }
 
-/*# sourceMappingURL=main.css.map */
+#footer small.pw-powered-by {
+    font-size: 0.75em;
+}
+
+#footer .pw-powered-by .pw-heart {
+    color: var(--periwiki-purple);
+    font-size: 1.4em;
+    margin: 0 0 0 1px;
+    display: inline-block;
+    transform: rotate(35deg);
+}
