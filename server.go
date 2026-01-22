@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"html"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/danielledeleo/periwiki/special"
 	"github.com/danielledeleo/periwiki/templater"
@@ -15,7 +16,6 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -25,6 +25,43 @@ type app struct {
 	*templater.Templater
 	*wiki.WikiModel
 	specialPages *special.Registry
+}
+
+// responseWriter wraps http.ResponseWriter to capture the status code
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+	size   int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.status = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	n, err := rw.ResponseWriter.Write(b)
+	rw.size += n
+	return n, err
+}
+
+// slogLoggingMiddleware logs HTTP requests using slog
+func slogLoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		wrapped := &responseWriter{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(wrapped, r)
+
+		slog.Info("http request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", wrapped.status,
+			"size", wrapped.size,
+			"duration", time.Since(start),
+			"remote", r.RemoteAddr,
+		)
+	})
 }
 
 func main() {
@@ -60,13 +97,14 @@ func main() {
 	})
 	router.Handle("/manage/{page}", manageRouter)
 
-	logger := handlers.LoggingHandler(os.Stdout, router)
+	handler := slogLoggingMiddleware(router)
 
-	log.Println("Listening on", "http://"+app.Config.Host)
-	err := http.ListenAndServe(app.Config.Host, logger)
+	slog.Info("server starting", "url", "http://"+app.Config.Host)
+	err := http.ListenAndServe(app.Config.Host, handler)
 
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("server failed to start", "error", err)
+		os.Exit(1)
 	}
 }
 
@@ -215,7 +253,6 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 	if !found {
 		article = wiki.NewArticle(vars["article"], cases.Title(language.AmericanEnglish).String(vars["article"]), "")
 		article.Hash = "new"
-		check(err)
 	}
 
 	if req.Method == "POST" {
@@ -371,7 +408,7 @@ func (a *app) articlePostHandler(article *wiki.Article, rw http.ResponseWriter, 
 
 func check(err error) {
 	if err != nil {
-		log.Println(err)
+		slog.Error("unexpected error", "error", err)
 	}
 }
 
@@ -387,7 +424,8 @@ func (a *app) errorHandler(responseCode int, rw http.ResponseWriter, req *http.R
 				"Errors":     errors,
 			}})
 	if err != nil {
-		log.Panic(err)
+		slog.Error("failed to render error page", "error", err)
+		panic(err)
 	}
 }
 
@@ -448,7 +486,7 @@ func (a *app) diffHandler(rw http.ResponseWriter, req *http.Request) {
 		}})
 
 	if err != nil {
-		log.Println(err)
+		slog.Error("failed to render diff template", "error", err)
 	}
 }
 

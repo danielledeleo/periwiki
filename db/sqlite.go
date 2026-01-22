@@ -3,14 +3,13 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/jmoiron/sqlx"
 	"github.com/michaeljs1990/sqlitestore"
-	"github.com/pkg/errors"
 	_ "modernc.org/sqlite"
 )
 
@@ -86,13 +85,13 @@ func (db *sqliteDb) InsertUser(user *wiki.User) (err error) {
 
 	defer func() {
 		if err != nil {
-			log.Println(err)
+			slog.Error("user insert failed", "error", err)
 			if rbErr := tx.Rollback(); rbErr != nil {
-				log.Println(rbErr)
+				slog.Error("transaction rollback failed", "error", rbErr)
 			}
 		} else {
 			if commitErr := tx.Commit(); commitErr != nil {
-				log.Println(commitErr)
+				slog.Error("transaction commit failed", "error", commitErr)
 			}
 		}
 	}()
@@ -253,19 +252,19 @@ func (db *sqliteDb) InsertArticle(article *wiki.Article) (err error) {
 	tx, err = db.conn.Beginx()
 
 	if err != nil {
-		log.Println(err)
+		slog.Error("failed to begin transaction", "error", err)
 		return
 	}
 
 	defer func() {
 		if err != nil {
-			log.Println(errors.Wrap(err, "failed to InsertArticle"))
+			slog.Error("article insert failed", "operation", "InsertArticle", "error", err)
 			if rbErr := tx.Rollback(); rbErr != nil {
-				log.Println(rbErr)
+				slog.Error("transaction rollback failed", "error", rbErr)
 			}
 		} else {
 			if commitErr := tx.Commit(); commitErr != nil {
-				log.Println(commitErr)
+				slog.Error("transaction commit failed", "error", commitErr)
 			}
 		}
 	}()

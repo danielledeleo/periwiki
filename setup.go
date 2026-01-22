@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"regexp"
 
 	"github.com/danielledeleo/periwiki/db"
@@ -29,7 +29,7 @@ func Setup() *app {
 	t := templater.New()
 
 	if err := t.Load("templates/layouts/*.html", "templates/*.html"); err != nil {
-		log.Println(err)
+		slog.Error("failed to load templates", "error", err)
 	}
 
 	database, err := db.Init(modelConf)

@@ -2,11 +2,10 @@ package render
 
 import (
 	"bytes"
-
+	"fmt"
 	"html/template"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/pkg/errors"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
@@ -49,7 +48,7 @@ func (r *HTMLRenderer) Render(md string) (string, error) {
 	buf := &bytes.Buffer{}
 
 	if err := r.md.Convert([]byte(md), buf); err != nil {
-		return "", errors.Wrap(err, "failed to Convert")
+		return "", fmt.Errorf("failed to Convert: %w", err)
 	}
 	rawhtml := buf.Bytes()
 	htmlreader := bytes.NewReader(rawhtml)

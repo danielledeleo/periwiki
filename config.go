@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"errors"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -20,6 +20,8 @@ func SetupConfig() *wiki.Config {
 	viper.SetDefault("min_password_length", 8)
 	viper.SetDefault("cookie_expiry", 86400*7) // a week
 	viper.SetDefault("host", "0.0.0.0:8080")
+	viper.SetDefault("log_format", "pretty") // pretty, json, or text
+	viper.SetDefault("log_level", "info")    // debug, info, warn, error
 
 	viper.SetConfigFile(configFilename)
 	viper.AddConfigPath(".")
@@ -31,9 +33,16 @@ func SetupConfig() *wiki.Config {
 		if strings.Contains(err.Error(), "no such file or directory") {
 			createDefaultConfigFile = true
 		} else {
-			log.Fatal(err)
+			slog.Error("failed to read config", "error", err)
+			os.Exit(1)
 		}
 	}
+
+	// Initialize logger with configured format and level
+	InitLogger(
+		ParseLogFormat(viper.GetString("log_format")),
+		ParseLogLevel(viper.GetString("log_level")),
+	)
 
 	var secretBytes []byte
 	_, err = os.Stat(".cookiesecret.yaml")
@@ -43,29 +52,34 @@ func SetupConfig() *wiki.Config {
 		viper.AddConfigPath(".")
 		err = viper.ReadInConfig()
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("failed to read cookie secret config", "error", err)
+			os.Exit(1)
 		}
 		secretBytes, err = base64.StdEncoding.DecodeString(viper.GetString("cookie_secret"))
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("failed to decode cookie secret", "error", err)
+			os.Exit(1)
 		}
 	} else {
 
 		file, err := os.Create(".cookiesecret.yaml")
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("failed to create cookie secret file", "error", err)
+			os.Exit(1)
 		}
 		defer file.Close()
 
 		secretBytes = securecookie.GenerateRandomKey(64)
 		if secretBytes == nil {
-			log.Fatal(errors.New("securecookie.GenerateRandomKey returned nil"))
+			slog.Error("failed to generate cookie secret", "error", errors.New("securecookie.GenerateRandomKey returned nil"))
+			os.Exit(1)
 		}
 		secret := base64.StdEncoding.EncodeToString(secretBytes)
 
 		_, err = file.WriteString("cookie_secret: " + secret + "\n")
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("failed to write cookie secret", "error", err)
+			os.Exit(1)
 		}
 	}
 
@@ -78,14 +92,16 @@ func SetupConfig() *wiki.Config {
 	}
 
 	if createDefaultConfigFile {
-		log.Println("Config not found. Writing defaults to:", configFilename)
+		slog.Info("config not found, writing defaults", "file", configFilename)
 		conf, err := os.Create(configFilename)
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("failed to create config file", "error", err)
+			os.Exit(1)
 		}
 
 		if err := yaml.NewEncoder(conf).Encode(config); err != nil {
-			log.Fatal(err)
+			slog.Error("failed to write config file", "error", err)
+			os.Exit(1)
 		}
 	}
 

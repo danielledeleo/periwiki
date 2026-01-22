@@ -5,14 +5,13 @@ go 1.24.0
 require (
 	github.com/PuerkitoBio/goquery v1.9.2
 	github.com/friendsofgo/errors v0.9.2
-	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/securecookie v1.1.2
 	github.com/gorilla/sessions v1.4.0
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/lmittmann/tint v1.1.2
 	github.com/michaeljs1990/sqlitestore v0.0.0-20210507162135-8585425bc864
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/pkg/errors v0.9.1
 	github.com/sergi/go-diff v1.3.1
 	github.com/spf13/viper v1.19.0
 	github.com/volatiletech/null/v8 v8.1.2
@@ -30,7 +29,6 @@ require (
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/google/uuid v1.6.0 // indirect
