@@ -1,12 +1,11 @@
 In progress
-- Automated tests
 - WikiLinks (with deadlink detection/styling)
 
 Soon(ish)
+- Basic responsive/mobile CSS
 - Make user pages, index, and other special pages all types of Articles (and revisions)
 - Docs-on-docs (ship the documentation for Periwiki as sample files)
 - Include better sample pages
-- More robust testing
 - Auto populate new databases with an Admin user with id 1 as the owner of all the default pages
 - Create Markdown templates for default pages (user profiles, admin pages, etc.)
 - Postgres/MySQL support

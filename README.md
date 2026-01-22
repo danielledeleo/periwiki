@@ -18,7 +18,7 @@ That is not an accident. It is what a wiki should look like.
 The [Mozilla Public License](LICENSE). Share what you do with it!
 
 ## Build/Run
-Requirements: `make`, `sqlite3`, and `go`. `sass` is optional unless you make any edits to the .scss as a compiled .css file is included.
+Requirements: `make`, `sqlite3`, and `go`.
 
 ```bash
 git clone github.com/danielledeleo/periwiki
