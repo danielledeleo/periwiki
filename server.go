@@ -134,11 +134,14 @@ func (a *app) registerPostHandler(rw http.ResponseWriter, req *http.Request) {
 	// fill form with previously submitted values and display registration errors
 	err := a.PostUser(user)
 	if err != nil {
+		slog.Warn("registration failed", "category", "auth", "action", "register", "username", user.ScreenName, "reason", err.Error(), "ip", req.RemoteAddr)
 		render["calloutMessage"] = err.Error()
 		render["calloutClasses"] = "pw-error"
 		render["formClasses"] = ""
 		render["screennameValue"] = user.ScreenName
 		render["emailValue"] = user.Email
+	} else {
+		slog.Info("user registered", "category", "auth", "action", "register", "username", user.ScreenName, "ip", req.RemoteAddr)
 	}
 
 	err = a.RenderTemplate(rw, "register.html", "index.html", render)
@@ -166,7 +169,7 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 	err := a.CheckUserPassword(user)
 
 	render := map[string]interface{}{
-		"Title":          "Login",
+		"Article":        map[string]string{"Title": "Login"},
 		"calloutClasses": "pw-success",
 		"calloutMessage": "Successfully logged in!",
 		"formClasses":    "hidden",
@@ -174,11 +177,13 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if err != nil {
+		slog.Warn("login failed", "username", user.ScreenName, "reason", err.Error(), "ip", req.RemoteAddr)
 		render["calloutMessage"] = err.Error()
 		render["calloutClasses"] = "pw-error"
 		render["formClasses"] = ""
 		render["screennameValue"] = user.ScreenName
-		err = a.RenderTemplate(rw, "login.html", "index.html", map[string]interface{}{"Article": render})
+		rw.WriteHeader(http.StatusUnauthorized)
+		err = a.RenderTemplate(rw, "login.html", "index.html", render)
 		check(err)
 		return
 	}
@@ -196,6 +201,8 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	slog.Info("user logged in", "category", "auth", "action", "login", "username", user.ScreenName, "ip", req.RemoteAddr)
+
 	if referrer == "" {
 		referrer = "/"
 	}
@@ -209,12 +216,16 @@ func (a *app) logoutPostHander(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Capture username before session is deleted
+	username, _ := session.Values["username"].(string)
+
 	err = a.DeleteCookie(req, rw, session)
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
 
+	slog.Info("user logged out", "category", "auth", "action", "logout", "username", username, "ip", req.RemoteAddr)
 	http.Redirect(rw, req, "/", http.StatusSeeOther)
 }
 
@@ -269,12 +280,14 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 	render["Context"] = req.Context()
 
 	if !found {
+		slog.Debug("article not found", "category", "article", "action", "view", "article", vars["article"])
 		rw.WriteHeader(http.StatusNotFound)
 		err = a.RenderTemplate(rw, "article_notfound.html", "index.html", render)
 		check(err)
 		return
 	}
 
+	slog.Debug("article viewed", "category", "article", "action", "view", "article", vars["article"])
 	err = a.RenderTemplate(rw, "article.html", "index.html", render)
 	check(err)
 }
@@ -289,6 +302,7 @@ func (a *app) articleHistoryHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	slog.Debug("article history viewed", "category", "article", "action", "history", "article", url)
 	err = a.RenderTemplate(rw, "article_history.html", "index.html", map[string]interface{}{
 		"Article": map[string]interface{}{
 			"URL":   url,
@@ -396,6 +410,11 @@ func (a *app) articlePreviewHandler(article *wiki.Article, rw http.ResponseWrite
 func (a *app) articlePostHandler(article *wiki.Article, rw http.ResponseWriter, req *http.Request) {
 	err := a.PostArticle(article)
 	if err != nil {
+		username := "anonymous"
+		if article.Creator != nil {
+			username = article.Creator.ScreenName
+		}
+		slog.Warn("article save failed", "category", "article", "action", "save", "article", article.URL, "username", username, "reason", err.Error())
 		if err == wiki.ErrRevisionAlreadyExists {
 			a.errorHandler(http.StatusConflict, rw, req, err)
 			return
@@ -403,6 +422,11 @@ func (a *app) articlePostHandler(article *wiki.Article, rw http.ResponseWriter, 
 		a.errorHandler(http.StatusBadRequest, rw, req, err)
 		return
 	}
+	username := "anonymous"
+	if article.Creator != nil {
+		username = article.Creator.ScreenName
+	}
+	slog.Info("article saved", "category", "article", "action", "save", "article", article.URL, "username", username, "revision", article.ID)
 	http.Redirect(rw, req, "/wiki/"+article.URL, http.StatusSeeOther) // To prevent "browser must resend..."
 }
 
@@ -478,6 +502,7 @@ func (a *app) diffHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 	pretty := buff.String()
 
+	slog.Debug("diff viewed", "category", "article", "action", "diff", "article", vars["article"], "from", originalID, "to", newID)
 	err = a.RenderTemplate(rw, "diff.html", "index.html", map[string]interface{}{
 		"Article": orginal,
 		"Context": req.Context(),

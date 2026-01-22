@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"net/http"
 
@@ -42,6 +43,7 @@ func (a *app) SessionMiddleware(handler http.Handler) http.Handler {
 			return
 		}
 
+		slog.Debug("session authenticated", "category", "auth", "username", screenname)
 		ctx := context.WithValue(req.Context(), wiki.UserKey, user)
 		handler.ServeHTTP(rw, req.WithContext(ctx))
 	})

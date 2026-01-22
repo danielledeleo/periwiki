@@ -1,6 +1,7 @@
 package special
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/danielledeleo/periwiki/wiki"
@@ -33,5 +34,6 @@ func (p *RandomPage) Handle(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	slog.Debug("random article requested", "category", "special", "action", "random", "redirectTo", url)
 	http.Redirect(rw, req, "/wiki/"+url, http.StatusSeeOther)
 }
