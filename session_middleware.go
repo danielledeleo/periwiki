@@ -13,21 +13,35 @@ func (a *app) SessionMiddleware(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		session, err := a.GetCookie(req, "periwiki-login")
 		check(err)
-		if session.IsNew {
+		// Helper to serve as anonymous user
+		serveAsAnonymous := func() {
 			anon := wiki.AnonymousUser()
 			ip, _, _ := net.SplitHostPort(req.RemoteAddr)
-
 			anon.ScreenName = "Anonymous"
 			anon.IPAddress = ip
-
 			ctx := context.WithValue(req.Context(), wiki.UserKey, anon)
 			handler.ServeHTTP(rw, req.WithContext(ctx))
-			// Add some sort of "access denied context to req"
+		}
+
+		if session.IsNew {
+			serveAsAnonymous()
 			return
 		}
-		screenname := session.Values["username"].(string)
+
+		// Safe type assertion to prevent panic on corrupted session
+		screenname, ok := session.Values["username"].(string)
+		if !ok || screenname == "" {
+			serveAsAnonymous()
+			return
+		}
+
 		user, err := a.GetUserByScreenName(screenname)
-		check(err)
+		if err != nil || user == nil {
+			// User not found in database, treat as anonymous
+			serveAsAnonymous()
+			return
+		}
+
 		ctx := context.WithValue(req.Context(), wiki.UserKey, user)
 		handler.ServeHTTP(rw, req.WithContext(ctx))
 	})

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"os"
@@ -199,7 +200,11 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
-	user := req.Context().Value(wiki.UserKey).(*wiki.User)
+	user, ok := req.Context().Value(wiki.UserKey).(*wiki.User)
+	if !ok || user == nil {
+		a.errorHandler(http.StatusInternalServerError, rw, req, fmt.Errorf("user context not set"))
+		return
+	}
 
 	found := article != nil
 
@@ -308,7 +313,12 @@ func (a *app) revisionPostHandler(rw http.ResponseWriter, req *http.Request) {
 	article.Markdown = req.PostFormValue("body")
 	article.Comment = req.PostFormValue("comment")
 
-	article.Creator = req.Context().Value(wiki.UserKey).(*wiki.User)
+	user, ok := req.Context().Value(wiki.UserKey).(*wiki.User)
+	if !ok || user == nil {
+		a.errorHandler(http.StatusInternalServerError, rw, req, fmt.Errorf("user context not set"))
+		return
+	}
+	article.Creator = user
 	previousID, err := strconv.Atoi(vars["revision"])
 	if err != nil {
 		a.errorHandler(http.StatusBadRequest, rw, req, err)
@@ -408,19 +418,19 @@ func (a *app) diffHandler(rw http.ResponseWriter, req *http.Request) {
 
 	var buff bytes.Buffer
 	for _, diff := range diffs {
-		// text := strings.Replace(html.EscapeString(diff.Text), "\n", "&para;<br>", -1)
+		text := html.EscapeString(diff.Text)
 		switch diff.Type {
 		case diffmatchpatch.DiffInsert:
 			_, _ = buff.WriteString("<ins style=\"background:#e6ffe6;\">")
-			_, _ = buff.WriteString(diff.Text)
+			_, _ = buff.WriteString(text)
 			_, _ = buff.WriteString("</ins>")
 		case diffmatchpatch.DiffDelete:
 			_, _ = buff.WriteString("<del style=\"background:#ffe6e6;\">")
-			_, _ = buff.WriteString(diff.Text)
+			_, _ = buff.WriteString(text)
 			_, _ = buff.WriteString("</del>")
 		case diffmatchpatch.DiffEqual:
 			_, _ = buff.WriteString("<span>")
-			_, _ = buff.WriteString(diff.Text)
+			_, _ = buff.WriteString(text)
 			_, _ = buff.WriteString("</span>")
 		}
 	}
