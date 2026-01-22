@@ -186,7 +186,9 @@ func (r *wikiLinkerHTMLRenderer) renderWikiLinker(w util.BufWriter, source []byt
 	node := n.(*ast.WikiLink)
 	if entering {
 		_, _ = w.WriteString(`<a href="`)
-		if r.Unsafe || !html.IsDangerousURL(node.Link.Destination) {
+		// SECURITY: Always check for dangerous URLs (javascript:, vbscript:, data:, etc.)
+		// regardless of the Unsafe setting. WikiLinks should never allow script execution.
+		if !html.IsDangerousURL(node.Link.Destination) {
 			_, _ = w.Write(util.EscapeHTML(util.URLEscape(node.Link.Destination, true)))
 		}
 		_ = w.WriteByte('"')
@@ -205,7 +207,8 @@ func (r *wikiLinkerHTMLRenderer) renderWikiLinker(w util.BufWriter, source []byt
 		}
 		_ = w.WriteByte('>')
 	} else {
-		_, _ = w.Write(node.Link.Title)
+		// SECURITY: HTML-escape the link text to prevent XSS
+		_, _ = w.Write(util.EscapeHTML(node.Link.Title))
 		_, _ = w.WriteString("</a>")
 	}
 	return gast.WalkContinue, nil
