@@ -3,6 +3,7 @@ vendor/
 tmp/
 static/images
 model/
+.serena/
 
 periwiki
 *.db
