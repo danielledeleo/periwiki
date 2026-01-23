@@ -1,45 +1,43 @@
 <img width="240" src="static/logo.svg">
 
+A self-hosted wiki for people who miss the old web.
 
-MediaWiki-inspired, [Goldmark](https://github.com/yuin/goldmark) powered wiki written in Go with an SQLite backend.
+MediaWiki-inspired, [Goldmark](https://github.com/yuin/goldmark)-powered wiki written in Go with SQLite. No JavaScript, cache-friendly server-rendered HTML, no fuss. Built for passion projects, small teams, and personal knowledge bases.
 
-## Why?
-Because I don't like managing PHP installations.
+## Features
 
-There are a ton of "Hello World" wikis written in Go out there<sup>1</sup>. The longterm goal is be a serious, lightweight, (maybe fast) alternative to MediaWiki for smaller, simple wikis.
+- **CommonMark extended with WikiLinks** — Standard Markdown plus `[[Wikilink]]` syntax to connect articles
+- **Full revision history** — Every edit is saved, with diffs between any two versions
+- **User accounts with optional anonymous editing** — Authentication if you need it, open contribution if you don't
 
-## What's with the name?
-periwiki<sup>2</sup> is a [portmanteau](https://en.wikipedia.org/wiki/Portmanteau) of periwinkle and wiki. I pronounce it /periwɪki/ and spell it **periwiki**.
+## Quick Start
 
-## It sort of looks like MediaWiki
+Requirements: just `go`
+
+```bash
+git clone https://github.com/danielledeleo/periwiki
+cd periwiki
+go build && ./periwiki
+```
+
+## [Documentation](docs/index.md)
+
+- [Installation and Configuration](docs/installation-and-configuration.md)
+- [Writing Articles](docs/writing-articles.md)
+- [Troubleshooting](docs/troubleshooting.md)
+
+## It looks like MediaWiki
+
 That is not an accident. It is what a wiki should look like.
 
-## What's the license?
-The [Mozilla Public License](LICENSE). Share what you do with it!
+## What's with the name?
 
-## Build/Run
-Requirements: `make`, `sqlite3`, and `go`.
+Periwiki<sup>1</sup> is a [portmanteau](https://en.wikipedia.org/wiki/Portmanteau) of periwinkle and wiki. I pronounce it /periwɪki/ and style it **periwiki**.
 
-```bash
-git clone github.com/danielledeleo/periwiki
+## License
 
-make
-make run
-```
+[Mozilla Public License](LICENSE). Share what you do with it!
 
-## Testing
+---
 
-```bash
-make test              # Run all tests
-make test-verbose      # Run tests with verbose output
-make test-coverage     # Show coverage percentages
-make test-coverage-html # Generate HTML coverage report
-make test-race         # Run tests with race detector
-```
-
-## Anything else?
-See [TODO](docs/TODO.md) for a little insight on what's on the road map.
-
-<sub>1: Mostly because of this wonderful intro to Go web apps, [Writing Web Applications](https://golang.org/doc/articles/wiki/).</sub>
-
-<sub>2: This project [used to be called iwikii](https://github.com/danielledeleo/periwiki/commit/1cab3f24ae07390975d06be4343b7b3deea11cad).</sub>
+<sub>1: This project [used to be called iwikii](https://github.com/danielledeleo/periwiki/commit/1cab3f24ae07390975d06be4343b7b3deea11cad).</sub>
