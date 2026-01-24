@@ -77,6 +77,7 @@ func main() {
 
 	router.Use(app.SessionMiddleware)
 
+	// Routes are documented in docs/urls.md — update it when adding or changing routes.
 	fs := http.FileServer(http.Dir("./static"))
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
 	router.HandleFunc("/", app.homeHandler).Methods("GET")
