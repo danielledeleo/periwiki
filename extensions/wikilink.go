@@ -2,6 +2,7 @@ package extensions
 
 import (
 	"bytes"
+	"text/template"
 
 	"github.com/danielledeleo/periwiki/extensions/ast"
 
@@ -21,6 +22,36 @@ var wikiLinkRegexp = regexp.MustCompile(`\[\[\s*((?P<truelink>.+?)\s*\|\s*(?P<re
 const (
 	optWikiLinkerResolver parser.OptionName = "WikiLinkResolver"
 )
+
+// WikiLinkData holds data passed to the wikilink template.
+type WikiLinkData struct {
+	Destination  string // URL-escaped destination
+	Title        string // display text (HTML-escaped)
+	OriginalDest string // original destination before resolution
+	Classes      string // space-separated CSS classes
+	IsDeadlink   bool   // true if link points to non-existent page
+}
+
+// WikiLinkTemplates holds templates for wikilink rendering.
+type WikiLinkTemplates struct {
+	Link *template.Template
+}
+
+// WikiLinkRendererConfig holds configuration for wikilink rendering.
+type WikiLinkRendererConfig struct {
+	Templates WikiLinkTemplates
+}
+
+// WikiLinkRendererOption configures the wikilink renderer.
+type WikiLinkRendererOption func(*WikiLinkRendererConfig)
+
+// WithWikiLinkTemplates sets templates from a map.
+// Required keys: "link"
+func WithWikiLinkTemplates(templates map[string]*template.Template) WikiLinkRendererOption {
+	return func(c *WikiLinkRendererConfig) {
+		c.Templates.Link = templates["link"]
+	}
+}
 
 // ExistenceChecker is a function that checks if a page exists at the given URL.
 // It is used by resolvers to determine if a WikiLink points to an existing page.
@@ -146,15 +177,17 @@ func (p *wikiLinkerParser) Parse(parent gast.Node, block text.Reader, pc parser.
 }
 
 type wikiLinker struct {
-	options []WikiLinkerOption
+	parserOptions   []WikiLinkerOption
+	rendererOptions []WikiLinkRendererOption
 }
 
-// WikiLinker is an extension that allow you to parse text that seems like a URL.
-var WikiLinker = &wikiLinker{}
-
-func NewWikiLinker(opts ...WikiLinkerOption) goldmark.Extender {
+// NewWikiLinker creates a new wikilinker extension.
+// Parser options (WithCustomResolver, WithExistenceAwareResolver, etc.) configure link resolution.
+// Renderer options (WithWikiLinkTemplates) configure HTML output.
+func NewWikiLinker(parserOpts []WikiLinkerOption, rendererOpts []WikiLinkRendererOption) goldmark.Extender {
 	return &wikiLinker{
-		options: opts,
+		parserOptions:   parserOpts,
+		rendererOptions: rendererOpts,
 	}
 }
 
@@ -162,16 +195,18 @@ func NewWikiLinker(opts ...WikiLinkerOption) goldmark.Extender {
 // renders WikiLinker nodes.
 type wikiLinkerHTMLRenderer struct {
 	html.Config
+	WikiLinkRendererConfig
+	buf bytes.Buffer
 }
 
 // NewWikiLinkerHTMLRenderer returns a new WikiLinkerHTMLRenderer.
-func NewWikiLinkerHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
+func NewWikiLinkerHTMLRenderer(opts ...WikiLinkRendererOption) renderer.NodeRenderer {
 	r := &wikiLinkerHTMLRenderer{
 		Config: html.NewConfig(),
 	}
 
 	for _, opt := range opts {
-		opt.SetHTMLOption(&r.Config)
+		opt(&r.WikiLinkRendererConfig)
 	}
 
 	return r
@@ -186,46 +221,52 @@ func (r *wikiLinkerHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegi
 var WikiLinkAttributeFilter = html.GlobalAttributeFilter
 
 func (r *wikiLinkerHTMLRenderer) renderWikiLinker(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
-	// adapted from Link renderer
-	node := n.(*ast.WikiLink)
-	if entering {
-		_, _ = w.WriteString(`<a href="`)
-		// SECURITY: Always check for dangerous URLs (javascript:, vbscript:, data:, etc.)
-		// regardless of the Unsafe setting. WikiLinks should never allow script execution.
-		if !html.IsDangerousURL(node.Link.Destination) {
-			_, _ = w.Write(util.EscapeHTML(util.URLEscape(node.Link.Destination, true)))
-		}
-		_ = w.WriteByte('"')
-
-		if node.Link.Title != nil {
-			node.SetAttributeString("title", node.OriginalDest)
-		}
-
-		if node.Classes != nil {
-			classes := bytes.Join(node.Classes, []byte{' '})
-			node.SetAttributeString("class", classes)
-		}
-
-		if n.Attributes() != nil {
-			html.RenderAttributes(w, node, WikiLinkAttributeFilter)
-		}
-		_ = w.WriteByte('>')
-	} else {
-		// SECURITY: HTML-escape the link text to prevent XSS
-		_, _ = w.Write(util.EscapeHTML(node.Link.Title))
-		_, _ = w.WriteString("</a>")
+	if !entering {
+		return gast.WalkContinue, nil
 	}
+
+	node := n.(*ast.WikiLink)
+
+	// SECURITY: Always check for dangerous URLs (javascript:, vbscript:, data:, etc.)
+	// regardless of the Unsafe setting. WikiLinks should never allow script execution.
+	var destination string
+	if !html.IsDangerousURL(node.Link.Destination) {
+		destination = string(util.URLEscape(node.Link.Destination, true))
+	}
+
+	// Build classes string and check for deadlink
+	var classes string
+	var isDeadlink bool
+	if node.Classes != nil {
+		classes = string(bytes.Join(node.Classes, []byte{' '}))
+		isDeadlink = bytes.Contains(bytes.Join(node.Classes, []byte{' '}), []byte("pw-deadlink"))
+	}
+
+	data := WikiLinkData{
+		Destination:  destination,
+		Title:        string(util.EscapeHTML(node.Link.Title)),
+		OriginalDest: string(util.EscapeHTML(node.OriginalDest)),
+		Classes:      classes,
+		IsDeadlink:   isDeadlink,
+	}
+
+	r.buf.Reset()
+	if err := r.Templates.Link.Execute(&r.buf, data); err != nil {
+		return gast.WalkStop, err
+	}
+	_, _ = w.Write(r.buf.Bytes())
+
 	return gast.WalkContinue, nil
 }
 
 func (e *wikiLinker) Extend(m goldmark.Markdown) {
 	m.Parser().AddOptions(
 		parser.WithInlineParsers(
-			util.Prioritized(NewWikiLinkerParser(e.options...), 100),
+			util.Prioritized(NewWikiLinkerParser(e.parserOptions...), 100),
 		),
 	)
 
 	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(NewWikiLinkerHTMLRenderer(), 500),
+		util.Prioritized(NewWikiLinkerHTMLRenderer(e.rendererOptions...), 500),
 	))
 }

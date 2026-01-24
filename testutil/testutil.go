@@ -167,6 +167,15 @@ func SetupTestApp(t *testing.T) (*TestApp, func()) {
 		t.Fatalf("failed to load footnote templates: %v", err)
 	}
 
+	// Load wikilink templates
+	wikiLinkTemplates, err := tmpl.LoadExtensionTemplates(templatesPath, "wikilink", []string{
+		"link",
+	})
+	if err != nil {
+		dbCleanup()
+		t.Fatalf("failed to load wikilink templates: %v", err)
+	}
+
 	// Create existence checker for wiki links
 	existenceChecker := func(url string) bool {
 		const prefix = "/wiki/"
@@ -177,10 +186,11 @@ func SetupTestApp(t *testing.T) (*TestApp, func()) {
 		return article != nil
 	}
 
-	// Create renderer with footnote templates
+	// Create renderer with extension templates
 	renderer := render.NewHTMLRenderer(
 		existenceChecker,
-		extensions.WithFootnoteTemplates(footnoteTemplates),
+		[]extensions.WikiLinkRendererOption{extensions.WithWikiLinkTemplates(wikiLinkTemplates)},
+		[]extensions.FootnoteOption{extensions.WithFootnoteTemplates(footnoteTemplates)},
 	)
 
 	model := wiki.New(db, config, bm, renderer)

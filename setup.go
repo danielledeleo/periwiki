@@ -40,6 +40,14 @@ func Setup() *app {
 		os.Exit(1)
 	}
 
+	wikiLinkTemplates, err := t.LoadExtensionTemplates("templates", "wikilink", []string{
+		"link",
+	})
+	if err != nil {
+		slog.Error("failed to load wikilink templates", "error", err)
+		os.Exit(1)
+	}
+
 	database, err := db.Init(modelConf)
 	check(err)
 
@@ -53,10 +61,11 @@ func Setup() *app {
 		return article != nil
 	}
 
-	// Create renderer with footnote templates
+	// Create renderer with extension templates
 	renderer := render.NewHTMLRenderer(
 		existenceChecker,
-		extensions.WithFootnoteTemplates(footnoteTemplates),
+		[]extensions.WikiLinkRendererOption{extensions.WithWikiLinkTemplates(wikiLinkTemplates)},
+		[]extensions.FootnoteOption{extensions.WithFootnoteTemplates(footnoteTemplates)},
 	)
 
 	model := wiki.New(database, modelConf, bm, renderer)

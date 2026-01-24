@@ -22,13 +22,17 @@ type HTMLRenderer struct {
 
 // NewHTMLRenderer creates a new HTMLRenderer. If existenceChecker is provided,
 // WikiLinks to non-existent pages will be styled with the pw-deadlink class.
-// Footnote options can be passed to customize footnote rendering.
-func NewHTMLRenderer(existenceChecker extensions.ExistenceChecker, footnoteOpts ...extensions.FootnoteOption) *HTMLRenderer {
-	var wikiLinkerOpt extensions.WikiLinkerOption
+// WikiLink and footnote options can be passed to customize rendering.
+func NewHTMLRenderer(
+	existenceChecker extensions.ExistenceChecker,
+	wikiLinkRendererOpts []extensions.WikiLinkRendererOption,
+	footnoteOpts []extensions.FootnoteOption,
+) *HTMLRenderer {
+	var wikiLinkerParserOpts []extensions.WikiLinkerOption
 	if existenceChecker != nil {
-		wikiLinkerOpt = extensions.WithExistenceAwareResolver(existenceChecker)
+		wikiLinkerParserOpts = []extensions.WikiLinkerOption{extensions.WithExistenceAwareResolver(existenceChecker)}
 	} else {
-		wikiLinkerOpt = extensions.WithUnderscoreResolver()
+		wikiLinkerParserOpts = []extensions.WikiLinkerOption{extensions.WithUnderscoreResolver()}
 	}
 
 	r := &HTMLRenderer{
@@ -37,7 +41,7 @@ func NewHTMLRenderer(existenceChecker extensions.ExistenceChecker, footnoteOpts 
 				parser.WithAutoHeadingID(),
 			),
 			goldmark.WithExtensions(
-				extensions.NewWikiLinker(wikiLinkerOpt),
+				extensions.NewWikiLinker(wikiLinkerParserOpts, wikiLinkRendererOpts),
 				extensions.NewFootnote(footnoteOpts...),
 			),
 		),

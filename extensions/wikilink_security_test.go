@@ -4,11 +4,21 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/text"
 )
+
+// testSecurityWikiLinkTemplates creates simple templates for security testing.
+func testSecurityWikiLinkTemplates() map[string]*template.Template {
+	return map[string]*template.Template{
+		"link": template.Must(template.New("link").Parse(
+			`<a href="{{.Destination}}"{{if .OriginalDest}} title="{{.OriginalDest}}"{{end}}{{if .Classes}} class="{{.Classes}}"{{end}}>{{.Title}}</a>`,
+		)),
+	}
+}
 
 // TestWikiLinkXSSPrevention verifies that WikiLink properly escapes
 // potentially malicious content to prevent XSS attacks.
@@ -60,7 +70,7 @@ func TestWikiLinkXSSPrevention(t *testing.T) {
 			html.WithUnsafe(), // Even with unsafe, XSS should be prevented
 		),
 		goldmark.WithExtensions(
-			WikiLinker,
+			NewWikiLinker(nil, []WikiLinkRendererOption{WithWikiLinkTemplates(testSecurityWikiLinkTemplates())}),
 		),
 	)
 
@@ -116,7 +126,7 @@ func TestWikiLinkProperEscaping(t *testing.T) {
 			html.WithUnsafe(),
 		),
 		goldmark.WithExtensions(
-			WikiLinker,
+			NewWikiLinker(nil, []WikiLinkRendererOption{WithWikiLinkTemplates(testSecurityWikiLinkTemplates())}),
 		),
 	)
 

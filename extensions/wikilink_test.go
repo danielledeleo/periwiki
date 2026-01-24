@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
@@ -22,6 +23,15 @@ func testmain() {
 func dump(node ast.Node, source []byte) {
 	if shouldDump {
 		node.Dump(source, 0)
+	}
+}
+
+// testWikiLinkTemplates creates simple templates for testing.
+func testWikiLinkTemplates() map[string]*template.Template {
+	return map[string]*template.Template{
+		"link": template.Must(template.New("link").Parse(
+			`<a href="{{.Destination}}"{{if .OriginalDest}} title="{{.OriginalDest}}"{{end}}{{if .Classes}} class="{{.Classes}}"{{end}}>{{.Title}}</a>`,
+		)),
 	}
 }
 
@@ -52,7 +62,7 @@ func TestWikiLink(t *testing.T) {
 			html.WithUnsafe(),
 		),
 		goldmark.WithExtensions(
-			WikiLinker,
+			NewWikiLinker(nil, []WikiLinkRendererOption{WithWikiLinkTemplates(testWikiLinkTemplates())}),
 		),
 	)
 
@@ -95,7 +105,8 @@ func TestWikiLinkDefaultUnderscoreResolver(t *testing.T) {
 		),
 		goldmark.WithExtensions(
 			NewWikiLinker(
-				WithUnderscoreResolver(),
+				[]WikiLinkerOption{WithUnderscoreResolver()},
+				[]WikiLinkRendererOption{WithWikiLinkTemplates(testWikiLinkTemplates())},
 			),
 		),
 	)
@@ -159,7 +170,8 @@ func TestWikiLinkCustomResolver(t *testing.T) {
 		),
 		goldmark.WithExtensions(
 			NewWikiLinker(
-				WithCustomResolver(resolver),
+				[]WikiLinkerOption{WithCustomResolver(resolver)},
+				[]WikiLinkRendererOption{WithWikiLinkTemplates(testWikiLinkTemplates())},
 			),
 		),
 	)
@@ -209,7 +221,8 @@ func TestWikiLinkExistenceAwareResolver(t *testing.T) {
 		),
 		goldmark.WithExtensions(
 			NewWikiLinker(
-				WithExistenceAwareResolver(checker),
+				[]WikiLinkerOption{WithExistenceAwareResolver(checker)},
+				[]WikiLinkRendererOption{WithWikiLinkTemplates(testWikiLinkTemplates())},
 			),
 		),
 	)
@@ -252,7 +265,8 @@ func TestWikiLinkExistenceAwareResolver_NilChecker(t *testing.T) {
 		),
 		goldmark.WithExtensions(
 			NewWikiLinker(
-				WithExistenceAwareResolver(nil),
+				[]WikiLinkerOption{WithExistenceAwareResolver(nil)},
+				[]WikiLinkRendererOption{WithWikiLinkTemplates(testWikiLinkTemplates())},
 			),
 		),
 	)

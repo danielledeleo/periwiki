@@ -18,9 +18,9 @@ Soon(ish)
 - Widgets
   - Images (thumbnails and large view)
   - Side cards
+- Backup/data export mechanism
 - 404 page with "Did you mean /wiki/notfound?" link
-- two column References section layout like wikipedia
-- Port wikilink rendering to use templates (like footnotes)
+- Two column References section layout like wikipedia
 - Add extension for custom superscripts/subscripts, [citation needed]-style, not bound to a footnote
 - Rich customizable home page (featured articles, other custom widgets)
 - When editing a page that does not yet exist, replace underscores with spaces in title
