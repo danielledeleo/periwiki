@@ -178,8 +178,7 @@ article h2 {
 }
 
 article section.footnotes {
-    margin: 2em 0 0 0;
-    font-size: 0.95em;
+    margin: 1em 0 0 0;
 }
 
 article section.footnotes p {
@@ -193,12 +192,15 @@ article section.footnotes hr {
 }
 
 article section.footnotes ol {
-    padding-left: auto !important;
     margin-bottom: 0;
 }
 
-article div.pw-article-content {
-    font-size: 0.875em;
+article section.footnotes .footnote-backlink {
+    font-weight: bold;
+}
+
+article section.footnotes .footnote-letter {
+    font-style: italic;
 }
 
 article div.pw-article-content > table {
@@ -338,14 +340,6 @@ article ul li {
 
 article .pw-diff {
     line-height: 1em;
-}
-
-article .footnote-ref sup::before {
-    content: "[";
-}
-
-article .footnote-ref sup::after {
-    content: "]";
 }
 
 article.pw-preview {

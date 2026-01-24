@@ -6,9 +6,9 @@ gosources := $(wildcard *.go) $(wildcard **/*.go) go.sum go.mod
 	mkdir -p .bin
 
 .bin/sqlboiler: .bin
-	GOBIN=$(shell pwd)/.bin go install github.com/volatiletech/sqlboiler/v4@latest
+	GOBIN=$(shell pwd)/.bin go install github.com/aarondl/sqlboiler/v4@latest
 .bin/sqlboiler-sqlite3: .bin
-	GOBIN=$(shell pwd)/.bin go install github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-sqlite3@latest
+	GOBIN=$(shell pwd)/.bin go install github.com/aarondl/sqlboiler/v4/drivers/sqlboiler-sqlite3@latest
 
 db/skeleton.db: db/schema.sql
 	rm -f db/skeleton.db

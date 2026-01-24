@@ -19,12 +19,14 @@ Soon(ish)
   - Images (thumbnails and large view)
   - Side cards
 - 404 page with "Did you mean /wiki/notfound?" link
-- Custom footnote rendering
-  - add square brackets to superscripts
-  - two column References section layout like wikipedia
+- two column References section layout like wikipedia
 - Port wikilink rendering to use templates (like footnotes)
+- Add extension for custom superscripts/subscripts, [citation needed]-style, not bound to a footnote
 - Rich customizable home page (featured articles, other custom widgets)
 - When editing a page that does not yet exist, replace underscores with spaces in title
+- File:image.jpg static file handing (and design overall media strategy...)
+  - Asset metadata is tracked by the wiki system, but blobs are not stored in the database
+  - References are kept to an externally managed media system (local filesystem, S3, static files on an nginx server, etc.)
 
 Configuration and Runtime
 - Store cookie secret in database instead of .cookiesecret.yaml

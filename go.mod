@@ -26,11 +26,16 @@ require (
 )
 
 require (
+	github.com/aarondl/inflect v0.0.2 // indirect
+	github.com/aarondl/null/v8 v8.1.3 // indirect
+	github.com/aarondl/randomize v0.0.2 // indirect
+	github.com/aarondl/sqlboiler/v4 v4.19.7 // indirect
+	github.com/aarondl/strmangle v0.0.9 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/gofrs/uuid v3.2.0+incompatible // indirect
+	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect

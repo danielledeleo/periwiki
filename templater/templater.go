@@ -56,6 +56,32 @@ func New() *Templater {
 	return &Templater{}
 }
 
+// ExtensionTemplates holds parsed templates for an extension.
+type ExtensionTemplates map[string]*template.Template
+
+// LoadExtensionTemplates loads templates for a named extension from <templatesDir>/extensions/<name>/.
+// The templatesDir parameter should be the base templates directory (e.g., "templates" or an absolute path).
+// Returns error if any required template file is missing.
+func (t *Templater) LoadExtensionTemplates(templatesDir, name string, required []string) (ExtensionTemplates, error) {
+	templates := make(ExtensionTemplates)
+	dir := filepath.Join(templatesDir, "extensions", name)
+
+	for _, tmplName := range required {
+		path := filepath.Join(dir, tmplName+".html")
+		tmpl, err := template.New(tmplName).Funcs(t.funcs).ParseFiles(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load extension template %s/%s: %w", name, tmplName, err)
+		}
+		// ParseFiles names the template after the file basename, so we need to look it up
+		templates[tmplName] = tmpl.Lookup(tmplName + ".html")
+		if templates[tmplName] == nil {
+			return nil, fmt.Errorf("template %s/%s.html not found after parsing", name, tmplName)
+		}
+	}
+
+	return templates, nil
+}
+
 // Load loads or reloads template files from the filesystem. Here, baseGlob
 // refers to base templates (usually a wrapper containing headers and such)
 // and mainGlob refers to to the templates that are used to fill the base
@@ -78,6 +104,7 @@ func (t *Templater) Load(baseGlob, mainGlob string) error {
 		"title":       titler.String,
 		"capitalize":  capitalize, // TODO: maybe replace this with something more robust?
 		"pathEscape":  url.PathEscape,
+		"letter":      indexToLetter,
 		"queryEscape": url.QueryEscape,
 		"statusText":  http.StatusText,
 	}
@@ -116,4 +143,10 @@ func capitalize(s string) string {
 	}
 	r, size := utf8.DecodeRuneInString(s)
 	return string(unicode.ToTitle(r)) + s[size:]
+}
+
+// indexToLetter converts a 0-based index to a lowercase letter (0=a, 1=b, ..., 25=z).
+// For indices >= 26, it wraps (26=a, 27=b, etc.).
+func indexToLetter(i int) string {
+	return string(rune('a' + i%26))
 }

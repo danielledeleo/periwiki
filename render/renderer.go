@@ -22,7 +22,8 @@ type HTMLRenderer struct {
 
 // NewHTMLRenderer creates a new HTMLRenderer. If existenceChecker is provided,
 // WikiLinks to non-existent pages will be styled with the pw-deadlink class.
-func NewHTMLRenderer(existenceChecker extensions.ExistenceChecker) *HTMLRenderer {
+// Footnote options can be passed to customize footnote rendering.
+func NewHTMLRenderer(existenceChecker extensions.ExistenceChecker, footnoteOpts ...extensions.FootnoteOption) *HTMLRenderer {
 	var wikiLinkerOpt extensions.WikiLinkerOption
 	if existenceChecker != nil {
 		wikiLinkerOpt = extensions.WithExistenceAwareResolver(existenceChecker)
@@ -37,6 +38,7 @@ func NewHTMLRenderer(existenceChecker extensions.ExistenceChecker) *HTMLRenderer
 			),
 			goldmark.WithExtensions(
 				extensions.NewWikiLinker(wikiLinkerOpt),
+				extensions.NewFootnote(footnoteOpts...),
 			),
 		),
 	}

@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/danielledeleo/periwiki/extensions"
+	"github.com/danielledeleo/periwiki/render"
 	"github.com/danielledeleo/periwiki/special"
 	"github.com/danielledeleo/periwiki/templater"
 	"github.com/danielledeleo/periwiki/wiki"
@@ -139,16 +141,10 @@ func SetupTestApp(t *testing.T) (*TestApp, func()) {
 
 	// Create sanitizer matching production config
 	bm := bluemonday.UGCPolicy()
-	bm.AllowAttrs("class").Matching(regexp.MustCompile("^sourceCode(| [a-zA-Z0-9]+)(| lineNumbers)$")).
-		OnElements("pre", "code")
-	bm.AllowAttrs("class").Matching(regexp.MustCompile(`^infobox$`)).OnElements("div")
-	bm.AllowAttrs("data-line-number", "class").Matching(regexp.MustCompile("^[0-9]+$")).OnElements("a")
+	bm.AllowAttrs("class").Globally()
+	bm.AllowAttrs("data-line-number").Matching(regexp.MustCompile("^[0-9]+$")).OnElements("a")
 	bm.AllowAttrs("style").OnElements("ins", "del")
-	bm.AllowAttrs("class").Matching(regexp.MustCompile(`^footnote-ref$`)).OnElements("a")
-	bm.AllowAttrs("class").Matching(regexp.MustCompile(`^footnotes$`)).OnElements("section")
 	bm.AllowAttrs("style").Matching(regexp.MustCompile(`^text-align:\s+(left|right|center);$`)).OnElements("td", "th")
-
-	model := wiki.New(db, config, bm)
 
 	// Create templater and load templates
 	tmpl := templater.New()
@@ -161,6 +157,33 @@ func SetupTestApp(t *testing.T) (*TestApp, func()) {
 		dbCleanup()
 		t.Fatalf("failed to load templates: %v", err)
 	}
+
+	// Load footnote templates
+	footnoteTemplates, err := tmpl.LoadExtensionTemplates(templatesPath, "footnote", []string{
+		"link", "backlink", "list", "item",
+	})
+	if err != nil {
+		dbCleanup()
+		t.Fatalf("failed to load footnote templates: %v", err)
+	}
+
+	// Create existence checker for wiki links
+	existenceChecker := func(url string) bool {
+		const prefix = "/wiki/"
+		if len(url) > len(prefix) {
+			url = url[len(prefix):]
+		}
+		article, _ := db.SelectArticle(url)
+		return article != nil
+	}
+
+	// Create renderer with footnote templates
+	renderer := render.NewHTMLRenderer(
+		existenceChecker,
+		extensions.WithFootnoteTemplates(footnoteTemplates),
+	)
+
+	model := wiki.New(db, config, bm, renderer)
 
 	specialPages := special.NewRegistry()
 	specialPages.Register("Random", special.NewRandomPage(model))

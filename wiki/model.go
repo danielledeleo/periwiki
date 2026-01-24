@@ -121,23 +121,12 @@ func (u *User) SetPasswordHash() error {
 	return nil
 }
 
-func New(db db, conf *Config, s *bluemonday.Policy) *WikiModel {
-	// Create an existence checker that queries the database
-	existenceChecker := func(url string) bool {
-		// Strip the /wiki/ prefix to get the article URL
-		const prefix = "/wiki/"
-		if len(url) > len(prefix) {
-			url = url[len(prefix):]
-		}
-		article, _ := db.SelectArticle(url)
-		return article != nil
-	}
-
+func New(db db, conf *Config, s *bluemonday.Policy, renderer *render.HTMLRenderer) *WikiModel {
 	return &WikiModel{
 		db:        db,
 		Config:    conf,
 		sanitizer: s,
-		renderer:  render.NewHTMLRenderer(existenceChecker),
+		renderer:  renderer,
 	}
 }
 
