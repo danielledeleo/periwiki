@@ -6,7 +6,7 @@ Soon(ish)
 - Sitemap (XML and HTML, Special:Sitemap and Special:Sitemap.xml, available at /sitemap.xml as well)
 - Include better sample pages
 - Links on history pages to diff of live page
-- Refactor codebase (get .go files out of root, general organization)
+- Move .go files out of root directory
 - Tagging system (YAML frontmatter exposed through editor as interface?)
 - Auto populate new databases with an Admin user with id 1 as the owner of all the default pages
 - Create Markdown templates for default pages (user profiles, admin pages, etc.)
