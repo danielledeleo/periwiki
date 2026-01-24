@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"unicode"
 	"unicode/utf8"
@@ -139,7 +141,54 @@ func (t *Templater) RenderTemplate(w io.Writer, name string, base string, data m
 		data["User"] = data["Context"].(context.Context).Value(wiki.UserKey).(*wiki.User)
 	}
 
+	// Ensure Article.Title is set for page title
+	t.ensureTitle(data, name)
+
 	return tmpl.ExecuteTemplate(w, base, data)
+}
+
+// ensureTitle checks if data["Article"] has a Title set. If not, it derives
+// a title from the template name and logs a debug message.
+func (t *Templater) ensureTitle(data map[string]interface{}, templateName string) {
+	// Check if Article exists and has a Title
+	if article, ok := data["Article"]; ok {
+		switch a := article.(type) {
+		case map[string]string:
+			if a["Title"] != "" {
+				return
+			}
+		case map[string]interface{}:
+			if title, ok := a["Title"].(string); ok && title != "" {
+				return
+			}
+		case *wiki.Article:
+			if a != nil && a.Revision != nil && a.Title != "" {
+				return
+			}
+		default:
+			// Unknown type, check via reflection-like approach
+			return
+		}
+	}
+
+	// Derive title from template name: "sitemap.html" -> "Sitemap"
+	title := strings.TrimSuffix(templateName, ".html")
+	title = strings.ReplaceAll(title, "_", " ")
+	title = strings.ReplaceAll(title, "-", " ")
+	if len(title) > 0 {
+		title = strings.ToUpper(title[:1]) + title[1:]
+	}
+
+	slog.Debug("page rendered without explicit title", "template", templateName, "derived_title", title)
+
+	// Set the derived title
+	if data["Article"] == nil {
+		data["Article"] = map[string]string{"Title": title}
+	} else if a, ok := data["Article"].(map[string]string); ok {
+		a["Title"] = title
+	} else if a, ok := data["Article"].(map[string]interface{}); ok {
+		a["Title"] = title
+	}
 }
 
 func capitalize(s string) string {
