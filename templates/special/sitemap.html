@@ -1,0 +1,18 @@
+{{define "content"}}
+<div id="article-area">
+    <article>
+        <h1>Sitemap</h1>
+        <div class="pw-article-content">
+            {{if .Articles}}
+            <ul>
+                {{range .Articles}}
+                <li><a href="/wiki/{{.URL}}">{{.Title}}</a></li>
+                {{end}}
+            </ul>
+            {{else}}
+            <p>No articles found.</p>
+            {{end}}
+        </div>
+    </article>
+</div>
+{{end}}

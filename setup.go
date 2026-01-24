@@ -26,7 +26,7 @@ func Setup() *app {
 
 	t := templater.New()
 
-	if err := t.Load("templates/layouts/*.html", "templates/*.html"); err != nil {
+	if err := t.Load("templates/layouts/*.html", "templates/*.html", "templates/special/*.html"); err != nil {
 		slog.Error("failed to load templates", "error", err)
 		os.Exit(1)
 	}
@@ -85,6 +85,10 @@ func Setup() *app {
 
 	specialPages := special.NewRegistry()
 	specialPages.Register("Random", special.NewRandomPage(articleService))
+
+	sitemapHandler := special.NewSitemapPage(articleService, t, modelConf.BaseURL)
+	specialPages.Register("Sitemap", sitemapHandler)
+	specialPages.Register("Sitemap.xml", sitemapHandler)
 
 	return &app{
 		Templater:    t,

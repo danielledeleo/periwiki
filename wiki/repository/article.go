@@ -24,4 +24,7 @@ type ArticleRepository interface {
 
 	// SelectRandomArticleURL returns a random article URL.
 	SelectRandomArticleURL() (string, error)
+
+	// SelectAllArticles retrieves all articles with their last modified time.
+	SelectAllArticles() ([]*wiki.ArticleSummary, error)
 }

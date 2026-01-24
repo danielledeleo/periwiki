@@ -279,6 +279,88 @@ func TestSelectRandomArticleURL(t *testing.T) {
 	}
 }
 
+func TestSelectAllArticles(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	// Test empty database
+	articles, err := db.SelectAllArticles()
+	if err != nil {
+		t.Fatalf("SelectAllArticles failed on empty database: %v", err)
+	}
+	if len(articles) != 0 {
+		t.Errorf("expected 0 articles for empty database, got %d", len(articles))
+	}
+
+	userID := createTestUser(t, db, "testuser", "test@example.com", "hashedpassword")
+
+	// Add some articles
+	articlesToAdd := []struct {
+		url   string
+		title string
+	}{
+		{"zebra", "Zebra Article"},
+		{"apple", "Apple Article"},
+		{"banana", "Banana Article"},
+	}
+
+	for _, a := range articlesToAdd {
+		article := &wiki.Article{
+			URL: a.url,
+			Revision: &wiki.Revision{
+				Title:      a.title,
+				Markdown:   "Content for " + a.title,
+				HTML:       "<p>Content for " + a.title + "</p>",
+				Hash:       "hash-" + a.url,
+				Creator:    &wiki.User{ID: int(userID)},
+				PreviousID: 0,
+			},
+		}
+		err := db.InsertArticle(article)
+		if err != nil {
+			t.Fatalf("InsertArticle failed: %v", err)
+		}
+		time.Sleep(10 * time.Millisecond) // Ensure unique timestamps
+	}
+
+	// Get all articles
+	articles, err = db.SelectAllArticles()
+	if err != nil {
+		t.Fatalf("SelectAllArticles failed: %v", err)
+	}
+
+	if len(articles) != 3 {
+		t.Fatalf("expected 3 articles, got %d", len(articles))
+	}
+
+	// Verify ordering (by title ASC)
+	if articles[0].Title != "Apple Article" {
+		t.Errorf("expected first article 'Apple Article', got %q", articles[0].Title)
+	}
+	if articles[1].Title != "Banana Article" {
+		t.Errorf("expected second article 'Banana Article', got %q", articles[1].Title)
+	}
+	if articles[2].Title != "Zebra Article" {
+		t.Errorf("expected third article 'Zebra Article', got %q", articles[2].Title)
+	}
+
+	// Verify URLs match
+	if articles[0].URL != "apple" {
+		t.Errorf("expected URL 'apple', got %q", articles[0].URL)
+	}
+
+	// Verify LastModified is set and recent
+	for _, a := range articles {
+		if a.LastModified.IsZero() {
+			t.Errorf("expected non-zero LastModified for article %q", a.URL)
+		}
+		// Should be within the last minute
+		if time.Since(a.LastModified) > time.Minute {
+			t.Errorf("LastModified too old for article %q: %v", a.URL, a.LastModified)
+		}
+	}
+}
+
 func TestSelectRevisionHistory(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()

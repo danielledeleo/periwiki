@@ -340,6 +340,38 @@ func (tdb *TestDB) SelectRandomArticleURL() (string, error) {
 	return url, err
 }
 
+func (tdb *TestDB) SelectAllArticles() ([]*wiki.ArticleSummary, error) {
+	rows, err := tdb.conn.Queryx(`
+		SELECT a.url, r.title, MAX(r.created) as last_modified
+		FROM Article a
+		JOIN Revision r ON a.id = r.article_id
+		GROUP BY a.id
+		ORDER BY r.title ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var articles []*wiki.ArticleSummary
+	for rows.Next() {
+		var url, title, lastModStr string
+		if err := rows.Scan(&url, &title, &lastModStr); err != nil {
+			return nil, err
+		}
+		lastMod, err := time.Parse("2006-01-02 15:04:05.000", lastModStr)
+		if err != nil {
+			return nil, err
+		}
+		articles = append(articles, &wiki.ArticleSummary{
+			URL:          url,
+			Title:        title,
+			LastModified: lastMod,
+		})
+	}
+	return articles, rows.Err()
+}
+
 func (tdb *TestDB) SelectUserByScreenname(screenname string, withHash bool) (*wiki.User, error) {
 	user := &wiki.User{}
 	var err error

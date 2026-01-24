@@ -7,4 +7,5 @@ type Config struct {
 	DatabaseFile          string `yaml:"dbfile"`
 	MinimumPasswordLength int    `yaml:"minimum_password_length"`
 	Host                  string `yaml:"host"`
+	BaseURL               string `yaml:"base_url"`
 }

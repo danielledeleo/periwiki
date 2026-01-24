@@ -29,6 +29,9 @@ type ArticleService interface {
 
 	// GetRandomArticleURL returns a random article URL.
 	GetRandomArticleURL() (string, error)
+
+	// GetAllArticles retrieves all articles with their last modified time.
+	GetAllArticles() ([]*wiki.ArticleSummary, error)
 }
 
 // articleService is the default implementation of ArticleService.
@@ -118,4 +121,9 @@ func (s *articleService) GetRandomArticleURL() (string, error) {
 		return "", wiki.ErrNoArticles
 	}
 	return url, err
+}
+
+// GetAllArticles retrieves all articles with their last modified time.
+func (s *articleService) GetAllArticles() ([]*wiki.ArticleSummary, error) {
+	return s.repo.SelectAllArticles()
 }

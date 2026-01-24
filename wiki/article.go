@@ -1,6 +1,9 @@
 package wiki
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type Article struct {
 	URL string
@@ -17,4 +20,11 @@ func NewArticle(url, title, markdownBody string) *Article {
 
 func (article *Article) String() string {
 	return fmt.Sprintf("%s %v", article.URL, *article.Revision)
+}
+
+// ArticleSummary represents minimal article info for sitemaps.
+type ArticleSummary struct {
+	URL          string    `db:"url"`
+	Title        string    `db:"title"`
+	LastModified time.Time `db:"last_modified"`
 }

@@ -86,11 +86,16 @@ func (t *Templater) LoadExtensionTemplates(templatesDir, name string, required [
 // refers to base templates (usually a wrapper containing headers and such)
 // and mainGlob refers to to the templates that are used to fill the base
 // templates. Globs are of the standard Go format, i.e. templates/*.html
-func (t *Templater) Load(baseGlob, mainGlob string) error {
+func (t *Templater) Load(baseGlob string, mainGlobs ...string) error {
 	t.templates = make(map[string]*template.Template)
-	layouts, err := filepath.Glob(mainGlob)
-	if err != nil {
-		return err
+
+	var layouts []string
+	for _, mainGlob := range mainGlobs {
+		matches, err := filepath.Glob(mainGlob)
+		if err != nil {
+			return err
+		}
+		layouts = append(layouts, matches...)
 	}
 
 	base, err := filepath.Glob(baseGlob)
