@@ -18,8 +18,6 @@ Article URLs use underscores for spaces (`Main_Page`). URLs are case-sensitive.
 |-----|-------------|
 | `/wiki/Special:Random` | Redirect to random article |
 
-See [Extending](extending.md) for adding custom special pages.
-
 ## Authentication
 
 | URL | Method | Description |

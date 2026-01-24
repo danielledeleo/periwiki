@@ -25,4 +25,3 @@ Built for small teams, passion projects, and personal knowledge bases.
 
 **Developing Periwiki**
 - [Architecture](architecture.md) — System overview and request flow
-- [Extending](extending.md) — Adding special pages and WikiLink resolvers
