@@ -40,6 +40,28 @@ WikiLinks to articles that do not yet exist are displayed in red, distinguishing
 
 Articles containing two or more `##` headings automatically display a table of contents before the first heading.
 
+## Footnotes
+
+Footnotes allow you to add references or supplementary information without interrupting the flow of text.
+
+```markdown
+The common periwinkle can live for up to 10 years[^lifespan].
+
+[^lifespan]: Smith, J. (2020). "Marine Gastropod Longevity." Journal of Molluscs.
+```
+
+This renders as a superscript link in the text, with the footnote content appearing in a "References" section at the bottom of the article. Clicking the footnote number scrolls to the reference; clicking the backlink (^) returns to the text.
+
+Multiple references to the same footnote are supported:
+
+```markdown
+Periwinkles are herbivores[^diet]. They graze on algae[^diet].
+
+[^diet]: They primarily consume microalgae and diatoms.
+```
+
+When a footnote is referenced multiple times, each backlink is labeled (^a, ^b, etc.) to return readers to the specific location in the text.
+
 ## Markdown Reference
 
 Periwiki supports standard CommonMark syntax. For the complete specification, see [commonmark.org](https://spec.commonmark.org/).
