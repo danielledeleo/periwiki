@@ -1,0 +1,6 @@
+{{ if (and (eq .RefIndex 0) (gt .RefCount 1)) -}}<span> ^ </span>{{ end -}}
+{{ if gt .RefCount 1 -}}
+<a href="#{{.RefID}}" class="footnote-backlink footnote-letter"><sup>{{letter .RefIndex}}</sup></a> 
+{{ else }}
+ <a href="#{{.RefID}}" class="footnote-backlink">^</a> 
+{{ end -}}

@@ -3,8 +3,10 @@ In progress
 
 Soon(ish)
 - CLAUDE.md (how to behave in the code base, strategy, hygiene)
-- Sitemap (XML and HTML)
+- Sitemap (XML and HTML, Special:Sitemap and Special:Sitemap.xml, available at /sitemap.xml as well)
 - Include better sample pages
+- Links on history pages to diff of live page
+- Refactor codebase (get .go files out of root, general organization)
 - Tagging system (YAML frontmatter exposed through editor as interface?)
 - Auto populate new databases with an Admin user with id 1 as the owner of all the default pages
 - Create Markdown templates for default pages (user profiles, admin pages, etc.)
@@ -16,7 +18,13 @@ Soon(ish)
 - Widgets
   - Images (thumbnails and large view)
   - Side cards
+- 404 page with "Did you mean /wiki/notfound?" link
+- Custom footnote rendering
+  - add square brackets to superscripts
+  - two column References section layout like wikipedia
+- Port wikilink rendering to use templates (like footnotes)
 - Rich customizable home page (featured articles, other custom widgets)
+- When editing a page that does not yet exist, replace underscores with spaces in title
 
 Configuration and Runtime
 - Store cookie secret in database instead of .cookiesecret.yaml
@@ -33,7 +41,8 @@ Documentation
 Down the line
 - Moderation tools?
 - Admin panel
-- A theme system
+- A theme system (custom templates)
+- Theme configurability (custom logo, custom colours)
 - WebAssembly plugin system
   - Plugin Interface
   - There may be different classes of plugin, requiring different interfaces
@@ -41,6 +50,8 @@ Down the line
 - I am not a robot
 - Rate limiting
 - Language locales!
+  - UI locale strings
+  - maybe copy wikipedia's subdomain approach
 - Locked/featured pages
 - Search
 - Postgres/MySQL support
