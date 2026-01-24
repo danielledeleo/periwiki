@@ -3,7 +3,8 @@ In progress
 
 Soon(ish)
 - CLAUDE.md (how to behave in the code base, strategy, hygiene)
-- Sitemap (XML and HTML, Special:Sitemap and Special:Sitemap.xml, available at /sitemap.xml as well)
+- Page alias system (e.g. allow /sitemap.xml to point to /wiki/Special:Sitemap.xml)
+- Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - Include better sample pages
 - Links on history pages to diff of live page
 - Move .go files out of root directory

@@ -22,6 +22,7 @@ func SetupConfig() *wiki.Config {
 	viper.SetDefault("host", "0.0.0.0:8080")
 	viper.SetDefault("log_format", "pretty") // pretty, json, or text
 	viper.SetDefault("log_level", "info")    // debug, info, warn, error
+	viper.SetDefault("base_url", "http://localhost:8080")
 
 	viper.SetConfigFile(configFilename)
 	viper.AddConfigPath(".")
@@ -89,6 +90,7 @@ func SetupConfig() *wiki.Config {
 		CookieSecret:          secretBytes,
 		CookieExpiry:          viper.GetInt("cookie_expiry"),
 		Host:                  viper.GetString("host"),
+		BaseURL:               viper.GetString("base_url"),
 	}
 
 	if createDefaultConfigFile {
