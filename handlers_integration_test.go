@@ -21,8 +21,13 @@ func setupHandlerTestRouter(t *testing.T) (*mux.Router, *testutil.TestApp, func(
 
 	app := &app{
 		Templater:    testApp.Templater,
-		WikiModel:    testApp.WikiModel,
+		articles:     testApp.Articles,
+		users:        testApp.Users,
+		sessions:     testApp.Sessions,
+		rendering:    testApp.Rendering,
+		preferences:  testApp.Preferences,
 		specialPages: testApp.SpecialPages,
+		config:       testApp.Config,
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
@@ -126,17 +131,17 @@ func TestArticleHistoryHandler(t *testing.T) {
 	article.Creator = user
 	article.PreviousID = 0
 	article.Comment = "Initial version"
-	err := testApp.PostArticle(article)
+	err := testApp.Articles.PostArticle(article)
 	if err != nil {
 		t.Fatalf("PostArticle failed: %v", err)
 	}
 
-	v1, _ := testApp.GetArticle("history-article")
+	v1, _ := testApp.Articles.GetArticle("history-article")
 
 	article.Markdown = "Version 2"
 	article.PreviousID = v1.ID
 	article.Comment = "Second version"
-	err = testApp.PostArticle(article)
+	err = testApp.Articles.PostArticle(article)
 	if err != nil {
 		t.Fatalf("PostArticle failed: %v", err)
 	}
@@ -180,16 +185,16 @@ func TestRevisionHandler(t *testing.T) {
 	article := wiki.NewArticle("revision-article", "Revision Article", "Version 1 content")
 	article.Creator = user
 	article.PreviousID = 0
-	err := testApp.PostArticle(article)
+	err := testApp.Articles.PostArticle(article)
 	if err != nil {
 		t.Fatalf("PostArticle failed: %v", err)
 	}
 
-	v1, _ := testApp.GetArticle("revision-article")
+	v1, _ := testApp.Articles.GetArticle("revision-article")
 
 	article.Markdown = "Version 2 content"
 	article.PreviousID = v1.ID
-	err = testApp.PostArticle(article)
+	err = testApp.Articles.PostArticle(article)
 	if err != nil {
 		t.Fatalf("PostArticle failed: %v", err)
 	}
@@ -243,16 +248,16 @@ func TestDiffHandler(t *testing.T) {
 	article := wiki.NewArticle("diff-article", "Diff Article", "Original content here")
 	article.Creator = user
 	article.PreviousID = 0
-	err := testApp.PostArticle(article)
+	err := testApp.Articles.PostArticle(article)
 	if err != nil {
 		t.Fatalf("PostArticle failed: %v", err)
 	}
 
-	v1, _ := testApp.GetArticle("diff-article")
+	v1, _ := testApp.Articles.GetArticle("diff-article")
 
 	article.Markdown = "Modified content here with changes"
 	article.PreviousID = v1.ID
-	err = testApp.PostArticle(article)
+	err = testApp.Articles.PostArticle(article)
 	if err != nil {
 		t.Fatalf("PostArticle failed: %v", err)
 	}
@@ -440,8 +445,13 @@ func TestSessionMiddleware(t *testing.T) {
 
 	app := &app{
 		Templater:    testApp.Templater,
-		WikiModel:    testApp.WikiModel,
+		articles:     testApp.Articles,
+		users:        testApp.Users,
+		sessions:     testApp.Sessions,
+		rendering:    testApp.Rendering,
+		preferences:  testApp.Preferences,
 		specialPages: testApp.SpecialPages,
+		config:       testApp.Config,
 	}
 
 	t.Run("sets anonymous user for new session", func(t *testing.T) {
@@ -494,8 +504,13 @@ func TestSpecialPageRegistry(t *testing.T) {
 
 	app := &app{
 		Templater:    testApp.Templater,
-		WikiModel:    testApp.WikiModel,
+		articles:     testApp.Articles,
+		users:        testApp.Users,
+		sessions:     testApp.Sessions,
+		rendering:    testApp.Rendering,
+		preferences:  testApp.Preferences,
 		specialPages: registry,
+		config:       testApp.Config,
 	}
 
 	router := mux.NewRouter()
@@ -534,8 +549,13 @@ func TestUserContextInHandlers(t *testing.T) {
 
 	app := &app{
 		Templater:    testApp.Templater,
-		WikiModel:    testApp.WikiModel,
+		articles:     testApp.Articles,
+		users:        testApp.Users,
+		sessions:     testApp.Sessions,
+		rendering:    testApp.Rendering,
+		preferences:  testApp.Preferences,
 		specialPages: testApp.SpecialPages,
+		config:       testApp.Config,
 	}
 
 	// Create a handler that checks for user context

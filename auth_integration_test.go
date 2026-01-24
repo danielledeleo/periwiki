@@ -22,8 +22,13 @@ func setupAuthTestServer(t *testing.T) (*httptest.Server, *testutil.TestApp, fun
 
 	app := &app{
 		Templater:    testApp.Templater,
-		WikiModel:    testApp.WikiModel,
+		articles:     testApp.Articles,
+		users:        testApp.Users,
+		sessions:     testApp.Sessions,
+		rendering:    testApp.Rendering,
+		preferences:  testApp.Preferences,
 		specialPages: testApp.SpecialPages,
+		config:       testApp.Config,
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
@@ -179,7 +184,7 @@ func TestLoginFlow(t *testing.T) {
 		Email:       "login@example.com",
 		RawPassword: password,
 	}
-	err := testApp.PostUser(user)
+	err := testApp.Users.PostUser(user)
 	if err != nil {
 		t.Fatalf("failed to create test user: %v", err)
 	}
@@ -236,7 +241,7 @@ func TestLoginInvalidCredentials(t *testing.T) {
 		Email:       "cred@example.com",
 		RawPassword: password,
 	}
-	err := testApp.PostUser(user)
+	err := testApp.Users.PostUser(user)
 	if err != nil {
 		t.Fatalf("failed to create test user: %v", err)
 	}
@@ -303,7 +308,7 @@ func TestLogout(t *testing.T) {
 		Email:       "logout@example.com",
 		RawPassword: password,
 	}
-	err := testApp.PostUser(user)
+	err := testApp.Users.PostUser(user)
 	if err != nil {
 		t.Fatalf("failed to create test user: %v", err)
 	}
@@ -360,15 +365,20 @@ func TestSessionMiddlewareAuthenticatedUser(t *testing.T) {
 		Email:       "session@example.com",
 		RawPassword: password,
 	}
-	err := testApp.PostUser(user)
+	err := testApp.Users.PostUser(user)
 	if err != nil {
 		t.Fatalf("failed to create test user: %v", err)
 	}
 
 	app := &app{
 		Templater:    testApp.Templater,
-		WikiModel:    testApp.WikiModel,
+		articles:     testApp.Articles,
+		users:        testApp.Users,
+		sessions:     testApp.Sessions,
+		rendering:    testApp.Rendering,
+		preferences:  testApp.Preferences,
 		specialPages: testApp.SpecialPages,
+		config:       testApp.Config,
 	}
 
 	router := mux.NewRouter()
@@ -439,8 +449,13 @@ func TestAnonymousUser(t *testing.T) {
 
 	app := &app{
 		Templater:    testApp.Templater,
-		WikiModel:    testApp.WikiModel,
+		articles:     testApp.Articles,
+		users:        testApp.Users,
+		sessions:     testApp.Sessions,
+		rendering:    testApp.Rendering,
+		preferences:  testApp.Preferences,
 		specialPages: testApp.SpecialPages,
+		config:       testApp.Config,
 	}
 
 	var capturedUser *wiki.User
@@ -483,7 +498,7 @@ func TestLoginWithReferrer(t *testing.T) {
 		Email:       "referrer@example.com",
 		RawPassword: password,
 	}
-	err := testApp.PostUser(user)
+	err := testApp.Users.PostUser(user)
 	if err != nil {
 		t.Fatalf("failed to create test user: %v", err)
 	}
@@ -530,7 +545,7 @@ func TestLoginWithEmptyReferrer(t *testing.T) {
 		Email:       "emptyref@example.com",
 		RawPassword: password,
 	}
-	err := testApp.PostUser(user)
+	err := testApp.Users.PostUser(user)
 	if err != nil {
 		t.Fatalf("failed to create test user: %v", err)
 	}

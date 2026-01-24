@@ -13,6 +13,7 @@ import (
 	"github.com/danielledeleo/periwiki/special"
 	"github.com/danielledeleo/periwiki/templater"
 	"github.com/danielledeleo/periwiki/wiki"
+	"github.com/danielledeleo/periwiki/wiki/service"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -23,8 +24,13 @@ import (
 
 type app struct {
 	*templater.Templater
-	*wiki.WikiModel
+	articles     service.ArticleService
+	users        service.UserService
+	sessions     service.SessionService
+	rendering    service.RenderingService
+	preferences  service.PreferenceService
 	specialPages *special.Registry
+	config       *wiki.Config
 }
 
 // responseWriter wraps http.ResponseWriter to capture the status code
@@ -99,8 +105,8 @@ func main() {
 
 	handler := slogLoggingMiddleware(router)
 
-	slog.Info("server starting", "url", "http://"+app.Config.Host)
-	err := http.ListenAndServe(app.Config.Host, handler)
+	slog.Info("server starting", "url", "http://"+app.config.Host)
+	err := http.ListenAndServe(app.config.Host, handler)
 
 	if err != nil {
 		slog.Error("server failed to start", "error", err)
@@ -132,7 +138,7 @@ func (a *app) registerPostHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// fill form with previously submitted values and display registration errors
-	err := a.PostUser(user)
+	err := a.users.PostUser(user)
 	if err != nil {
 		slog.Warn("registration failed", "category", "auth", "action", "register", "username", user.ScreenName, "reason", err.Error(), "ip", req.RemoteAddr)
 		render["calloutMessage"] = err.Error()
@@ -166,7 +172,7 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 	user.RawPassword = req.PostFormValue("password")
 	referrer := req.PostFormValue("referrer")
 
-	err := a.CheckUserPassword(user)
+	err := a.users.CheckUserPassword(user)
 
 	render := map[string]interface{}{
 		"Article":        map[string]string{"Title": "Login"},
@@ -188,12 +194,12 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	session, err := a.GetCookie(req, "periwiki-login")
+	session, err := a.sessions.GetCookie(req, "periwiki-login")
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
-	session.Options.MaxAge = a.CookieExpiry
+	session.Options.MaxAge = a.config.CookieExpiry
 	session.Values["username"] = user.ScreenName
 	err = session.Save(req, rw)
 	if err != nil {
@@ -210,7 +216,7 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (a *app) logoutPostHander(rw http.ResponseWriter, req *http.Request) {
-	session, err := a.GetCookie(req, "periwiki-login")
+	session, err := a.sessions.GetCookie(req, "periwiki-login")
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 		return
@@ -219,7 +225,7 @@ func (a *app) logoutPostHander(rw http.ResponseWriter, req *http.Request) {
 	// Capture username before session is deleted
 	username, _ := session.Values["username"].(string)
 
-	err = a.DeleteCookie(req, rw, session)
+	err = a.sessions.DeleteCookie(req, rw, session)
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 		return
@@ -247,7 +253,7 @@ func (a *app) homeHandler(rw http.ResponseWriter, req *http.Request) {
 func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	render := map[string]interface{}{}
-	article, err := a.GetArticle(vars["article"])
+	article, err := a.articles.GetArticle(vars["article"])
 
 	if err != wiki.ErrGenericNotFound && err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
@@ -296,7 +302,7 @@ func (a *app) articleHistoryHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	url := vars["article"]
 
-	revisions, err := a.GetRevisionHistory(url)
+	revisions, err := a.articles.GetRevisionHistory(url)
 	if err != nil {
 		a.errorHandler(http.StatusNotFound, rw, req, err)
 		return
@@ -319,7 +325,7 @@ func (a *app) revisionHandler(rw http.ResponseWriter, req *http.Request) {
 		a.errorHandler(http.StatusBadRequest, rw, req, err)
 		return
 	}
-	article, err := a.GetArticleByRevisionID(vars["article"], revisionID)
+	article, err := a.articles.GetArticleByRevisionID(vars["article"], revisionID)
 	if err != nil {
 		a.errorHandler(http.StatusNotFound, rw, req, err)
 		return
@@ -338,7 +344,7 @@ func (a *app) revisionEditHandler(rw http.ResponseWriter, req *http.Request) {
 		a.errorHandler(http.StatusBadRequest, rw, req, err)
 		return
 	}
-	article, err := a.GetArticleByRevisionID(vars["article"], revisionID)
+	article, err := a.articles.GetArticleByRevisionID(vars["article"], revisionID)
 	if err == wiki.ErrRevisionNotFound {
 		article = wiki.NewArticle(vars["article"], cases.Title(language.AmericanEnglish).String(vars["article"]), "")
 		article.Hash = "new"
@@ -390,7 +396,7 @@ func (a *app) revisionPostHandler(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (a *app) articlePreviewHandler(article *wiki.Article, rw http.ResponseWriter, req *http.Request) {
-	html, err := a.PreviewMarkdown(article.Markdown)
+	html, err := a.rendering.PreviewMarkdown(article.Markdown)
 	if err != nil {
 		a.errorHandler(http.StatusInternalServerError, rw, req, err)
 		return
@@ -408,7 +414,7 @@ func (a *app) articlePreviewHandler(article *wiki.Article, rw http.ResponseWrite
 	check(err)
 }
 func (a *app) articlePostHandler(article *wiki.Article, rw http.ResponseWriter, req *http.Request) {
-	err := a.PostArticle(article)
+	err := a.articles.PostArticle(article)
 	if err != nil {
 		username := "anonymous"
 		if article.Creator != nil {
@@ -467,13 +473,13 @@ func (a *app) diffHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	orginal, err := a.GetArticleByRevisionID(vars["article"], originalID)
+	orginal, err := a.articles.GetArticleByRevisionID(vars["article"], originalID)
 	if err != nil {
 		a.errorHandler(http.StatusNotFound, rw, req, err)
 		return
 	}
 
-	new, err := a.GetArticleByRevisionID(vars["article"], newID)
+	new, err := a.articles.GetArticleByRevisionID(vars["article"], newID)
 	if err != nil {
 		a.errorHandler(http.StatusNotFound, rw, req, err)
 		return

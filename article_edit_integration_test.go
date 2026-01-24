@@ -22,8 +22,13 @@ func setupArticleEditTestServer(t *testing.T) (*httptest.Server, *testutil.TestA
 
 	app := &app{
 		Templater:    testApp.Templater,
-		WikiModel:    testApp.WikiModel,
+		articles:     testApp.Articles,
+		users:        testApp.Users,
+		sessions:     testApp.Sessions,
+		rendering:    testApp.Rendering,
+		preferences:  testApp.Preferences,
 		specialPages: testApp.SpecialPages,
+		config:       testApp.Config,
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
@@ -87,7 +92,7 @@ func TestCreateNewArticle(t *testing.T) {
 		Email:       "create@example.com",
 		RawPassword: password,
 	}
-	err := testApp.PostUser(user)
+	err := testApp.Users.PostUser(user)
 	if err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
@@ -119,7 +124,7 @@ func TestCreateNewArticle(t *testing.T) {
 	}
 
 	// Verify article was created
-	article, err := testApp.GetArticle("new-test-article")
+	article, err := testApp.Articles.GetArticle("new-test-article")
 	if err != nil {
 		t.Fatalf("article not found after creation: %v", err)
 	}
@@ -140,13 +145,13 @@ func TestEditExistingArticle(t *testing.T) {
 		Email:       "edit@example.com",
 		RawPassword: password,
 	}
-	err := testApp.PostUser(user)
+	err := testApp.Users.PostUser(user)
 	if err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
 
 	// Get the user ID for article creation
-	createdUser, _ := testApp.GetUserByScreenName("edituser")
+	createdUser, _ := testApp.Users.GetUserByScreenName("edituser")
 
 	// Create initial article
 	testutil.CreateTestArticle(t, testApp, "edit-test", "Edit Test", "Original content", createdUser)
@@ -173,7 +178,7 @@ func TestEditExistingArticle(t *testing.T) {
 	}
 
 	// Verify new revision was created
-	article, err := testApp.GetArticle("edit-test")
+	article, err := testApp.Articles.GetArticle("edit-test")
 	if err != nil {
 		t.Fatalf("article not found after edit: %v", err)
 	}
@@ -198,12 +203,12 @@ func TestPreviewArticle(t *testing.T) {
 		Email:       "preview@example.com",
 		RawPassword: password,
 	}
-	err := testApp.PostUser(user)
+	err := testApp.Users.PostUser(user)
 	if err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
 
-	createdUser, _ := testApp.GetUserByScreenName("previewuser")
+	createdUser, _ := testApp.Users.GetUserByScreenName("previewuser")
 	testutil.CreateTestArticle(t, testApp, "preview-test", "Preview Test", "Original", createdUser)
 
 	client := loginUser(t, server, "previewuser", password)
@@ -235,7 +240,7 @@ func TestPreviewArticle(t *testing.T) {
 	}
 
 	// Article should not be modified
-	article, _ := testApp.GetArticle("preview-test")
+	article, _ := testApp.Articles.GetArticle("preview-test")
 	if article.Markdown != "Original" {
 		t.Error("article should not be modified during preview")
 	}
@@ -252,12 +257,12 @@ func TestEditRequiresChange(t *testing.T) {
 		Email:       "nochange@example.com",
 		RawPassword: password,
 	}
-	err := testApp.PostUser(user)
+	err := testApp.Users.PostUser(user)
 	if err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
 
-	createdUser, _ := testApp.GetUserByScreenName("nochangeuser")
+	createdUser, _ := testApp.Users.GetUserByScreenName("nochangeuser")
 	testutil.CreateTestArticle(t, testApp, "nochange-test", "No Change", "Same content", createdUser)
 
 	client := loginUser(t, server, "nochangeuser", password)
@@ -298,7 +303,7 @@ func TestMarkdownRendering(t *testing.T) {
 		Email:       "render@example.com",
 		RawPassword: password,
 	}
-	err := testApp.PostUser(user)
+	err := testApp.Users.PostUser(user)
 	if err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
@@ -353,7 +358,7 @@ func TestMarkdownRendering(t *testing.T) {
 			resp.Body.Close()
 
 			// Get the article and check HTML
-			article, err := testApp.GetArticle(articleURL)
+			article, err := testApp.Articles.GetArticle(articleURL)
 			if err != nil {
 				t.Fatalf("article not found: %v", err)
 			}
@@ -376,7 +381,7 @@ func TestWikiLinkRendering(t *testing.T) {
 		Email:       "wikilink@example.com",
 		RawPassword: password,
 	}
-	err := testApp.PostUser(user)
+	err := testApp.Users.PostUser(user)
 	if err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
@@ -396,7 +401,7 @@ func TestWikiLinkRendering(t *testing.T) {
 	resp.Body.Close()
 
 	// Get the article and check for wikilinks
-	article, err := testApp.GetArticle("wikilink-test")
+	article, err := testApp.Articles.GetArticle("wikilink-test")
 	if err != nil {
 		t.Fatalf("article not found: %v", err)
 	}
@@ -471,7 +476,7 @@ func TestAnonymousUserCannotCreateArticle(t *testing.T) {
 	// But let's verify the article was created with anonymous creator
 
 	if resp.StatusCode == http.StatusSeeOther {
-		article, err := testApp.GetArticle("anon-article")
+		article, err := testApp.Articles.GetArticle("anon-article")
 		if err != nil {
 			t.Fatalf("article not found: %v", err)
 		}
@@ -495,16 +500,16 @@ func TestRevisionConflict(t *testing.T) {
 		Email:       "conflict1@example.com",
 		RawPassword: password,
 	}
-	testApp.PostUser(user1)
+	testApp.Users.PostUser(user1)
 
 	user2 := &wiki.User{
 		ScreenName:  "conflictuser2",
 		Email:       "conflict2@example.com",
 		RawPassword: password,
 	}
-	testApp.PostUser(user2)
+	testApp.Users.PostUser(user2)
 
-	createdUser1, _ := testApp.GetUserByScreenName("conflictuser1")
+	createdUser1, _ := testApp.Users.GetUserByScreenName("conflictuser1")
 	testutil.CreateTestArticle(t, testApp, "conflict-test", "Conflict Test", "Original", createdUser1)
 
 	client1 := loginUser(t, server, "conflictuser1", password)
@@ -555,9 +560,9 @@ func TestEditFormPreservesContentOnError(t *testing.T) {
 		Email:       "preserve@example.com",
 		RawPassword: password,
 	}
-	testApp.PostUser(user)
+	testApp.Users.PostUser(user)
 
-	createdUser, _ := testApp.GetUserByScreenName("preserveuser")
+	createdUser, _ := testApp.Users.GetUserByScreenName("preserveuser")
 	testutil.CreateTestArticle(t, testApp, "preserve-test", "Preserve Test", "Original content", createdUser)
 
 	client := loginUser(t, server, "preserveuser", password)

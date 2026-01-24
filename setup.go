@@ -5,12 +5,12 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/danielledeleo/periwiki/internal/storage"
 	"github.com/danielledeleo/periwiki/extensions"
+	"github.com/danielledeleo/periwiki/internal/storage"
 	"github.com/danielledeleo/periwiki/render"
 	"github.com/danielledeleo/periwiki/special"
 	"github.com/danielledeleo/periwiki/templater"
-	"github.com/danielledeleo/periwiki/wiki"
+	"github.com/danielledeleo/periwiki/wiki/service"
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -68,10 +68,32 @@ func Setup() *app {
 		[]extensions.FootnoteOption{extensions.WithFootnoteTemplates(footnoteTemplates)},
 	)
 
-	model := wiki.New(database, modelConf, bm, renderer)
+	// Create rendering service
+	renderingService := service.NewRenderingService(renderer, bm)
+
+	// Create session service
+	sessionService := service.NewSessionService(database)
+
+	// Create user service
+	userService := service.NewUserService(database, modelConf.MinimumPasswordLength)
+
+	// Create article service
+	articleService := service.NewArticleService(database, renderingService)
+
+	// Create preference service
+	preferenceService := service.NewPreferenceService(database)
 
 	specialPages := special.NewRegistry()
-	specialPages.Register("Random", special.NewRandomPage(model))
+	specialPages.Register("Random", special.NewRandomPage(articleService))
 
-	return &app{t, model, specialPages}
+	return &app{
+		Templater:    t,
+		articles:     articleService,
+		users:        userService,
+		sessions:     sessionService,
+		rendering:    renderingService,
+		preferences:  preferenceService,
+		specialPages: specialPages,
+		config:       modelConf,
+	}
 }

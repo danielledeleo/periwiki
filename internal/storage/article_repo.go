@@ -1,0 +1,177 @@
+package storage
+
+import (
+	"database/sql"
+	"fmt"
+	"log/slog"
+	"time"
+
+	"github.com/danielledeleo/periwiki/wiki"
+	"github.com/jmoiron/sqlx"
+)
+
+// Article repository methods for sqliteDb
+
+func (db *sqliteDb) SelectArticle(url string) (*wiki.Article, error) {
+	article := &wiki.Article{}
+	article.Revision = &wiki.Revision{}
+	err := db.SelectArticleByLatestRevisionStmt.Get(article, url)
+	if err != nil {
+		return nil, err
+	}
+	return article, err
+}
+
+func (db *sqliteDb) SelectArticleByRevisionHash(url string, hash string) (*wiki.Article, error) {
+	article := &wiki.Article{}
+	article.Revision = &wiki.Revision{}
+
+	err := db.SelectArticleByRevisionHashStmt.Get(article, url, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return article, err
+}
+
+func (db *sqliteDb) SelectArticleByRevisionID(url string, id int) (*wiki.Article, error) {
+	article := &wiki.Article{}
+	article.Revision = &wiki.Revision{}
+
+	err := db.SelectArticleByRevisionIDStmt.Get(article, url, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return article, err
+}
+
+func (db *sqliteDb) SelectRevision(hash string) (*wiki.Revision, error) {
+	r := &wiki.Revision{}
+	x := &struct {
+		ID         int
+		Title      sql.NullString
+		Markdown   sql.NullString
+		HTML       sql.NullString
+		Hash       sql.NullString `db:"hashval"`
+		PreviousID int            `db:"previous_id"`
+		Created    time.Time
+	}{}
+	err := db.conn.Get(x, "SELECT id, title, markdown, html, hashval, created, previous_id FROM Revision WHERE hashval = ?", hash)
+	if err != nil {
+		return nil, err
+	}
+	return r, err
+}
+
+func (db *sqliteDb) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
+	rows, err := db.conn.Queryx(
+		`SELECT Revision.id, title, hashval, created, comment, User.screenname, length(markdown)
+			FROM Article JOIN Revision ON Article.id = Revision.article_id
+					     JOIN User ON Revision.user_id = User.id
+			WHERE Article.url = ? ORDER BY created DESC`, url)
+	if err != nil {
+		return nil, err
+	}
+	result := struct {
+		Title, Hashval, Comment, Screenname string
+		ID                                  int
+		Length                              int `db:"length(markdown)"`
+		Created                             time.Time
+	}{}
+	results := make([]*wiki.Revision, 0)
+	for rows.Next() {
+		rev := &wiki.Revision{Creator: &wiki.User{}}
+		err := rows.StructScan(&result)
+		if err != nil {
+			return nil, err
+		}
+		rev.Title = result.Title
+		rev.Created = result.Created
+		rev.Hash = result.Hashval
+		rev.ID = result.ID
+		rev.Comment = result.Comment
+		rev.Markdown = fmt.Sprint(result.Length) // dirty hack
+		rev.Creator.ScreenName = result.Screenname
+		results = append(results, rev)
+	}
+	if len(results) < 1 {
+		return nil, wiki.ErrGenericNotFound
+	}
+	return results, nil
+}
+
+func (db *sqliteDb) SelectRandomArticleURL() (string, error) {
+	var url string
+	err := db.conn.Get(&url, `SELECT url FROM Article ORDER BY ABS(RANDOM()) LIMIT 1`)
+	return url, err
+}
+
+func (db *sqliteDb) InsertArticle(article *wiki.Article) (err error) {
+	testArticle, insertErr := db.SelectArticle(article.URL)
+
+	var tx *sqlx.Tx
+	tx, err = db.conn.Beginx()
+
+	if err != nil {
+		slog.Error("failed to begin transaction", "error", err)
+		return
+	}
+
+	defer func() {
+		if err != nil {
+			slog.Error("article insert failed", "operation", "InsertArticle", "error", err)
+			if rbErr := tx.Rollback(); rbErr != nil {
+				slog.Error("transaction rollback failed", "error", rbErr)
+			}
+		} else {
+			if commitErr := tx.Commit(); commitErr != nil {
+				slog.Error("transaction commit failed", "error", commitErr)
+			}
+		}
+	}()
+
+	if insertErr == sql.ErrNoRows { // New article.
+		if _, err = tx.Exec(`INSERT INTO Article (url) VALUES (?);`, article.URL); err != nil {
+			return
+		}
+
+		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
+			VALUES (?, ?, ?, ?, ?, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
+			article.PreviousID+1,
+			article.Title,
+			article.Hash,
+			article.Markdown,
+			article.HTML,
+			article.Creator.ID,
+			article.PreviousID,
+			article.Comment)
+
+		if err != nil {
+			return
+		}
+
+	} else if insertErr == nil && testArticle != nil { // New revision to article
+
+		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
+			VALUES (?, ?, ?, ?, ?, (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
+			article.PreviousID+1,
+			article.Title,
+			article.Hash,
+			article.Markdown,
+			article.HTML,
+			article.URL,
+			article.Creator.ID,
+			article.PreviousID,
+			article.Comment)
+
+		if err != nil {
+			if err.Error() == "UNIQUE constraint failed: Revision.id, Revision.article_id" {
+				return wiki.ErrRevisionAlreadyExists
+			}
+		}
+	}
+
+	// Success!
+	return nil
+}

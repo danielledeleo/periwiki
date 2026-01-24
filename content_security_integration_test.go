@@ -22,8 +22,13 @@ func setupSecurityTestServer(t *testing.T) (*httptest.Server, *testutil.TestApp,
 
 	app := &app{
 		Templater:    testApp.Templater,
-		WikiModel:    testApp.WikiModel,
+		articles:     testApp.Articles,
+		users:        testApp.Users,
+		sessions:     testApp.Sessions,
+		rendering:    testApp.Rendering,
+		preferences:  testApp.Preferences,
 		specialPages: testApp.SpecialPages,
+		config:       testApp.Config,
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
@@ -82,7 +87,7 @@ func TestXSSInArticleContent(t *testing.T) {
 		Email:       "xss@example.com",
 		RawPassword: password,
 	}
-	testApp.PostUser(user)
+	testApp.Users.PostUser(user)
 	client := getAuthenticatedClient(t, server, "xssuser", password)
 
 	xssPayloads := []struct {
@@ -159,7 +164,7 @@ func TestXSSInArticleContent(t *testing.T) {
 			resp.Body.Close()
 
 			// Get the article
-			article, err := testApp.GetArticle(articleURL)
+			article, err := testApp.Articles.GetArticle(articleURL)
 			if err != nil {
 				t.Fatalf("article not found: %v", err)
 			}
@@ -184,7 +189,7 @@ func TestXSSInArticleTitle(t *testing.T) {
 		Email:       "titlexss@example.com",
 		RawPassword: password,
 	}
-	testApp.PostUser(user)
+	testApp.Users.PostUser(user)
 	client := getAuthenticatedClient(t, server, "titlexssuser", password)
 
 	xssTitles := []struct {
@@ -225,7 +230,7 @@ func TestXSSInArticleTitle(t *testing.T) {
 			resp.Body.Close()
 
 			// Get the article
-			article, err := testApp.GetArticle(articleURL)
+			article, err := testApp.Articles.GetArticle(articleURL)
 			if err != nil {
 				t.Fatalf("article not found: %v", err)
 			}
@@ -248,7 +253,7 @@ func TestXSSInDiffOutput(t *testing.T) {
 		Email:       "diffxss@example.com",
 		RawPassword: password,
 	}
-	testApp.PostUser(user)
+	testApp.Users.PostUser(user)
 	client := getAuthenticatedClient(t, server, "diffxssuser", password)
 
 	// Create initial article
@@ -334,7 +339,7 @@ func TestSQLInjectionInArticleURL(t *testing.T) {
 			}
 
 			// Verify the normal article still exists
-			article, err := testApp.GetArticle("normal-article")
+			article, err := testApp.Articles.GetArticle("normal-article")
 			if err != nil {
 				t.Error("normal article was affected by SQL injection attempt")
 			}
@@ -355,7 +360,7 @@ func TestXSSInWikiLinks(t *testing.T) {
 		Email:       "wikilinkxss@example.com",
 		RawPassword: password,
 	}
-	testApp.PostUser(user)
+	testApp.Users.PostUser(user)
 	client := getAuthenticatedClient(t, server, "wikilinkxssuser", password)
 
 	// Test XSS in wikilink targets
@@ -411,7 +416,7 @@ func TestXSSInWikiLinks(t *testing.T) {
 			resp.Body.Close()
 
 			// Get the article
-			article, err := testApp.GetArticle(articleURL)
+			article, err := testApp.Articles.GetArticle(articleURL)
 			if err != nil {
 				t.Fatalf("article not found: %v", err)
 			}
@@ -438,7 +443,7 @@ func TestXSSInComments(t *testing.T) {
 		Email:       "commentxss@example.com",
 		RawPassword: password,
 	}
-	testApp.PostUser(user)
+	testApp.Users.PostUser(user)
 	client := getAuthenticatedClient(t, server, "commentxssuser", password)
 
 	// Create article with XSS in edit comment
@@ -455,7 +460,7 @@ func TestXSSInComments(t *testing.T) {
 	resp.Body.Close()
 
 	// Get the article
-	article, err := testApp.GetArticle("comment-xss-test")
+	article, err := testApp.Articles.GetArticle("comment-xss-test")
 	if err != nil {
 		t.Fatalf("article not found: %v", err)
 	}
@@ -476,7 +481,7 @@ func TestHTMLEntitiesPreserved(t *testing.T) {
 		Email:       "entities@example.com",
 		RawPassword: password,
 	}
-	testApp.PostUser(user)
+	testApp.Users.PostUser(user)
 	client := getAuthenticatedClient(t, server, "entitiesuser", password)
 
 	// Create article with HTML entities that should be preserved
@@ -492,7 +497,7 @@ func TestHTMLEntitiesPreserved(t *testing.T) {
 	resp.Body.Close()
 
 	// Get the article
-	article, err := testApp.GetArticle("entities-test")
+	article, err := testApp.Articles.GetArticle("entities-test")
 	if err != nil {
 		t.Fatalf("article not found: %v", err)
 	}
@@ -513,7 +518,7 @@ func TestMarkdownCodeBlockSafety(t *testing.T) {
 		Email:       "codeblock@example.com",
 		RawPassword: password,
 	}
-	testApp.PostUser(user)
+	testApp.Users.PostUser(user)
 	client := getAuthenticatedClient(t, server, "codeblockuser", password)
 
 	// Code in code blocks should be escaped, not executed
@@ -531,7 +536,7 @@ func TestMarkdownCodeBlockSafety(t *testing.T) {
 	resp.Body.Close()
 
 	// Get the article
-	article, err := testApp.GetArticle("codeblock-test")
+	article, err := testApp.Articles.GetArticle("codeblock-test")
 	if err != nil {
 		t.Fatalf("article not found: %v", err)
 	}

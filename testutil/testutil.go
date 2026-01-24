@@ -12,12 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/danielledeleo/periwiki/internal/storage"
 	"github.com/danielledeleo/periwiki/extensions"
+	"github.com/danielledeleo/periwiki/internal/storage"
 	"github.com/danielledeleo/periwiki/render"
 	"github.com/danielledeleo/periwiki/special"
 	"github.com/danielledeleo/periwiki/templater"
 	"github.com/danielledeleo/periwiki/wiki"
+	"github.com/danielledeleo/periwiki/wiki/service"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
@@ -36,8 +37,13 @@ type TestDB struct {
 // TestApp wraps the full application for integration tests.
 type TestApp struct {
 	*templater.Templater
-	*wiki.WikiModel
+	Articles     service.ArticleService
+	Users        service.UserService
+	Sessions     service.SessionService
+	Rendering    service.RenderingService
+	Preferences  service.PreferenceService
 	SpecialPages *special.Registry
+	Config       *wiki.Config
 	Router       *mux.Router
 	DB           *TestDB
 }
@@ -163,15 +169,33 @@ func SetupTestApp(t *testing.T) (*TestApp, func()) {
 		[]extensions.FootnoteOption{extensions.WithFootnoteTemplates(footnoteTemplates)},
 	)
 
-	model := wiki.New(db, config, bm, renderer)
+	// Create rendering service
+	renderingService := service.NewRenderingService(renderer, bm)
+
+	// Create session service
+	sessionService := service.NewSessionService(db)
+
+	// Create user service
+	userService := service.NewUserService(db, config.MinimumPasswordLength)
+
+	// Create article service
+	articleService := service.NewArticleService(db, renderingService)
+
+	// Create preference service
+	preferenceService := service.NewPreferenceService(db)
 
 	specialPages := special.NewRegistry()
-	specialPages.Register("Random", special.NewRandomPage(model))
+	specialPages.Register("Random", special.NewRandomPage(articleService))
 
 	app := &TestApp{
 		Templater:    tmpl,
-		WikiModel:    model,
+		Articles:     articleService,
+		Users:        userService,
+		Sessions:     sessionService,
+		Rendering:    renderingService,
+		Preferences:  preferenceService,
 		SpecialPages: specialPages,
+		Config:       config,
 		DB:           db,
 	}
 
@@ -219,13 +243,13 @@ func CreateTestArticle(t *testing.T, app *TestApp, url, title, markdown string, 
 	article.Creator = creator
 	article.PreviousID = 0
 
-	err := app.PostArticle(article)
+	err := app.Articles.PostArticle(article)
 	if err != nil {
 		t.Fatalf("failed to create test article: %v", err)
 	}
 
 	// Fetch the article to get full data
-	created, err := app.GetArticle(url)
+	created, err := app.Articles.GetArticle(url)
 	if err != nil {
 		t.Fatalf("failed to fetch created article: %v", err)
 	}
