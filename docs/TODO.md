@@ -29,16 +29,10 @@ Soon(ish)
   - References are kept to an externally managed media system (local filesystem, S3, static files on an nginx server, etc.)
 
 Configuration and Runtime
-- Store cookie secret in database instead of .cookiesecret.yaml
+- Store cookie secret in database instead of .cookiesecret.yaml (update docs/security.md)
 - Compile template files into the binary (embed)
 - Improve "server failed to start" error message with specific reason (port in use, permission denied, etc.)
 - CLI flags to override config file path, database file, host, log level, etc.
-
-Documentation
-- security.md (password handling, sessions, HTML sanitization)
-- urls.md (URL structure reference for articles, history, diffs, special pages)
-- architecture.md (system overview and request flow for developers)
-- extending.md (adding special pages and WikiLink resolvers)
 
 Down the line
 - Moderation tools?
@@ -59,6 +53,7 @@ Down the line
 - Postgres/MySQL support
 - Better editor experience
 - Richer diffs, talk pages
+- [LOW] extending.md (documenting how to add special pages and WikiLink resolvers)
 
 Dependency Maintenance (January 2025)
 - [MEDIUM] Evaluate SQLBoiler alternatives (volatiletech/sqlboiler)
