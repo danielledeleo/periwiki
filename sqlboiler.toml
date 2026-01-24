@@ -4,4 +4,4 @@ no-tests    = true
 pkgname     = "model"
 
 [sqlite3]
-  dbname = "db/skeleton.db"
+  dbname = "internal/storage/skeleton.db"

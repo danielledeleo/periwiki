@@ -1,4 +1,4 @@
-package db
+package storage
 
 import (
 	"database/sql"
@@ -13,14 +13,58 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// PreparedStatements holds the prepared SQL statements used for database queries.
+// This struct is exported to allow reuse in test utilities.
+type PreparedStatements struct {
+	SelectArticleByLatestRevisionStmt *sqlx.Stmt
+	SelectArticleByRevisionHashStmt   *sqlx.Stmt
+	SelectArticleByRevisionIDStmt     *sqlx.Stmt
+	SelectUserScreennameStmt          *sqlx.Stmt
+	SelectUserScreennameWithHashStmt  *sqlx.Stmt
+}
+
+// InitializeStatements prepares all the SQL statements needed for database operations.
+// This function is exported to allow reuse in test utilities.
+func InitializeStatements(conn *sqlx.DB) (*PreparedStatements, error) {
+	stmts := &PreparedStatements{}
+	var err error
+
+	q := `SELECT url, Revision.id, title, markdown, html, hashval, created, previous_id, comment
+			FROM Article JOIN Revision ON Article.id = Revision.article_id WHERE Article.url = ?`
+
+	stmts.SelectArticleByLatestRevisionStmt, err = conn.Preparex(q + ` ORDER BY created DESC LIMIT 1`)
+	if err != nil {
+		return nil, err
+	}
+
+	stmts.SelectArticleByRevisionHashStmt, err = conn.Preparex(q + ` AND Revision.hashval = ?`)
+	if err != nil {
+		return nil, err
+	}
+
+	stmts.SelectArticleByRevisionIDStmt, err = conn.Preparex(q + ` AND Revision.id = ?`)
+	if err != nil {
+		return nil, err
+	}
+
+	stmts.SelectUserScreennameStmt, err = conn.Preparex(`SELECT id, screenname, email FROM User WHERE screenname = ?`)
+	if err != nil {
+		return nil, err
+	}
+
+	stmts.SelectUserScreennameWithHashStmt, err = conn.Preparex(`
+		SELECT id, screenname, email, passwordhash FROM User JOIN Password ON Password.user_id = User.id WHERE screenname = ?`)
+	if err != nil {
+		return nil, err
+	}
+
+	return stmts, nil
+}
+
 type sqliteDb struct {
 	*sqlitestore.SqliteStore
-	conn                              *sqlx.DB
-	selectArticleByLatestRevisionStmt *sqlx.Stmt
-	selectArticleByRevisionHashStmt   *sqlx.Stmt
-	selectArticleByRevisionIDStmt     *sqlx.Stmt
-	selectUserScreennameStmt          *sqlx.Stmt
-	selectUserScreennameWithHashStmt  *sqlx.Stmt
+	*PreparedStatements
+	conn *sqlx.DB
 }
 
 func Init(config *wiki.Config) (*sqliteDb, error) {
@@ -30,7 +74,7 @@ func Init(config *wiki.Config) (*sqliteDb, error) {
 		return nil, err
 	}
 
-	sqlFile, err := os.ReadFile("db/schema.sql")
+	sqlFile, err := os.ReadFile("internal/storage/schema.sql")
 	if err != nil {
 		return nil, err
 	}
@@ -47,31 +91,8 @@ func Init(config *wiki.Config) (*sqliteDb, error) {
 		return nil, err
 	}
 
-	// Add prepared statements
-	q := `SELECT url, Revision.id, title, markdown, html, hashval, created, previous_id, comment 
-			FROM Article JOIN Revision ON Article.id = Revision.article_id WHERE Article.url = ?`
-	db.selectArticleByLatestRevisionStmt, err = db.conn.Preparex(q + ` ORDER BY created DESC LIMIT 1`)
-	if err != nil {
-		return nil, err
-	}
-
-	db.selectArticleByRevisionHashStmt, err = db.conn.Preparex(q + ` AND Revision.hashval = ?`)
-	if err != nil {
-		return nil, err
-	}
-
-	db.selectArticleByRevisionIDStmt, err = db.conn.Preparex(q + ` AND Revision.id = ?`)
-	if err != nil {
-		return nil, err
-	}
-
-	db.selectUserScreennameStmt, err = db.conn.Preparex(`SELECT id, screenname, email FROM User WHERE screenname = ?`)
-	if err != nil {
-		return nil, err
-	}
-
-	db.selectUserScreennameWithHashStmt, err = db.conn.Preparex(`
-		SELECT id, screenname, email, passwordhash FROM User JOIN Password ON Password.user_id = User.id WHERE screenname = ?`)
+	// Initialize prepared statements using shared function
+	db.PreparedStatements, err = InitializeStatements(conn)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +161,7 @@ func (db *sqliteDb) SelectPreference(key string) (*wiki.Preference, error) {
 func (db *sqliteDb) SelectArticle(url string) (*wiki.Article, error) {
 	article := &wiki.Article{}
 	article.Revision = &wiki.Revision{}
-	err := db.selectArticleByLatestRevisionStmt.Get(article, url)
+	err := db.SelectArticleByLatestRevisionStmt.Get(article, url)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +172,7 @@ func (db *sqliteDb) SelectArticleByRevisionHash(url string, hash string) (*wiki.
 	article := &wiki.Article{}
 	article.Revision = &wiki.Revision{}
 
-	err := db.selectArticleByRevisionHashStmt.Get(article, url, hash)
+	err := db.SelectArticleByRevisionHashStmt.Get(article, url, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +184,7 @@ func (db *sqliteDb) SelectArticleByRevisionID(url string, id int) (*wiki.Article
 	article := &wiki.Article{}
 	article.Revision = &wiki.Revision{}
 
-	err := db.selectArticleByRevisionIDStmt.Get(article, url, id)
+	err := db.SelectArticleByRevisionIDStmt.Get(article, url, id)
 	if err != nil {
 		return nil, err
 	}
@@ -237,9 +258,9 @@ func (db *sqliteDb) SelectUserByScreenname(screenname string, withHash bool) (*w
 
 	var err error
 	if withHash {
-		err = db.selectUserScreennameWithHashStmt.Get(user, screenname)
+		err = db.SelectUserScreennameWithHashStmt.Get(user, screenname)
 	} else {
-		err = db.selectUserScreennameStmt.Get(user, screenname)
+		err = db.SelectUserScreennameStmt.Get(user, screenname)
 	}
 
 	return user, err

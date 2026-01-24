@@ -1,4 +1,4 @@
-package db
+package storage
 
 import (
 	"database/sql"
@@ -17,7 +17,8 @@ import (
 // projectRoot returns the root directory of the project.
 func projectRoot() string {
 	_, filename, _, _ := runtime.Caller(0)
-	return filepath.Dir(filepath.Dir(filename))
+	// Go up two levels: internal/storage -> internal -> project root
+	return filepath.Dir(filepath.Dir(filepath.Dir(filename)))
 }
 
 // setupTestDB creates an in-memory SQLite database for testing.
@@ -30,7 +31,7 @@ func setupTestDB(t *testing.T) (*sqliteDb, func()) {
 	}
 
 	// Read schema from project root
-	schemaPath := filepath.Join(projectRoot(), "db", "schema.sql")
+	schemaPath := filepath.Join(projectRoot(), "internal", "storage", "schema.sql")
 	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
 		conn.Close()
@@ -53,38 +54,11 @@ func setupTestDB(t *testing.T) (*sqliteDb, func()) {
 		t.Fatalf("failed to create session store: %v", err)
 	}
 
-	// Prepare statements
-	q := `SELECT url, Revision.id, title, markdown, html, hashval, created, previous_id, comment
-			FROM Article JOIN Revision ON Article.id = Revision.article_id WHERE Article.url = ?`
-	db.selectArticleByLatestRevisionStmt, err = conn.Preparex(q + ` ORDER BY created DESC LIMIT 1`)
+	// Initialize prepared statements using shared function
+	db.PreparedStatements, err = InitializeStatements(conn)
 	if err != nil {
 		conn.Close()
-		t.Fatalf("failed to prepare statement: %v", err)
-	}
-
-	db.selectArticleByRevisionHashStmt, err = conn.Preparex(q + ` AND Revision.hashval = ?`)
-	if err != nil {
-		conn.Close()
-		t.Fatalf("failed to prepare statement: %v", err)
-	}
-
-	db.selectArticleByRevisionIDStmt, err = conn.Preparex(q + ` AND Revision.id = ?`)
-	if err != nil {
-		conn.Close()
-		t.Fatalf("failed to prepare statement: %v", err)
-	}
-
-	db.selectUserScreennameStmt, err = conn.Preparex(`SELECT id, screenname, email FROM User WHERE screenname = ?`)
-	if err != nil {
-		conn.Close()
-		t.Fatalf("failed to prepare statement: %v", err)
-	}
-
-	db.selectUserScreennameWithHashStmt, err = conn.Preparex(`
-		SELECT id, screenname, email, passwordhash FROM User JOIN Password ON Password.user_id = User.id WHERE screenname = ?`)
-	if err != nil {
-		conn.Close()
-		t.Fatalf("failed to prepare statement: %v", err)
+		t.Fatalf("failed to initialize prepared statements: %v", err)
 	}
 
 	cleanup := func() {

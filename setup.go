@@ -5,7 +5,7 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/danielledeleo/periwiki/db"
+	"github.com/danielledeleo/periwiki/internal/storage"
 	"github.com/danielledeleo/periwiki/extensions"
 	"github.com/danielledeleo/periwiki/render"
 	"github.com/danielledeleo/periwiki/special"
@@ -48,7 +48,7 @@ func Setup() *app {
 		os.Exit(1)
 	}
 
-	database, err := db.Init(modelConf)
+	database, err := storage.Init(modelConf)
 	check(err)
 
 	// Create existence checker for wiki links
