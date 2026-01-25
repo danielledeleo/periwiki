@@ -11,6 +11,7 @@ import (
 	"golang.org/x/net/html/atom"
 
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 
 	"github.com/danielledeleo/periwiki/extensions"
@@ -41,6 +42,7 @@ func NewHTMLRenderer(
 				parser.WithAutoHeadingID(),
 			),
 			goldmark.WithExtensions(
+				extension.Table,
 				extensions.NewWikiLinker(wikiLinkerParserOpts, wikiLinkRendererOpts),
 				extensions.NewFootnote(footnoteOpts...),
 			),
