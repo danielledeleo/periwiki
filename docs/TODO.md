@@ -2,13 +2,19 @@ In progress
 - Docs-on-docs (ship the documentation for Periwiki as sample files)
 
 Soon(ish)
+- Backlinks feature (will help trigger redlink re-renders)
 - CLAUDE.md (how to behave in the code base, strategy, hygiene)
 - Page alias system (e.g. allow /sitemap.xml to point to /wiki/Special:Sitemap.xml)
 - Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
+- Improve editing request flow
+  - unmodified content submissions should still re-render
+  - submission errors should appear above editor window, not a new page (unmodified, conflicts)
 - Include better sample pages
 - Links on history pages to diff of live page
 - Move .go files out of root directory
-- Tagging system (YAML frontmatter exposed through editor as interface?)
+- User-defined templates system (see docs/plans/user-templates-design.md)
+  - Prerequisites: content re-render queue, article type field
+  - Subsumes: widgets, tagging/frontmatter, rich homepage, special page customization
 - Auto populate new databases with an Admin user with id 1 as the owner of all the default pages
 - Create Markdown templates for default pages (user profiles, admin pages, etc.)
 - Re-render pages on launch (somehow determine if they are stale, e.g. if the renderer changes)
@@ -16,14 +22,10 @@ Soon(ish)
 - User profiles pages to be ~user URLs, which are linked to with wikilinks e.g. [[~dani]]
 - User settings
 - Password recovery, 2FA, Login providers
-- Widgets
-  - Images (thumbnails and large view)
-  - Side cards
 - Backup/data export mechanism
 - 404 page with "Did you mean /wiki/notfound?" link
 - Two column References section layout like wikipedia
 - Add extension for custom superscripts/subscripts, [citation needed]-style, not bound to a footnote
-- Rich customizable home page (featured articles, other custom widgets)
 - When editing a page that does not yet exist, replace underscores with spaces in title
 - File:image.jpg static file handing (and design overall media strategy...)
   - Asset metadata is tracked by the wiki system, but blobs are not stored in the database
@@ -36,6 +38,7 @@ Configuration and Runtime
 - CLI flags to override config file path, database file, host, log level, etc.
 
 Down the line
+- Content re-render job (on launch, slow trickle, manually triggered, cron)
 - Moderation tools?
 - Admin panel
 - A theme system (custom templates)
@@ -55,6 +58,13 @@ Down the line
 - Better editor experience
 - Richer diffs, talk pages
 - [LOW] extending.md (documenting how to add special pages and WikiLink resolvers)
+
+Depends on user-defined templates (see docs/plans/user-templates-design.md)
+- Widgets
+  - Images (thumbnails and large view)
+  - Side cards
+- Rich customizable home page (featured articles, other custom widgets)
+- Tagging system (frontmatter-based, with tag pages)
 
 Dependency Maintenance (January 2025)
 - [MEDIUM] Evaluate SQLBoiler alternatives (volatiletech/sqlboiler)
