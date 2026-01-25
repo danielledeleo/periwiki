@@ -28,7 +28,12 @@ go build && ./periwiki
 
 ## It looks like MediaWiki
 
-That is not an accident. It is what a wiki should look like.
+That is not an accident. It is what a wiki should look like. 
+
+[<img src="docs/screenshot_thumbnail.png" width=200>](https://raw.githubusercontent.com/danielledeleo/periwiki/refs/heads/main/docs/screenshot.png)
+
+_Click to enlarge_
+
 
 ## What's with the name?
 
