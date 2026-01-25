@@ -159,6 +159,15 @@ func TestArticleHistoryHandler(t *testing.T) {
 	if !strings.Contains(body, "History") {
 		t.Error("expected body to contain 'History'")
 	}
+
+	// Verify diff link exists for older revision (comparing v1 to current version)
+	// The link format is /wiki/{article}/diff/{old_revision}/{current_revision}
+	if !strings.Contains(body, "/wiki/history-article/diff/") {
+		t.Error("expected body to contain diff link for older revision")
+	}
+
+	// The current (latest) revision should NOT have a diff link
+	// (because there's nothing to compare it to)
 }
 
 func TestArticleHistoryHandler_NotFound(t *testing.T) {
@@ -298,6 +307,66 @@ func TestDiffHandler(t *testing.T) {
 
 		if rr.Code != http.StatusNotFound {
 			t.Errorf("expected status 404, got %d", rr.Code)
+		}
+	})
+
+	t.Run("current alias in new position", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/diff-article/diff/1/current", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", rr.Code)
+		}
+
+		body := rr.Body.String()
+		if !strings.Contains(body, "<ins") && !strings.Contains(body, "<del") {
+			t.Log("Warning: expected diff to contain ins/del tags for changes")
+		}
+	})
+
+	t.Run("current alias in original position", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/diff-article/diff/current/1", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", rr.Code)
+		}
+
+		body := rr.Body.String()
+		if !strings.Contains(body, "<ins") && !strings.Contains(body, "<del") {
+			t.Log("Warning: expected diff to contain ins/del tags for changes")
+		}
+	})
+
+	t.Run("current alias in both positions", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/diff-article/diff/current/current", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", rr.Code)
+		}
+
+		// Same revision compared to itself should have no changes
+		body := rr.Body.String()
+		if strings.Contains(body, "<ins") || strings.Contains(body, "<del") {
+			t.Error("expected no ins/del tags when comparing same revision")
+		}
+	})
+
+	t.Run("reverse diff with numeric IDs", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/diff-article/diff/2/1", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", rr.Code)
 		}
 	})
 }

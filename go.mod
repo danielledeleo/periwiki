@@ -4,6 +4,9 @@ go 1.24.0
 
 require (
 	github.com/PuerkitoBio/goquery v1.9.2
+	github.com/aarondl/null/v8 v8.1.3
+	github.com/aarondl/sqlboiler/v4 v4.19.7
+	github.com/aarondl/strmangle v0.0.9
 	github.com/friendsofgo/errors v0.9.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/securecookie v1.1.2
@@ -12,11 +15,8 @@ require (
 	github.com/lmittmann/tint v1.1.2
 	github.com/michaeljs1990/sqlitestore v0.0.0-20210507162135-8585425bc864
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/sergi/go-diff v1.3.1
+	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/viper v1.19.0
-	github.com/volatiletech/null/v8 v8.1.2
-	github.com/volatiletech/sqlboiler/v4 v4.10.2
-	github.com/volatiletech/strmangle v0.0.3
 	github.com/yuin/goldmark v1.7.4
 	golang.org/x/crypto v0.47.0
 	golang.org/x/net v0.49.0
@@ -27,10 +27,7 @@ require (
 
 require (
 	github.com/aarondl/inflect v0.0.2 // indirect
-	github.com/aarondl/null/v8 v8.1.3 // indirect
 	github.com/aarondl/randomize v0.0.2 // indirect
-	github.com/aarondl/sqlboiler/v4 v4.19.7 // indirect
-	github.com/aarondl/strmangle v0.0.9 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -54,8 +51,6 @@ require (
 	github.com/spf13/cast v1.7.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/volatiletech/inflect v0.0.1 // indirect
-	github.com/volatiletech/randomize v0.0.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948 // indirect
 	golang.org/x/sys v0.40.0 // indirect

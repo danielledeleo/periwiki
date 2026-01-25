@@ -25,8 +25,11 @@ func InitializeStatements(conn *sqlx.DB) (*PreparedStatements, error) {
 	stmts := &PreparedStatements{}
 	var err error
 
-	q := `SELECT url, Revision.id, title, markdown, html, hashval, created, previous_id, comment
-			FROM Article JOIN Revision ON Article.id = Revision.article_id WHERE Article.url = ?`
+	q := `SELECT url, Revision.id, title, markdown, html, hashval, created, previous_id, comment, User.id AS user_id, User.screenname
+			FROM Article 
+			JOIN Revision ON Article.id = Revision.article_id 
+			JOIN User ON Revision.user_id = User.id
+			WHERE Article.url = ?`
 
 	stmts.SelectArticleByLatestRevisionStmt, err = conn.Preparex(q + ` ORDER BY created DESC LIMIT 1`)
 	if err != nil {

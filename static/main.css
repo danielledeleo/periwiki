@@ -3,6 +3,7 @@
     --periwiki-purple: #a7aef9;
     --underline: #a2a9b1;
     --periwiki-grey: #9a9a9a;
+    --periwiki-dark-grey: #555555;
     --periwiki-light-grey: #f6f6f6;
     --pw-deadlink-color: #bf3c2c;
 }
@@ -103,11 +104,15 @@ a.pw-deadlink {
 }
 
 #right-panel {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+    overflow-x: hidden;
 }
 
 #article-area {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+    overflow-x: hidden;
 }
 
 #article-area ul.pw-tabs {
@@ -338,8 +343,23 @@ article ul li {
     margin: 0 0 0.1em 0;
 }
 
+article pre:has(.pw-diff) {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
 article .pw-diff {
     line-height: 1em;
+}
+
+article .pw-diff-info p {
+    margin: 0.5em 0;
+}
+
+article .pw-diff-comment {
+    color: var(--periwiki-dark-grey);
+    font-style: italic;
+    white-space: pre;
 }
 
 article.pw-preview {

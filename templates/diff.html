@@ -8,12 +8,24 @@
     </ul>
     <article>
         <h1>Diff of {{.Title}}</h1>
+        <div class="pw-diff-info">
+            <p>
+                Comparing {{if eq .ID $.CurrentRevisionID}} latest {{end}} revision at 
+                <a href="/wiki/{{.URL}}/r/{{.ID}}">{{.Created.Format "2006-01-02 15:04"}}</a>
+                {{if .Creator}}by {{.Creator.ScreenName}}{{end}}
+                {{- if .Comment -}}<span class="pw-diff-comment"> ... ({{.Comment}})</span>{{- end -}}
+            </p>
+            <p>
+                With {{if eq $.NewRevision.ID $.CurrentRevisionID}} latest {{end}} revision at 
+                <a href="/wiki/{{$.NewRevision.URL}}/r/{{$.NewRevision.ID}}">{{$.NewRevision.Created.Format "2006-01-02 15:04"}}</a>
+                {{if $.NewRevision.Creator}}by {{$.NewRevision.Creator.ScreenName}}{{end}}
+                {{- if $.NewRevision.Comment -}}<span class="pw-diff-comment"> ... ({{$.NewRevision.Comment}})</span>{{- end -}}
+            </p>
+        </div>
     {{end}}
-        {{with .Other}}
         <div class="pw-article-content">
             <pre><code class="pw-diff">{{.DiffString}}</code></pre>
         </div>
-        {{end}}
     </article>
 </div>
 {{end}}

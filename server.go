@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"os"
@@ -310,12 +311,19 @@ func (a *app) articleHistoryHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	slog.Debug("article history viewed", "category", "article", "action", "history", "article", url)
+
+	var currentRevisionID int
+	if len(revisions) > 0 {
+		currentRevisionID = revisions[0].ID
+	}
+
 	err = a.RenderTemplate(rw, "article_history.html", "index.html", map[string]interface{}{
 		"Article": map[string]interface{}{
 			"URL":   url,
 			"Title": "History of " + url},
-		"Context":   req.Context(),
-		"Revisions": revisions})
+		"Context":           req.Context(),
+		"Revisions":         revisions,
+		"CurrentRevisionID": currentRevisionID})
 	check(err)
 }
 
@@ -463,31 +471,44 @@ func (a *app) errorHandler(responseCode int, rw http.ResponseWriter, req *http.R
 func (a *app) diffHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 
-	originalID, err := strconv.Atoi(vars["original"])
-	if err != nil {
-		a.errorHandler(http.StatusBadRequest, rw, req, err)
-		return
+	var orginal *wiki.Article
+	var err error
+	if vars["original"] == "current" {
+		orginal, err = a.articles.GetArticle(vars["article"])
+	} else {
+		var originalID int
+		originalID, err = strconv.Atoi(vars["original"])
+		if err != nil {
+			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			return
+		}
+		orginal, err = a.articles.GetArticleByRevisionID(vars["article"], originalID)
 	}
-	newID, err := strconv.Atoi(vars["new"])
-	if err != nil {
-		a.errorHandler(http.StatusBadRequest, rw, req, err)
-		return
-	}
-
-	orginal, err := a.articles.GetArticleByRevisionID(vars["article"], originalID)
 	if err != nil {
 		a.errorHandler(http.StatusNotFound, rw, req, err)
 		return
 	}
 
-	new, err := a.articles.GetArticleByRevisionID(vars["article"], newID)
+	var new *wiki.Article
+	if vars["new"] == "current" {
+		new, err = a.articles.GetArticle(vars["article"])
+	} else {
+		var newID int
+		newID, err = strconv.Atoi(vars["new"])
+		if err != nil {
+			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			return
+		}
+		new, err = a.articles.GetArticleByRevisionID(vars["article"], newID)
+	}
 	if err != nil {
 		a.errorHandler(http.StatusNotFound, rw, req, err)
 		return
 	}
 
 	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(orginal.Markdown, new.Markdown, false)
+	diffs := dmp.DiffMain(orginal.Markdown, new.Markdown, true)
+	diffs = dmp.DiffCleanupSemantic(diffs)
 
 	var buff bytes.Buffer
 	for _, diff := range diffs {
@@ -509,13 +530,21 @@ func (a *app) diffHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 	pretty := buff.String()
 
-	slog.Debug("diff viewed", "category", "article", "action", "diff", "article", vars["article"], "from", originalID, "to", newID)
+	// Get current revision to determine which (if any) is current
+	current, _ := a.articles.GetArticle(vars["article"])
+	var currentRevisionID int
+	if current != nil {
+		currentRevisionID = current.ID
+	}
+
+	slog.Debug("diff viewed", "category", "article", "action", "diff", "article", vars["article"], "from", orginal.ID, "to", new.ID)
 	err = a.RenderTemplate(rw, "diff.html", "index.html", map[string]interface{}{
-		"Article": orginal,
-		"Context": req.Context(),
-		"Other": map[string]interface{}{
-			"DiffString": pretty,
-		}})
+		"Article":           orginal,
+		"Context":           req.Context(),
+		"NewRevision":       new,
+		"DiffString":        template.HTML(pretty),
+		"CurrentRevisionID": currentRevisionID,
+	})
 
 	if err != nil {
 		slog.Error("failed to render diff template", "error", err)

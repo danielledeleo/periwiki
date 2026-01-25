@@ -14,8 +14,9 @@
                 <li>
                     <a href="/wiki/{{$.Article.URL}}/r/{{.ID}}">
                         {{ .Created.Format "2006, Jan _2 3:04 MST" }}
-                    </a> by {{.Creator.ScreenName}} ({{.Markdown}} bytes) {{if .Comment}} ... 
-                    <em>({{.Comment}})</em>{{end}}
+                    </a> by {{.Creator.ScreenName}} ({{.Markdown}} bytes){{if .Comment}} ... 
+                    <em>({{.Comment}})</em>{{end}}{{if or (gt .PreviousID 0) (ne .ID $.CurrentRevisionID)}} 
+                    ({{if gt .PreviousID 0}}<a href="/wiki/{{$.Article.URL}}/diff/{{.PreviousID}}/{{.ID}}">diff</a>{{end}}{{if and (gt .PreviousID 0) (ne .ID $.CurrentRevisionID)}} | {{end}}{{if ne .ID $.CurrentRevisionID}}<a href="/wiki/{{$.Article.URL}}/diff/{{.ID}}/current">curr</a>{{end}}){{end}}
                 </li>
             {{end}}
             </ul>

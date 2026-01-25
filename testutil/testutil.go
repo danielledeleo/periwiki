@@ -259,34 +259,63 @@ func CreateTestArticle(t *testing.T, app *TestApp, url, title, markdown string, 
 
 // Implement wiki.db interface for TestDB
 
+// articleResult is used for scanning article queries that include user info
+type articleResult struct {
+	URL        string
+	ID         int
+	Title      string
+	Markdown   string
+	HTML       string
+	Hash       string    `db:"hashval"`
+	Created    time.Time
+	PreviousID int       `db:"previous_id"`
+	Comment    string
+	UserID     int       `db:"user_id"`
+	ScreenName string    `db:"screenname"`
+}
+
+func (r *articleResult) toArticle() *wiki.Article {
+	return &wiki.Article{
+		URL: r.URL,
+		Revision: &wiki.Revision{
+			ID:         r.ID,
+			Title:      r.Title,
+			Markdown:   r.Markdown,
+			HTML:       r.HTML,
+			Hash:       r.Hash,
+			Created:    r.Created,
+			PreviousID: r.PreviousID,
+			Comment:    r.Comment,
+			Creator:    &wiki.User{ID: r.UserID, ScreenName: r.ScreenName},
+		},
+	}
+}
+
 func (tdb *TestDB) SelectArticle(url string) (*wiki.Article, error) {
-	article := &wiki.Article{}
-	article.Revision = &wiki.Revision{}
-	err := tdb.SelectArticleByLatestRevisionStmt.Get(article, url)
+	result := &articleResult{}
+	err := tdb.SelectArticleByLatestRevisionStmt.Get(result, url)
 	if err != nil {
 		return nil, err
 	}
-	return article, err
+	return result.toArticle(), nil
 }
 
 func (tdb *TestDB) SelectArticleByRevisionHash(url string, hash string) (*wiki.Article, error) {
-	article := &wiki.Article{}
-	article.Revision = &wiki.Revision{}
-	err := tdb.SelectArticleByRevisionHashStmt.Get(article, url, hash)
+	result := &articleResult{}
+	err := tdb.SelectArticleByRevisionHashStmt.Get(result, url, hash)
 	if err != nil {
 		return nil, err
 	}
-	return article, err
+	return result.toArticle(), nil
 }
 
 func (tdb *TestDB) SelectArticleByRevisionID(url string, id int) (*wiki.Article, error) {
-	article := &wiki.Article{}
-	article.Revision = &wiki.Revision{}
-	err := tdb.SelectArticleByRevisionIDStmt.Get(article, url, id)
+	result := &articleResult{}
+	err := tdb.SelectArticleByRevisionIDStmt.Get(result, url, id)
 	if err != nil {
 		return nil, err
 	}
-	return article, err
+	return result.toArticle(), nil
 }
 
 func (tdb *TestDB) SelectRevision(hash string) (*wiki.Revision, error) {
@@ -297,7 +326,7 @@ func (tdb *TestDB) SelectRevision(hash string) (*wiki.Revision, error) {
 
 func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 	rows, err := tdb.conn.Queryx(
-		`SELECT Revision.id, title, hashval, created, comment, User.screenname, length(markdown)
+		`SELECT Revision.id, title, hashval, created, comment, previous_id, User.screenname, length(markdown)
 			FROM Article JOIN Revision ON Article.id = Revision.article_id
 					     JOIN User ON Revision.user_id = User.id
 			WHERE Article.url = ? ORDER BY created DESC`, url)
@@ -309,6 +338,7 @@ func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 	result := struct {
 		Title, Hashval, Comment, Screenname string
 		ID                                  int
+		PreviousID                          int       `db:"previous_id"`
 		Length                              int       `db:"length(markdown)"`
 		Created                             time.Time `db:"created"`
 	}{}
@@ -322,6 +352,7 @@ func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 		rev.Title = result.Title
 		rev.Hash = result.Hashval
 		rev.ID = result.ID
+		rev.PreviousID = result.PreviousID
 		rev.Comment = result.Comment
 		rev.Created = result.Created
 		rev.Markdown = string(rune(result.Length))
