@@ -91,6 +91,20 @@ func Init(config *wiki.Config) (*sqliteDb, error) {
 		return nil, err
 	}
 
+	// Migration: Add render_status column to Revision table if it doesn't exist.
+	// This is idempotent - safe to run multiple times on the same database.
+	var colExists int
+	err = conn.Get(&colExists, `SELECT COUNT(*) FROM pragma_table_info('Revision') WHERE name = 'render_status'`)
+	if err != nil {
+		return nil, err
+	}
+	if colExists == 0 {
+		_, err = conn.Exec(`ALTER TABLE Revision ADD COLUMN render_status TEXT NOT NULL DEFAULT 'rendered'`)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	db := &sqliteDb{conn: conn}
 	db.SqliteStore, err = sqlitestore.NewSqliteStoreFromConnection(conn, "sessions", "/", config.CookieExpiry, config.CookieSecret)
 	if err != nil {

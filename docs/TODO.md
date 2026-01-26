@@ -2,15 +2,24 @@ In progress
 - Docs-on-docs (ship the documentation for Periwiki as sample files)
 
 Soon(ish)
-- [HIGH] Anonymous editing toggle (env config for now)
-- Frontmatter schema design (see docs/plans/frontmatter-design.md)
+- [HIGH] Content re-render job
+  - due to on-disk template changes
+  - on edits
+  - on binary launch
+  - slow trickle
+  - manually triggered, cron
+- [HIGH] CLAUDE.md (how to behave in the code base, strategy, hygiene)
+  - mission alignment
+  - development techniques, how to handle agents (serena, memories)
+  - testing requirements and strategy
+  - git workflows
+- [MED] Implement frontmatter schema (see docs/plans/frontmatter-design.md)
   - Consider ORM replacement first (see Dependency Maintenance section)
-- Content re-render job (due to template changes or edits, on launch, slow trickle, manually triggered, cron)
-- When editing from an old revision (restoring, essentially), allow it to publish instead of 409.
-- CLAUDE.md (how to behave in the code base, strategy, hygiene)
+- [MED] When editing from an old revision (restoring, essentially), allow it to publish instead of 409.
+- [MED] Backlinks feature (will help trigger redlink re-renders)
+- [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
+- [MED] Article content injection fuzzing (security, testing)
 - Page alias and redirect system (see docs/plans/alias-redirect-design.md)
-- Backlinks feature (will help trigger redlink re-renders)
-- Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - Improve editing request flow
   - unmodified content submissions should still re-render
   - submission errors should appear above editor window, not a new page (unmodified, conflicts)
@@ -36,11 +45,10 @@ Soon(ish)
 - File:image.jpg static file handing (and design overall media strategy...)
   - Asset metadata is tracked by the wiki system, but blobs are not stored in the database
   - References are kept to an externally managed media system (local filesystem, S3, static files on an nginx server, etc.)
-- Article content injection fuzzing
 
 Configuration and Runtime
-- Store cookie secret in database instead of .cookiesecret.yaml (update docs/security.md)
-- Compile template files into the binary (embed)
+- [HIGH] Store cookie secret in database instead of .cookiesecret.yaml (update docs/security.md)
+- Compile template files into the binary (embed) (possible wontfix)
 - Improve "server failed to start" error message with specific reason (port in use, permission denied, etc.)
 - CLI flags to override config file path, database file, host, log level, etc.
 

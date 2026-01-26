@@ -24,6 +24,7 @@ func SetupConfig() *wiki.Config {
 	viper.SetDefault("log_level", "info")    // debug, info, warn, error
 	viper.SetDefault("base_url", "http://localhost:8080")
 	viper.SetDefault("allow_anonymous_edits_global", true)
+	viper.SetDefault("render_workers", 0) // 0 = auto-detect
 
 	viper.SetConfigFile(configFilename)
 	viper.AddConfigPath(".")
@@ -93,6 +94,7 @@ func SetupConfig() *wiki.Config {
 		Host:                      viper.GetString("host"),
 		BaseURL:                   viper.GetString("base_url"),
 		AllowAnonymousEditsGlobal: viper.GetBool("allow_anonymous_edits_global"),
+		RenderWorkers:             viper.GetInt("render_workers"),
 	}
 
 	if createDefaultConfigFile {

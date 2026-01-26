@@ -703,8 +703,8 @@ func TestAnonymousEditBlockedWhenDisabled(t *testing.T) {
 	}
 
 	location := resp.Header.Get("Location")
-	if !strings.HasPrefix(location, "/user/login?referrer=") {
-		t.Errorf("expected redirect to login with referrer, got %q", location)
+	if !strings.HasPrefix(location, "/user/login?reason=login_required&referrer=") {
+		t.Errorf("expected redirect to login with reason and referrer, got %q", location)
 	}
 }
 

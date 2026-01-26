@@ -22,6 +22,12 @@ type ArticleRepository interface {
 	// InsertArticle inserts a new article revision.
 	InsertArticle(article *wiki.Article) error
 
+	// InsertArticleQueued inserts a new article revision with render_status='queued' and empty HTML.
+	InsertArticleQueued(article *wiki.Article) (revisionID int64, err error)
+
+	// UpdateRevisionHTML updates the HTML and render_status for a revision.
+	UpdateRevisionHTML(url string, revisionID int, html string, renderStatus string) error
+
 	// SelectRandomArticleURL returns a random article URL.
 	SelectRandomArticleURL() (string, error)
 

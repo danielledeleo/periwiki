@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html"
 	"html/template"
@@ -9,7 +10,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/danielledeleo/periwiki/special"
@@ -73,7 +76,7 @@ func slogLoggingMiddleware(next http.Handler) http.Handler {
 }
 
 func main() {
-	app := Setup()
+	app, renderQueue := Setup()
 
 	router := mux.NewRouter().StrictSlash(true)
 
@@ -103,13 +106,44 @@ func main() {
 
 	handler := slogLoggingMiddleware(router)
 
-	slog.Info("server starting", "url", "http://"+app.config.Host)
-	err := http.ListenAndServe(app.config.Host, handler)
-
-	if err != nil {
-		slog.Error("server failed to start", "error", err)
-		os.Exit(1)
+	srv := &http.Server{
+		Addr:    app.config.Host,
+		Handler: handler,
 	}
+
+	// Start server in goroutine
+	go func() {
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			slog.Error("server error", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	slog.Info("server starting", "url", "http://"+app.config.Host)
+
+	// Wait for shutdown signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	slog.Info("shutting down server...")
+
+	// Graceful shutdown with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Shutdown HTTP server first (stop accepting new requests)
+	if err := srv.Shutdown(ctx); err != nil {
+		slog.Error("server shutdown error", "error", err)
+	}
+
+	// Shutdown render queue (wait for in-flight jobs)
+	slog.Info("shutting down render queue...")
+	if err := renderQueue.Shutdown(ctx); err != nil {
+		slog.Error("render queue shutdown error", "error", err)
+	}
+
+	slog.Info("server stopped")
 }
 
 func (a *app) registerHandler(rw http.ResponseWriter, req *http.Request) {

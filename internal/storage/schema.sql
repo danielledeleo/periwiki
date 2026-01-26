@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS Revision (
     created TIMESTAMP NOT NULL,
     previous_id INT NOT NULL,
     comment TEXT,
+    render_status TEXT NOT NULL DEFAULT 'rendered',
     PRIMARY KEY (id, article_id),
     FOREIGN KEY(article_id) REFERENCES Article(id),
     FOREIGN KEY(user_id) REFERENCES User(id)

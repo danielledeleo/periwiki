@@ -1,10 +1,12 @@
 package service
 
 import (
+	"context"
 	"crypto/sha512"
 	"database/sql"
 	"encoding/base64"
 
+	"github.com/danielledeleo/periwiki/internal/renderqueue"
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/danielledeleo/periwiki/wiki/repository"
 	"github.com/microcosm-cc/bluemonday"
@@ -17,6 +19,12 @@ type ArticleService interface {
 
 	// PostArticle creates or updates an article.
 	PostArticle(article *wiki.Article) error
+
+	// PostArticleWithContext creates or updates an article with context for cancellation.
+	PostArticleWithContext(ctx context.Context, article *wiki.Article) error
+
+	// Preview renders markdown to HTML without persisting (bypasses queue).
+	Preview(markdown string) (string, error)
 
 	// GetArticleByRevisionID retrieves an article by URL and revision ID.
 	GetArticleByRevisionID(url string, id int) (*wiki.Article, error)
@@ -38,13 +46,16 @@ type ArticleService interface {
 type articleService struct {
 	repo      repository.ArticleRepository
 	rendering RenderingService
+	queue     *renderqueue.Queue
 }
 
 // NewArticleService creates a new ArticleService.
-func NewArticleService(repo repository.ArticleRepository, rendering RenderingService) ArticleService {
+// If queue is nil, rendering is done synchronously (useful for tests).
+func NewArticleService(repo repository.ArticleRepository, rendering RenderingService, queue *renderqueue.Queue) ArticleService {
 	return &articleService{
 		repo:      repo,
 		rendering: rendering,
+		queue:     queue,
 	}
 }
 
@@ -61,7 +72,13 @@ func (s *articleService) GetArticle(url string) (*wiki.Article, error) {
 }
 
 // PostArticle creates or updates an article.
+// This is a convenience wrapper that uses context.Background().
 func (s *articleService) PostArticle(article *wiki.Article) error {
+	return s.PostArticleWithContext(context.Background(), article)
+}
+
+// PostArticleWithContext creates or updates an article with context for cancellation.
+func (s *articleService) PostArticleWithContext(ctx context.Context, article *wiki.Article) error {
 	x := sha512.Sum384([]byte(article.Title + article.Markdown))
 	article.Hash = base64.URLEncoding.EncodeToString(x[:])
 
@@ -79,14 +96,63 @@ func (s *articleService) PostArticle(article *wiki.Article) error {
 	article.Title = strip.Sanitize(article.Title)
 	article.Comment = strip.Sanitize(article.Comment)
 
-	html, err := s.rendering.Render(article.Markdown)
+	// If no queue is configured, use synchronous rendering (useful for tests)
+	if s.queue == nil {
+		html, err := s.rendering.Render(article.Markdown)
+		if err != nil {
+			return err
+		}
+		article.HTML = html
+		return s.repo.InsertArticle(article)
+	}
+
+	// Insert revision with render_status='queued' and empty HTML
+	revisionID, err := s.repo.InsertArticleQueued(article)
 	if err != nil {
 		return err
 	}
 
-	article.HTML = html
+	// Submit job to queue and wait for result
+	waitCh := make(chan renderqueue.Result, 1)
+	job := renderqueue.Job{
+		ArticleURL:  article.URL,
+		RevisionID:  revisionID,
+		Markdown:    article.Markdown,
+		Tier:        renderqueue.TierInteractive,
+	}
 
-	return s.repo.InsertArticle(article)
+	if err := s.queue.Submit(ctx, job, waitCh); err != nil {
+		// Queue closed or other error - mark as failed
+		_ = s.repo.UpdateRevisionHTML(article.URL, int(revisionID), "", "failed")
+		return err
+	}
+
+	// Wait for render result with context cancellation
+	select {
+	case result := <-waitCh:
+		if result.Err != nil {
+			// Render failed - update status
+			_ = s.repo.UpdateRevisionHTML(article.URL, int(revisionID), "", "failed")
+			return result.Err
+		}
+		// Success - update HTML and status
+		if err := s.repo.UpdateRevisionHTML(article.URL, int(revisionID), result.HTML, "rendered"); err != nil {
+			return err
+		}
+		article.HTML = result.HTML
+		article.ID = int(revisionID)
+		return nil
+
+	case <-ctx.Done():
+		// Context cancelled (e.g., request timeout)
+		_ = s.repo.UpdateRevisionHTML(article.URL, int(revisionID), "", "failed")
+		return ctx.Err()
+	}
+}
+
+// Preview renders markdown to HTML without persisting (bypasses queue).
+func (s *articleService) Preview(markdown string) (string, error) {
+	return s.rendering.Render(markdown)
 }
 
 // GetArticleByRevisionID retrieves an article by URL and revision ID.

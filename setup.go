@@ -4,8 +4,10 @@ import (
 	"log/slog"
 	"os"
 	"regexp"
+	"runtime"
 
 	"github.com/danielledeleo/periwiki/extensions"
+	"github.com/danielledeleo/periwiki/internal/renderqueue"
 	"github.com/danielledeleo/periwiki/internal/storage"
 	"github.com/danielledeleo/periwiki/render"
 	"github.com/danielledeleo/periwiki/special"
@@ -14,7 +16,9 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-func Setup() *app {
+// Setup initializes the application and returns the app instance along with
+// the render queue (which must be shut down when the server stops).
+func Setup() (*app, *renderqueue.Queue) {
 	modelConf := SetupConfig()
 
 	bm := bluemonday.UGCPolicy()
@@ -76,6 +80,14 @@ func Setup() *app {
 	// Create rendering service
 	renderingService := service.NewRenderingService(renderer, bm)
 
+	// Create render queue
+	workerCount := modelConf.RenderWorkers
+	if workerCount == 0 {
+		workerCount = runtime.NumCPU()
+	}
+	renderQueue := renderqueue.New(workerCount, renderingService.Render)
+	slog.Info("render queue initialized", "workers", workerCount)
+
 	// Create session service
 	sessionService := service.NewSessionService(database)
 
@@ -83,7 +95,7 @@ func Setup() *app {
 	userService := service.NewUserService(database, modelConf.MinimumPasswordLength)
 
 	// Create article service
-	articleService := service.NewArticleService(database, renderingService)
+	articleService := service.NewArticleService(database, renderingService, renderQueue)
 
 	// Create preference service
 	preferenceService := service.NewPreferenceService(database)
@@ -104,5 +116,5 @@ func Setup() *app {
 		preferences:  preferenceService,
 		specialPages: specialPages,
 		config:       modelConf,
-	}
+	}, renderQueue
 }

@@ -9,4 +9,5 @@ type Config struct {
 	Host                      string `yaml:"host"`
 	BaseURL                   string `yaml:"base_url"`
 	AllowAnonymousEditsGlobal bool   `yaml:"allow_anonymous_edits_global"`
+	RenderWorkers             int    `yaml:"render_workers"`
 }

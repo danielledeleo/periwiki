@@ -179,8 +179,8 @@ func SetupTestApp(t *testing.T) (*TestApp, func()) {
 	// Create user service
 	userService := service.NewUserService(db, config.MinimumPasswordLength)
 
-	// Create article service
-	articleService := service.NewArticleService(db, renderingService)
+	// Create article service (nil queue for synchronous rendering in tests)
+	articleService := service.NewArticleService(db, renderingService, nil)
 
 	// Create preference service
 	preferenceService := service.NewPreferenceService(db)
@@ -470,6 +470,90 @@ func (tdb *TestDB) InsertArticle(article *wiki.Article) error {
 	}
 
 	return insertErr
+}
+
+func (tdb *TestDB) InsertArticleQueued(article *wiki.Article) (revisionID int64, err error) {
+	testArticle, insertErr := tdb.SelectArticle(article.URL)
+
+	tx, err := tdb.conn.Beginx()
+	if err != nil {
+		return 0, err
+	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	newRevisionID := int64(article.PreviousID + 1)
+
+	if insertErr != nil && insertErr.Error() == "sql: no rows in result set" {
+		// New article
+		if _, err = tx.Exec(`INSERT INTO Article (url) VALUES (?);`, article.URL); err != nil {
+			return 0, err
+		}
+
+		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
+			VALUES (?, ?, ?, ?, '', last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
+			newRevisionID,
+			article.Title,
+			article.Hash,
+			article.Markdown,
+			article.Creator.ID,
+			article.PreviousID,
+			article.Comment)
+
+		if err != nil {
+			return 0, err
+		}
+	} else if insertErr == nil && testArticle != nil {
+		// New revision to article
+		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
+			VALUES (?, ?, ?, ?, '', (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
+			newRevisionID,
+			article.Title,
+			article.Hash,
+			article.Markdown,
+			article.URL,
+			article.Creator.ID,
+			article.PreviousID,
+			article.Comment)
+
+		if err != nil && err.Error() == "UNIQUE constraint failed: Revision.id, Revision.article_id" {
+			return 0, wiki.ErrRevisionAlreadyExists
+		}
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		return 0, insertErr
+	}
+
+	return newRevisionID, nil
+}
+
+func (tdb *TestDB) UpdateRevisionHTML(url string, revisionID int, html string, renderStatus string) error {
+	result, err := tdb.conn.Exec(`
+		UPDATE Revision
+		SET html = ?, render_status = ?
+		WHERE id = ? AND article_id = (SELECT id FROM Article WHERE url = ?)`,
+		html, renderStatus, revisionID, url)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return wiki.ErrRevisionNotFound
+	}
+
+	return nil
 }
 
 func (tdb *TestDB) InsertUser(user *wiki.User) error {

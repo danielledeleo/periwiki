@@ -234,3 +234,95 @@ func (db *sqliteDb) InsertArticle(article *wiki.Article) (err error) {
 	// Success!
 	return nil
 }
+
+func (db *sqliteDb) InsertArticleQueued(article *wiki.Article) (revisionID int64, err error) {
+	testArticle, insertErr := db.SelectArticle(article.URL)
+
+	var tx *sqlx.Tx
+	tx, err = db.conn.Beginx()
+
+	if err != nil {
+		slog.Error("failed to begin transaction", "error", err)
+		return 0, err
+	}
+
+	defer func() {
+		if err != nil {
+			slog.Error("article insert failed", "operation", "InsertArticleQueued", "error", err)
+			if rbErr := tx.Rollback(); rbErr != nil {
+				slog.Error("transaction rollback failed", "error", rbErr)
+			}
+		} else {
+			if commitErr := tx.Commit(); commitErr != nil {
+				slog.Error("transaction commit failed", "error", commitErr)
+			}
+		}
+	}()
+
+	newRevisionID := int64(article.PreviousID + 1)
+
+	if insertErr == sql.ErrNoRows { // New article.
+		if _, err = tx.Exec(`INSERT INTO Article (url) VALUES (?);`, article.URL); err != nil {
+			return 0, err
+		}
+
+		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
+			VALUES (?, ?, ?, ?, '', last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
+			newRevisionID,
+			article.Title,
+			article.Hash,
+			article.Markdown,
+			article.Creator.ID,
+			article.PreviousID,
+			article.Comment)
+
+		if err != nil {
+			return 0, err
+		}
+
+	} else if insertErr == nil && testArticle != nil { // New revision to article
+
+		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
+			VALUES (?, ?, ?, ?, '', (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
+			newRevisionID,
+			article.Title,
+			article.Hash,
+			article.Markdown,
+			article.URL,
+			article.Creator.ID,
+			article.PreviousID,
+			article.Comment)
+
+		if err != nil {
+			if err.Error() == "UNIQUE constraint failed: Revision.id, Revision.article_id" {
+				return 0, wiki.ErrRevisionAlreadyExists
+			}
+			return 0, err
+		}
+	} else {
+		return 0, insertErr
+	}
+
+	return newRevisionID, nil
+}
+
+func (db *sqliteDb) UpdateRevisionHTML(url string, revisionID int, html string, renderStatus string) error {
+	result, err := db.conn.Exec(`
+		UPDATE Revision
+		SET html = ?, render_status = ?
+		WHERE id = ? AND article_id = (SELECT id FROM Article WHERE url = ?)`,
+		html, renderStatus, revisionID, url)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return wiki.ErrRevisionNotFound
+	}
+
+	return nil
+}
