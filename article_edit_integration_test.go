@@ -640,3 +640,186 @@ func TestEditFormPreservesContentOnError(t *testing.T) {
 		}
 	}
 }
+
+
+// setupTestServerWithAnonEditsDisabled creates a test server with anonymous editing disabled.
+func setupTestServerWithAnonEditsDisabled(t *testing.T) (*httptest.Server, *testutil.TestApp, func()) {
+	t.Helper()
+
+	testApp, cleanup := testutil.SetupTestApp(t)
+
+	// Disable anonymous editing
+	testApp.Config.AllowAnonymousEditsGlobal = false
+
+	app := &app{
+		Templater:    testApp.Templater,
+		articles:     testApp.Articles,
+		users:        testApp.Users,
+		sessions:     testApp.Sessions,
+		rendering:    testApp.Rendering,
+		preferences:  testApp.Preferences,
+		specialPages: testApp.SpecialPages,
+		config:       testApp.Config,
+	}
+
+	router := mux.NewRouter().StrictSlash(true)
+	router.Use(app.SessionMiddleware)
+
+	router.HandleFunc("/", app.homeHandler).Methods("GET")
+	router.HandleFunc("/wiki/{article}", app.articleDispatcher).Methods("GET", "POST")
+	router.HandleFunc("/user/login", app.loginPostHander).Methods("POST")
+
+	server := httptest.NewServer(router)
+
+	serverCleanup := func() {
+		server.Close()
+		cleanup()
+	}
+
+	return server, testApp, serverCleanup
+}
+
+func TestAnonymousEditBlockedWhenDisabled(t *testing.T) {
+	server, _, cleanup := setupTestServerWithAnonEditsDisabled(t)
+	defer cleanup()
+
+	// Create HTTP client that doesn't follow redirects
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	// Try to access edit page as anonymous user
+	resp, err := client.Get(server.URL + "/wiki/test-article?edit")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Should redirect to login
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Errorf("expected status 303 (See Other), got %d", resp.StatusCode)
+	}
+
+	location := resp.Header.Get("Location")
+	if !strings.HasPrefix(location, "/user/login?referrer=") {
+		t.Errorf("expected redirect to login with referrer, got %q", location)
+	}
+}
+
+func TestAnonymousPostBlockedWhenDisabled(t *testing.T) {
+	server, _, cleanup := setupTestServerWithAnonEditsDisabled(t)
+	defer cleanup()
+
+	// Try to POST article as anonymous user
+	formData := url.Values{
+		"title":       {"Test Article"},
+		"body":        {"Test content"},
+		"previous_id": {"0"},
+	}
+
+	resp, err := http.PostForm(server.URL+"/wiki/anon-blocked-test", formData)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Should get 403 Forbidden
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("expected status 403 (Forbidden), got %d", resp.StatusCode)
+	}
+}
+
+func TestAuthenticatedUserCanEditWhenAnonDisabled(t *testing.T) {
+	server, testApp, cleanup := setupTestServerWithAnonEditsDisabled(t)
+	defer cleanup()
+
+	// Create and login user
+	password := "authedpassword"
+	user := &wiki.User{
+		ScreenName:  "autheduser",
+		Email:       "authed@example.com",
+		RawPassword: password,
+	}
+	testApp.Users.PostUser(user)
+
+	client := loginUser(t, server, "autheduser", password)
+
+	// Access edit page - should work
+	resp, err := client.Get(server.URL + "/wiki/new-article?edit")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", resp.StatusCode)
+	}
+
+	// POST article - should also work
+	formData := url.Values{
+		"title":       {"Auth Test Article"},
+		"body":        {"Content from authenticated user"},
+		"previous_id": {"0"},
+	}
+
+	resp2, err := client.PostForm(server.URL+"/wiki/auth-test-article", formData)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp2.Body.Close()
+
+	if resp2.StatusCode != http.StatusSeeOther {
+		t.Errorf("expected status 303 (redirect after save), got %d", resp2.StatusCode)
+	}
+
+	// Verify article was created
+	article, err := testApp.Articles.GetArticle("auth-test-article")
+	if err != nil {
+		t.Fatalf("article not found: %v", err)
+	}
+	if article.Title != "Auth Test Article" {
+		t.Errorf("expected title 'Auth Test Article', got %q", article.Title)
+	}
+}
+
+func TestAnonymousCanEditWhenEnabled(t *testing.T) {
+	// Uses default setup which has AllowAnonymousEditsGlobal=true
+	server, testApp, cleanup := setupArticleEditTestServer(t)
+	defer cleanup()
+
+	// Create HTTP client that doesn't follow redirects
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	// POST article as anonymous user
+	formData := url.Values{
+		"title":       {"Anonymous Article"},
+		"body":        {"Content from anonymous"},
+		"previous_id": {"0"},
+	}
+
+	resp, err := client.PostForm(server.URL+"/wiki/anon-allowed-test", formData)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Should succeed with redirect
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Errorf("expected status 303 (redirect after save), got %d", resp.StatusCode)
+	}
+
+	// Verify article was created
+	article, err := testApp.Articles.GetArticle("anon-allowed-test")
+	if err != nil {
+		t.Fatalf("article not found: %v", err)
+	}
+	if article.Title != "Anonymous Article" {
+		t.Errorf("expected title 'Anonymous Article', got %q", article.Title)
+	}
+}

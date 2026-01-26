@@ -13,6 +13,11 @@ type User struct {
 	// Role
 }
 
+// IsAnonymous returns true if the user is not authenticated.
+func (u *User) IsAnonymous() bool {
+	return u.ID == 0
+}
+
 // SetPasswordHash generates and sets the bcrypt hash for the user's password.
 func (u *User) SetPasswordHash() error {
 	rawHash, err := bcrypt.GenerateFromPassword([]byte(u.RawPassword), bcrypt.MinCost)

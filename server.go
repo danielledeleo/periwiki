@@ -392,6 +392,14 @@ func (a *app) handleHistory(rw http.ResponseWriter, req *http.Request, articleUR
 
 // handleEdit handles the edit form display.
 func (a *app) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
+	// Check if anonymous editing is allowed
+	user := req.Context().Value(wiki.UserKey).(*wiki.User)
+	if !a.config.AllowAnonymousEditsGlobal && user.IsAnonymous() {
+		loginURL := "/user/login?referrer=" + url.QueryEscape(req.URL.String())
+		http.Redirect(rw, req, loginURL, http.StatusSeeOther)
+		return
+	}
+
 	var article *wiki.Article
 	var err error
 
@@ -548,6 +556,13 @@ func (a *app) handleArticlePost(rw http.ResponseWriter, req *http.Request, artic
 		a.errorHandler(http.StatusInternalServerError, rw, req, fmt.Errorf("user context not set"))
 		return
 	}
+
+	// Check if anonymous editing is allowed
+	if !a.config.AllowAnonymousEditsGlobal && user.IsAnonymous() {
+		a.errorHandler(http.StatusForbidden, rw, req, fmt.Errorf("anonymous editing is disabled"))
+		return
+	}
+
 	article.Creator = user
 
 	// Get previous_id from form body

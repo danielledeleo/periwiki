@@ -23,6 +23,7 @@ func SetupConfig() *wiki.Config {
 	viper.SetDefault("log_format", "pretty") // pretty, json, or text
 	viper.SetDefault("log_level", "info")    // debug, info, warn, error
 	viper.SetDefault("base_url", "http://localhost:8080")
+	viper.SetDefault("allow_anonymous_edits_global", true)
 
 	viper.SetConfigFile(configFilename)
 	viper.AddConfigPath(".")
@@ -51,7 +52,7 @@ func SetupConfig() *wiki.Config {
 	if err == nil {
 		viper.SetConfigFile(".cookiesecret.yaml")
 		viper.AddConfigPath(".")
-		err = viper.ReadInConfig()
+		err = viper.MergeInConfig()
 		if err != nil {
 			slog.Error("failed to read cookie secret config", "error", err)
 			os.Exit(1)
@@ -85,12 +86,13 @@ func SetupConfig() *wiki.Config {
 	}
 
 	config := &wiki.Config{
-		MinimumPasswordLength: viper.GetInt("min_password_length"),
-		DatabaseFile:          viper.GetString("dbfile"),
-		CookieSecret:          secretBytes,
-		CookieExpiry:          viper.GetInt("cookie_expiry"),
-		Host:                  viper.GetString("host"),
-		BaseURL:               viper.GetString("base_url"),
+		MinimumPasswordLength:     viper.GetInt("min_password_length"),
+		DatabaseFile:              viper.GetString("dbfile"),
+		CookieSecret:              secretBytes,
+		CookieExpiry:              viper.GetInt("cookie_expiry"),
+		Host:                      viper.GetString("host"),
+		BaseURL:                   viper.GetString("base_url"),
+		AllowAnonymousEditsGlobal: viper.GetBool("allow_anonymous_edits_global"),
 	}
 
 	if createDefaultConfigFile {

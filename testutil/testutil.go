@@ -108,11 +108,12 @@ func SetupTestApp(t *testing.T) (*TestApp, func()) {
 	db, dbCleanup := SetupTestDB(t)
 
 	config := &wiki.Config{
-		CookieSecret:          []byte("test-secret-key-for-sessions-32b"),
-		CookieExpiry:          86400,
-		DatabaseFile:          ":memory:",
-		MinimumPasswordLength: 8,
-		Host:                  "localhost:8080",
+		CookieSecret:              []byte("test-secret-key-for-sessions-32b"),
+		CookieExpiry:              86400,
+		DatabaseFile:              ":memory:",
+		MinimumPasswordLength:     8,
+		Host:                      "localhost:8080",
+		AllowAnonymousEditsGlobal: true,
 	}
 
 	// Create sanitizer matching production config
