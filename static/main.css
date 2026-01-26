@@ -173,7 +173,11 @@ article {
     background-color: #ffffff;
     border: 1px solid var(--pw-purple);
     line-height: 1.6;
-    max-width: 948px;
+}
+
+/* Constrain content width while allowing background to extend full-width */
+article > * {
+    max-width: 900px;
 }
 
 article h1,
@@ -517,6 +521,11 @@ article.pw-preview {
         max-width: 100%;
     }
 
+    /* Content: Full width on tablet */
+    article > * {
+        max-width: 100%;
+    }
+
     /* Infobox: Full width, stack above content */
     article .infobox {
         float: none;
@@ -562,6 +571,11 @@ article.pw-preview {
     /* Tighter article padding */
     article {
         padding: 12px;
+        max-width: 100%;
+    }
+
+    /* Content: Full width on mobile */
+    article > * {
         max-width: 100%;
     }
 
