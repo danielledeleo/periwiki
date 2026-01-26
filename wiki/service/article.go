@@ -40,6 +40,10 @@ type ArticleService interface {
 
 	// GetAllArticles retrieves all articles with their last modified time.
 	GetAllArticles() ([]*wiki.ArticleSummary, error)
+
+	// RerenderRevision re-renders an existing revision's markdown and updates its HTML.
+	// If revisionID is 0, re-renders the current (latest) revision.
+	RerenderRevision(ctx context.Context, url string, revisionID int) error
 }
 
 // articleService is the default implementation of ArticleService.
@@ -192,4 +196,62 @@ func (s *articleService) GetRandomArticleURL() (string, error) {
 // GetAllArticles retrieves all articles with their last modified time.
 func (s *articleService) GetAllArticles() ([]*wiki.ArticleSummary, error) {
 	return s.repo.SelectAllArticles()
+}
+
+// RerenderRevision re-renders an existing revision's markdown and updates its HTML.
+// If revisionID is 0, re-renders the current (latest) revision.
+func (s *articleService) RerenderRevision(ctx context.Context, url string, revisionID int) error {
+	// Get the revision to re-render
+	var article *wiki.Article
+	var err error
+
+	if revisionID == 0 {
+		article, err = s.GetArticle(url)
+	} else {
+		article, err = s.GetArticleByRevisionID(url, revisionID)
+	}
+	if err != nil {
+		return err
+	}
+
+	// If no queue, render synchronously
+	if s.queue == nil {
+		html, err := s.rendering.Render(article.Markdown)
+		if err != nil {
+			return err
+		}
+		return s.repo.UpdateRevisionHTML(url, article.ID, html, "rendered")
+	}
+
+	// Mark as queued
+	if err := s.repo.UpdateRevisionHTML(url, article.ID, article.HTML, "queued"); err != nil {
+		return err
+	}
+
+	// Submit to queue and wait
+	waitCh := make(chan renderqueue.Result, 1)
+	job := renderqueue.Job{
+		ArticleURL:  url,
+		RevisionID:  int64(article.ID),
+		Markdown:    article.Markdown,
+		Tier:        renderqueue.TierInteractive,
+	}
+
+	if err := s.queue.Submit(ctx, job, waitCh); err != nil {
+		_ = s.repo.UpdateRevisionHTML(url, article.ID, article.HTML, "failed")
+		return err
+	}
+
+	select {
+	case result := <-waitCh:
+		if result.Err != nil {
+			_ = s.repo.UpdateRevisionHTML(url, article.ID, article.HTML, "failed")
+			return result.Err
+		}
+		return s.repo.UpdateRevisionHTML(url, article.ID, result.HTML, "rendered")
+
+	case <-ctx.Done():
+		_ = s.repo.UpdateRevisionHTML(url, article.ID, article.HTML, "failed")
+		return ctx.Err()
+	}
 }

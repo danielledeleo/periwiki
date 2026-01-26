@@ -823,3 +823,202 @@ func TestAnonymousCanEditWhenEnabled(t *testing.T) {
 		t.Errorf("expected title 'Anonymous Article', got %q", article.Title)
 	}
 }
+
+func TestRerenderRequiresAuthentication(t *testing.T) {
+	server, testApp, cleanup := setupArticleEditTestServer(t)
+	defer cleanup()
+
+	// Create a user and article
+	password := "rerenderpass"
+	user := &wiki.User{
+		ScreenName:  "rerenderuser",
+		Email:       "rerender@example.com",
+		RawPassword: password,
+	}
+	err := testApp.Users.PostUser(user)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+	createdUser, _ := testApp.Users.GetUserByScreenName("rerenderuser")
+	testutil.CreateTestArticle(t, testApp, "rerender-test", "Rerender Test", "Test content", createdUser)
+
+	// Try to rerender without authentication
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{
+		Jar: jar,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, err := client.Get(server.URL + "/wiki/rerender-test?rerender")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Should redirect to login
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("expected redirect 303, got %d", resp.StatusCode)
+	}
+
+	location := resp.Header.Get("Location")
+	if !strings.HasPrefix(location, "/user/login?reason=login_required") {
+		t.Errorf("expected redirect to login with reason, got %q", location)
+	}
+}
+
+func TestRerenderCurrentRevision(t *testing.T) {
+	server, testApp, cleanup := setupArticleEditTestServer(t)
+	defer cleanup()
+
+	// Create user and login
+	password := "rerenderpass2"
+	user := &wiki.User{
+		ScreenName:  "rerenderuser2",
+		Email:       "rerender2@example.com",
+		RawPassword: password,
+	}
+	err := testApp.Users.PostUser(user)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+	createdUser, _ := testApp.Users.GetUserByScreenName("rerenderuser2")
+	testutil.CreateTestArticle(t, testApp, "rerender-current", "Rerender Current", "Test **bold** content", createdUser)
+
+	client := loginUser(t, server, "rerenderuser2", password)
+
+	// Get original HTML
+	originalArticle, _ := testApp.Articles.GetArticle("rerender-current")
+	originalHTML := originalArticle.HTML
+
+	// Rerender the article
+	resp, err := client.Get(server.URL + "/wiki/rerender-current?rerender")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Should redirect to article
+	if resp.StatusCode != http.StatusSeeOther {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected redirect 303, got %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	location := resp.Header.Get("Location")
+	if location != "/wiki/rerender-current" {
+		t.Errorf("expected redirect to article, got %q", location)
+	}
+
+	// Verify article was re-rendered (HTML should still be valid)
+	article, err := testApp.Articles.GetArticle("rerender-current")
+	if err != nil {
+		t.Fatalf("article not found after rerender: %v", err)
+	}
+
+	// HTML should contain the bold markup
+	if !strings.Contains(article.HTML, "<strong>bold</strong>") {
+		t.Errorf("expected HTML to contain bold markup, got %q", article.HTML)
+	}
+
+	// HTML should be the same (re-rendering same markdown produces same output)
+	if article.HTML != originalHTML {
+		t.Logf("HTML changed from %q to %q (may be expected if rendering changed)", originalHTML, article.HTML)
+	}
+}
+
+func TestRerenderSpecificRevision(t *testing.T) {
+	server, testApp, cleanup := setupArticleEditTestServer(t)
+	defer cleanup()
+
+	// Create user and login
+	password := "rerenderpass3"
+	user := &wiki.User{
+		ScreenName:  "rerenderuser3",
+		Email:       "rerender3@example.com",
+		RawPassword: password,
+	}
+	err := testApp.Users.PostUser(user)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+	createdUser, _ := testApp.Users.GetUserByScreenName("rerenderuser3")
+
+	// Create article with revision 1
+	testutil.CreateTestArticle(t, testApp, "rerender-revision", "Rerender Rev", "First *italic* content", createdUser)
+
+	client := loginUser(t, server, "rerenderuser3", password)
+
+	// Create revision 2
+	formData := url.Values{
+		"title":       {"Rerender Rev v2"},
+		"body":        {"Second **bold** content"},
+		"comment":     {"Updated"},
+		"previous_id": {"1"},
+	}
+	resp, err := client.PostForm(server.URL+"/wiki/rerender-revision", formData)
+	if err != nil {
+		t.Fatalf("edit request failed: %v", err)
+	}
+	resp.Body.Close()
+
+	// Rerender revision 1 specifically
+	resp, err = client.Get(server.URL + "/wiki/rerender-revision?rerender&revision=1")
+	if err != nil {
+		t.Fatalf("rerender request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Should redirect to the specific revision
+	if resp.StatusCode != http.StatusSeeOther {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected redirect 303, got %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	location := resp.Header.Get("Location")
+	if location != "/wiki/rerender-revision?revision=1" {
+		t.Errorf("expected redirect to revision 1, got %q", location)
+	}
+
+	// Verify revision 1 HTML contains italic markup
+	rev1, err := testApp.Articles.GetArticleByRevisionID("rerender-revision", 1)
+	if err != nil {
+		t.Fatalf("revision 1 not found: %v", err)
+	}
+	if !strings.Contains(rev1.HTML, "<em>italic</em>") {
+		t.Errorf("expected revision 1 HTML to contain italic markup, got %q", rev1.HTML)
+	}
+}
+
+func TestRerenderInvalidRevision(t *testing.T) {
+	server, testApp, cleanup := setupArticleEditTestServer(t)
+	defer cleanup()
+
+	// Create user and article
+	password := "rerenderpass4"
+	user := &wiki.User{
+		ScreenName:  "rerenderuser4",
+		Email:       "rerender4@example.com",
+		RawPassword: password,
+	}
+	err := testApp.Users.PostUser(user)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+	createdUser, _ := testApp.Users.GetUserByScreenName("rerenderuser4")
+	testutil.CreateTestArticle(t, testApp, "rerender-invalid", "Rerender Invalid", "Content", createdUser)
+
+	client := loginUser(t, server, "rerenderuser4", password)
+
+	// Try to rerender non-existent revision
+	resp, err := client.Get(server.URL + "/wiki/rerender-invalid?rerender&revision=999")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Should return error (not found or internal server error)
+	if resp.StatusCode == http.StatusSeeOther {
+		t.Errorf("expected error status, got redirect")
+	}
+}

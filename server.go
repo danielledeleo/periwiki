@@ -350,6 +350,8 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 //   - /wiki/{article}?diff&old=N - diff from N to current
 //   - /wiki/{article}?diff&new=M - diff from previous to M
 //   - /wiki/{article}?diff - diff between two most recent revisions
+//   - /wiki/{article}?rerender - force re-render current revision (auth required)
+//   - /wiki/{article}?rerender&revision=N - force re-render revision N (auth required)
 func (a *app) articleDispatcher(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	params := req.URL.Query()
@@ -375,6 +377,12 @@ func (a *app) articleDispatcher(rw http.ResponseWriter, req *http.Request) {
 	// Handle edit
 	if params.Has("edit") {
 		a.handleEdit(rw, req, vars["article"], params)
+		return
+	}
+
+	// Handle rerender
+	if params.Has("rerender") {
+		a.handleRerender(rw, req, vars["article"], params)
 		return
 	}
 
@@ -406,6 +414,45 @@ func (a *app) handleView(rw http.ResponseWriter, req *http.Request, articleURL s
 
 	// View current revision (delegate to existing handler logic)
 	a.articleHandler(rw, req)
+}
+
+// handleRerender handles re-rendering an article revision.
+// Requires authentication. Supports ?rerender or ?rerender&revision=N
+func (a *app) handleRerender(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
+	user := req.Context().Value(wiki.UserKey).(*wiki.User)
+
+	// Require authenticated user (not anonymous)
+	if user == nil || user.ID == 0 {
+		http.Redirect(rw, req, "/user/login?reason=login_required&referrer="+url.QueryEscape(req.URL.String()), http.StatusSeeOther)
+		return
+	}
+
+	// Get revision ID (0 means current)
+	var revisionID int
+	if revisionStr := params.Get("revision"); revisionStr != "" {
+		var err error
+		revisionID, err = strconv.Atoi(revisionStr)
+		if err != nil {
+			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			return
+		}
+	}
+
+	// Re-render the revision
+	if err := a.articles.RerenderRevision(req.Context(), articleURL, revisionID); err != nil {
+		slog.Error("rerender failed", "article", articleURL, "revision", revisionID, "error", err)
+		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		return
+	}
+
+	slog.Info("article rerendered", "article", articleURL, "revision", revisionID, "user", user.ScreenName)
+
+	// Redirect back to the article (with revision if specified)
+	redirectURL := "/wiki/" + articleURL
+	if revisionID != 0 {
+		redirectURL += "?revision=" + strconv.Itoa(revisionID)
+	}
+	http.Redirect(rw, req, redirectURL, http.StatusSeeOther)
 }
 
 // handleHistory handles viewing revision history.
