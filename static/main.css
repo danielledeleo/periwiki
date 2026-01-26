@@ -1,18 +1,28 @@
 :root {
     --link-color: #0645ad;
-    --periwiki-purple: #a7aef9;
+    --pw-purple: #a7aef9;
     --underline: #a2a9b1;
-    --periwiki-grey: #9a9a9a;
-    --periwiki-dark-grey: #555555;
-    --periwiki-light-grey: #f6f6f6;
+    --pw-grey: #9a9a9a;
+    --pw-dark-grey: #555555;
+    --pw-light-grey: #f6f6f6;
     --pw-deadlink-color: #bf3c2c;
+
+    /* Callout colors */
+    --pw-success-border: #8ed28e;
+    --pw-success-bg: #f4ffe2;
+    --pw-error-border: #d28e8e;
+    --pw-error-bg: #ffe2e2;
+    --pw-info-border: #8ebfd2;
+    --pw-info-bg: #e2f7ff;
+    --pw-neutral-border: #d7d7d7;
+    --pw-neutral-bg: #f9f9f9;
 }
 
 body {
     margin: 0;
     padding: 0;
 
-    background-color: var(--periwiki-light-grey);
+    background-color: var(--pw-light-grey);
     font-family: "Helvetica", sans-serif;
     line-height: 1.1em;
 }
@@ -121,7 +131,7 @@ a.pw-deadlink {
     margin: 0 0 -1px 0;
 
     list-style: none;
-    border-left: 1px solid var(--periwiki-purple);
+    border-left: 1px solid var(--pw-purple);
 }
 
 #article-area ul.pw-tabs li {
@@ -129,8 +139,8 @@ a.pw-deadlink {
     text-align: center;
     padding: 0.5em 0.8em 0.3em 0.8em;
 
-    border-top: 1px solid var(--periwiki-purple);
-    border-right: 1px solid var(--periwiki-purple);
+    border-top: 1px solid var(--pw-purple);
+    border-right: 1px solid var(--pw-purple);
 }
 
 #article-area ul.pw-tabs li.pw-active {
@@ -153,7 +163,7 @@ a.pw-deadlink {
 
 #article-area .pw-last-edited {
     font-size: 0.75em;
-    color: var(--periwiki-grey);
+    color: var(--pw-grey);
     display: block;
 }
 
@@ -161,7 +171,7 @@ article {
     padding: 20px 24px 24px 24px;
     margin: 0 -1px 0.5em 0;
     background-color: #ffffff;
-    border: 1px solid var(--periwiki-purple);
+    border: 1px solid var(--pw-purple);
     line-height: 1.6;
     max-width: 948px;
 }
@@ -227,7 +237,7 @@ article div.pw-article-content > table th {
 
 article pre {
     overflow: hidden;
-    border: 1px solid var(--periwiki-purple);
+    border: 1px solid var(--pw-purple);
     padding: 0.75em;
     background-color: #FBFBFB;
 }
@@ -372,7 +382,7 @@ article code a:hover {
 }
 
 article pre.lineNumbers a::before {
-    color: var(--periwiki-grey);
+    color: var(--pw-grey);
     content: attr(data-line-number) " ";
 }
 
@@ -399,7 +409,7 @@ article .pw-diff-info p {
 }
 
 article .pw-diff-comment {
-    color: var(--periwiki-dark-grey);
+    color: var(--pw-dark-grey);
     font-style: italic;
     white-space: pre;
 }
@@ -418,25 +428,25 @@ article.pw-preview {
 
 .pw-green,
 .pw-success {
-    border-color: #8ed28e;
-    background-color: #f4ffe2;
+    border-color: var(--pw-success-border);
+    background-color: var(--pw-success-bg);
 }
 
 .pw-red,
 .pw-error {
-    border-color: #d28e8e;
-    background-color: #ffe2e2;
+    border-color: var(--pw-error-border);
+    background-color: var(--pw-error-bg);
 }
 
 .pw-blue,
 .pw-info {
-    border-color: #8ebfd2;
-    background-color: #e2f7ff;
+    border-color: var(--pw-info-border);
+    background-color: var(--pw-info-bg);
 }
 
-.pw-grey {
-    border-color: #d7d7d7;
-    background-color: #f9f9f9;
+.pw-neutral {
+    border-color: var(--pw-neutral-border);
+    background-color: var(--pw-neutral-bg);
 }
 
 .hidden {
@@ -446,7 +456,7 @@ article.pw-preview {
 #footer {
     text-align: center;
     margin: 1em 0;
-    color: var(--periwiki-grey);
+    color: var(--pw-grey);
 }
 
 #footer small.pw-powered-by {
@@ -454,7 +464,7 @@ article.pw-preview {
 }
 
 #footer .pw-powered-by .pw-heart {
-    color: var(--periwiki-purple);
+    color: var(--pw-purple);
     font-size: 1.4em;
     margin: 0 0 0 1px;
     display: inline-block;
