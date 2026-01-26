@@ -2,9 +2,9 @@
 {{with .Article}}
 <div id="article-area">
     <ul class="pw-tabs">
-        <li class="pw-active"><a href="/wiki/{{.URL}}">Article</a></li>
-        <li><a href="/wiki/{{.URL}}/r/{{.ID}}/edit">Edit</a></li>
-        <li><a href="/wiki/{{.URL}}/history">History</a></li>
+        <li class="pw-active"><a href="{{articleURL .URL}}">Article</a></li>
+        <li><a href="{{editURL .URL .ID}}">Edit</a></li>
+        <li><a href="{{historyURL .URL}}">History</a></li>
     </ul>
     <article>
         <h1>{{.Title}}</h1>

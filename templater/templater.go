@@ -114,6 +114,12 @@ func (t *Templater) Load(baseGlob string, mainGlobs ...string) error {
 		"letter":      indexToLetter,
 		"queryEscape": url.QueryEscape,
 		"statusText":  http.StatusText,
+		// Article URL helpers
+		"articleURL":  articleURL,
+		"revisionURL": revisionURL,
+		"editURL":     editURL,
+		"historyURL":  historyURL,
+		"diffURL":     diffURL,
 	}
 
 	// Generate our templates map from our layouts/ and includes/ directories

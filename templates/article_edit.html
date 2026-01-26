@@ -2,13 +2,14 @@
 <div id="article-area">
     {{ with .Article }}
     <ul class="pw-tabs">
-        <li><a href="/wiki/{{.URL}}">Article</a></li>
-        <li class="pw-active"><a href="/wiki/{{.URL}}/r/{{.ID}}/edit">Edit</a></li>
-        <li><a href="/wiki/{{.URL}}/history">History</a></li>
+        <li><a href="{{articleURL .URL}}">Article</a></li>
+        <li class="pw-active"><a href="{{editURL .URL .ID}}">Edit</a></li>
+        <li><a href="{{historyURL .URL}}">History</a></li>
     </ul>
 
     <article>
-        <form action="/wiki/{{.URL}}/r/{{.ID}}" method="POST">
+        <form action="{{articleURL .URL}}" method="POST">
+        <input type="hidden" name="previous_id" value="{{.ID}}" />
         <input name="title" id="title-edit" type="text" value="{{.Title}}" />
         <div class="pw-article-content">
             <textarea name="body" id="body-edit">{{.Markdown}}</textarea>

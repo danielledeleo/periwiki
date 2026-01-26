@@ -35,10 +35,7 @@ func setupSecurityTestServer(t *testing.T) (*httptest.Server, *testutil.TestApp,
 	router.Use(app.SessionMiddleware)
 
 	router.HandleFunc("/", app.homeHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}", app.articleHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}/r/{revision}", app.revisionHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}/r/{revision}", app.revisionPostHandler).Methods("POST")
-	router.HandleFunc("/wiki/{article}/diff/{original}/{new}", app.diffHandler).Methods("GET")
+	router.HandleFunc("/wiki/{article}", app.articleDispatcher).Methods("GET", "POST")
 	router.HandleFunc("/user/login", app.loginPostHander).Methods("POST")
 
 	server := httptest.NewServer(router)
@@ -153,11 +150,12 @@ func TestXSSInArticleContent(t *testing.T) {
 			articleURL := "xss-test-" + tc.name + "-" + string(rune('a'+i))
 
 			formData := url.Values{
-				"title": {"XSS Test"},
-				"body":  {tc.payload},
+				"title":       {"XSS Test"},
+				"body":        {tc.payload},
+				"previous_id": {"0"},
 			}
 
-			resp, err := client.PostForm(server.URL+"/wiki/"+url.PathEscape(articleURL)+"/r/0", formData)
+			resp, err := client.PostForm(server.URL+"/wiki/"+url.PathEscape(articleURL), formData)
 			if err != nil {
 				t.Fatalf("request failed: %v", err)
 			}
@@ -219,11 +217,12 @@ func TestXSSInArticleTitle(t *testing.T) {
 			articleURL := "title-xss-" + string(rune('a'+i))
 
 			formData := url.Values{
-				"title": {tc.title},
-				"body":  {"Normal content"},
+				"title":       {tc.title},
+				"body":        {"Normal content"},
+				"previous_id": {"0"},
 			}
 
-			resp, err := client.PostForm(server.URL+"/wiki/"+articleURL+"/r/0", formData)
+			resp, err := client.PostForm(server.URL+"/wiki/"+articleURL, formData)
 			if err != nil {
 				t.Fatalf("request failed: %v", err)
 			}
@@ -258,11 +257,12 @@ func TestXSSInDiffOutput(t *testing.T) {
 
 	// Create initial article
 	formData := url.Values{
-		"title": {"Diff XSS Test"},
-		"body":  {"Original safe content"},
+		"title":       {"Diff XSS Test"},
+		"body":        {"Original safe content"},
+		"previous_id": {"0"},
 	}
 
-	resp, err := client.PostForm(server.URL+"/wiki/diff-xss-test/r/0", formData)
+	resp, err := client.PostForm(server.URL+"/wiki/diff-xss-test", formData)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -270,18 +270,19 @@ func TestXSSInDiffOutput(t *testing.T) {
 
 	// Create second revision with XSS attempt
 	formData = url.Values{
-		"title": {"Diff XSS Test"},
-		"body":  {"Modified content <script>alert('XSS')</script>"},
+		"title":       {"Diff XSS Test"},
+		"body":        {"Modified content <script>alert('XSS')</script>"},
+		"previous_id": {"1"},
 	}
 
-	resp, err = client.PostForm(server.URL+"/wiki/diff-xss-test/r/1", formData)
+	resp, err = client.PostForm(server.URL+"/wiki/diff-xss-test", formData)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
 	resp.Body.Close()
 
 	// Request diff
-	resp, err = client.Get(server.URL + "/wiki/diff-xss-test/diff/1/2")
+	resp, err = client.Get(server.URL + "/wiki/diff-xss-test?diff&old=1&new=2")
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -405,11 +406,12 @@ func TestXSSInWikiLinks(t *testing.T) {
 			articleURL := "wikilink-xss-" + string(rune('a'+i))
 
 			formData := url.Values{
-				"title": {"Wikilink XSS Test"},
-				"body":  {tc.content},
+				"title":       {"Wikilink XSS Test"},
+				"body":        {tc.content},
+				"previous_id": {"0"},
 			}
 
-			resp, err := client.PostForm(server.URL+"/wiki/"+articleURL+"/r/0", formData)
+			resp, err := client.PostForm(server.URL+"/wiki/"+articleURL, formData)
 			if err != nil {
 				t.Fatalf("request failed: %v", err)
 			}
@@ -448,12 +450,13 @@ func TestXSSInComments(t *testing.T) {
 
 	// Create article with XSS in edit comment
 	formData := url.Values{
-		"title":   {"Comment XSS Test"},
-		"body":    {"Normal content"},
-		"comment": {"<script>alert('XSS')</script>Normal comment"},
+		"title":       {"Comment XSS Test"},
+		"body":        {"Normal content"},
+		"comment":     {"<script>alert('XSS')</script>Normal comment"},
+		"previous_id": {"0"},
 	}
 
-	resp, err := client.PostForm(server.URL+"/wiki/comment-xss-test/r/0", formData)
+	resp, err := client.PostForm(server.URL+"/wiki/comment-xss-test", formData)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -486,11 +489,12 @@ func TestHTMLEntitiesPreserved(t *testing.T) {
 
 	// Create article with HTML entities that should be preserved
 	formData := url.Values{
-		"title": {"Entities Test"},
-		"body":  {"Use &lt;script&gt; tags for JavaScript. The formula is: 5 &gt; 3 &amp;&amp; 2 &lt; 4"},
+		"title":       {"Entities Test"},
+		"body":        {"Use &lt;script&gt; tags for JavaScript. The formula is: 5 &gt; 3 &amp;&amp; 2 &lt; 4"},
+		"previous_id": {"0"},
 	}
 
-	resp, err := client.PostForm(server.URL+"/wiki/entities-test/r/0", formData)
+	resp, err := client.PostForm(server.URL+"/wiki/entities-test", formData)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -525,11 +529,12 @@ func TestMarkdownCodeBlockSafety(t *testing.T) {
 	codeContent := "```html\n<script>alert('XSS')</script>\n```"
 
 	formData := url.Values{
-		"title": {"Code Block Test"},
-		"body":  {codeContent},
+		"title":       {"Code Block Test"},
+		"body":        {codeContent},
+		"previous_id": {"0"},
 	}
 
-	resp, err := client.PostForm(server.URL+"/wiki/codeblock-test/r/0", formData)
+	resp, err := client.PostForm(server.URL+"/wiki/codeblock-test", formData)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

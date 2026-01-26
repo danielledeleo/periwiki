@@ -2,22 +2,22 @@
 <div id="article-area">
     {{with .Article }}
     <ul class="pw-tabs">
-        <li><a href="/wiki/{{.URL}}">Article</a></li>
-        <li><a href="/wiki/{{.URL}}/r/{{.ID}}/edit">Edit</a></li>
-        <li class="pw-active"><a href="/wiki/{{.URL}}/history">History</a></li>
+        <li><a href="{{articleURL .URL}}">Article</a></li>
+        <li><a href="{{editURL .URL .ID}}">Edit</a></li>
+        <li class="pw-active"><a href="{{historyURL .URL}}">History</a></li>
     </ul>
     <article>
         <h1>Diff of {{.Title}}</h1>
         <div class="pw-diff-info">
             <p>
-                Comparing {{if eq .ID $.CurrentRevisionID}} latest {{end}} revision at 
-                <a href="/wiki/{{.URL}}/r/{{.ID}}">{{.Created.Format "2006-01-02 15:04"}}</a>
+                Comparing {{if eq .ID $.CurrentRevisionID}} latest {{end}} revision at
+                <a href="{{revisionURL .URL .ID}}">{{.Created.Format "2006-01-02 15:04"}}</a>
                 {{if .Creator}}by {{.Creator.ScreenName}}{{end}}
                 {{- if .Comment -}}<span class="pw-diff-comment"> ... ({{.Comment}})</span>{{- end -}}
             </p>
             <p>
-                With {{if eq $.NewRevision.ID $.CurrentRevisionID}} latest {{end}} revision at 
-                <a href="/wiki/{{$.NewRevision.URL}}/r/{{$.NewRevision.ID}}">{{$.NewRevision.Created.Format "2006-01-02 15:04"}}</a>
+                With {{if eq $.NewRevision.ID $.CurrentRevisionID}} latest {{end}} revision at
+                <a href="{{revisionURL $.NewRevision.URL $.NewRevision.ID}}">{{$.NewRevision.Created.Format "2006-01-02 15:04"}}</a>
                 {{if $.NewRevision.Creator}}by {{$.NewRevision.Creator.ScreenName}}{{end}}
                 {{- if $.NewRevision.Comment -}}<span class="pw-diff-comment"> ... ({{$.NewRevision.Comment}})</span>{{- end -}}
             </p>

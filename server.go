@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -85,12 +86,7 @@ func main() {
 
 	router.HandleFunc("/wiki/Special:{page}", app.specialPageHandler).Methods("GET")
 
-	router.HandleFunc("/wiki/{article}", app.articleHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}/history", app.articleHistoryHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}/r/{revision}", app.revisionHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}/r/{revision}", app.revisionPostHandler).Methods("POST")
-	router.HandleFunc("/wiki/{article}/r/{revision}/edit", app.revisionEditHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}/diff/{original}/{new}", app.diffHandler).Methods("GET")
+	router.HandleFunc("/wiki/{article}", app.articleDispatcher).Methods("GET", "POST")
 
 	router.HandleFunc("/user/register", app.registerHandler).Methods("GET")
 	router.HandleFunc("/user/register", app.registerPostHandler).Methods("POST")
@@ -243,7 +239,7 @@ func (a *app) homeHandler(rw http.ResponseWriter, req *http.Request) {
 	data["Article"] = &wiki.Article{
 		Revision: &wiki.Revision{
 			Title: "Home",
-			HTML:  "Welcome to periwiki! Why don't you check out <a href='/wiki/test'>Test</a>?",
+			HTML:  "Welcome to periwiki! Why don't you check out <a href='/wiki/Test'>Test</a>?",
 		},
 	}
 	data["Context"] = req.Context()
@@ -300,17 +296,84 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 	check(err)
 }
 
-func (a *app) articleHistoryHandler(rw http.ResponseWriter, req *http.Request) {
+// articleDispatcher routes article requests based on query parameters.
+// URL scheme:
+//   - /wiki/{article} - view article (current revision)
+//   - /wiki/{article}?revision=N - view specific revision
+//   - /wiki/{article}?edit - edit current revision
+//   - /wiki/{article}?edit&revision=N - edit/restore revision N
+//   - /wiki/{article}?history - view revision history
+//   - /wiki/{article}?diff&old=N&new=M - diff between revisions
+//   - /wiki/{article}?diff&old=N - diff from N to current
+//   - /wiki/{article}?diff&new=M - diff from previous to M
+//   - /wiki/{article}?diff - diff between two most recent revisions
+func (a *app) articleDispatcher(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	url := vars["article"]
+	params := req.URL.Query()
 
-	revisions, err := a.articles.GetRevisionHistory(url)
+	// Handle POST requests
+	if req.Method == "POST" {
+		a.handleArticlePost(rw, req, vars["article"])
+		return
+	}
+
+	// Handle diff requests
+	if params.Has("diff") {
+		a.handleDiff(rw, req, vars["article"], params)
+		return
+	}
+
+	// Handle history
+	if params.Has("history") {
+		a.handleHistory(rw, req, vars["article"])
+		return
+	}
+
+	// Handle edit
+	if params.Has("edit") {
+		a.handleEdit(rw, req, vars["article"], params)
+		return
+	}
+
+	// Default: view article
+	a.handleView(rw, req, vars["article"], params)
+}
+
+// handleView handles viewing an article or specific revision.
+func (a *app) handleView(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
+	// Check if viewing a specific revision
+	if revisionStr := params.Get("revision"); revisionStr != "" {
+		revisionID, err := strconv.Atoi(revisionStr)
+		if err != nil {
+			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			return
+		}
+		article, err := a.articles.GetArticleByRevisionID(articleURL, revisionID)
+		if err != nil {
+			a.errorHandler(http.StatusNotFound, rw, req, err)
+			return
+		}
+		err = a.RenderTemplate(rw, "article.html", "index.html", map[string]interface{}{
+			"Article": article,
+			"Context": req.Context(),
+		})
+		check(err)
+		return
+	}
+
+	// View current revision (delegate to existing handler logic)
+	a.articleHandler(rw, req)
+}
+
+// handleHistory handles viewing revision history.
+func (a *app) handleHistory(rw http.ResponseWriter, req *http.Request, articleURL string) {
+	revisions, err := a.articles.GetRevisionHistory(articleURL)
 	if err != nil {
 		a.errorHandler(http.StatusNotFound, rw, req, err)
 		return
 	}
 
-	slog.Debug("article history viewed", "category", "article", "action", "history", "article", url)
+	slog.Debug("article history viewed", "category", "article", "action", "history", "article", articleURL)
 
 	var currentRevisionID int
 	if len(revisions) > 0 {
@@ -319,47 +382,44 @@ func (a *app) articleHistoryHandler(rw http.ResponseWriter, req *http.Request) {
 
 	err = a.RenderTemplate(rw, "article_history.html", "index.html", map[string]interface{}{
 		"Article": map[string]interface{}{
-			"URL":   url,
-			"Title": "History of " + url},
+			"URL":   articleURL,
+			"Title": "History of " + articleURL},
 		"Context":           req.Context(),
 		"Revisions":         revisions,
 		"CurrentRevisionID": currentRevisionID})
 	check(err)
 }
 
-func (a *app) revisionHandler(rw http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	revisionID, err := strconv.Atoi(vars["revision"])
-	if err != nil {
-		a.errorHandler(http.StatusBadRequest, rw, req, err)
-		return
-	}
-	article, err := a.articles.GetArticleByRevisionID(vars["article"], revisionID)
-	if err != nil {
-		a.errorHandler(http.StatusNotFound, rw, req, err)
-		return
-	}
-	err = a.RenderTemplate(rw, "article.html", "index.html", map[string]interface{}{
-		"Article": article,
-		"Context": req.Context(),
-	})
-	check(err)
-}
+// handleEdit handles the edit form display.
+func (a *app) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
+	var article *wiki.Article
+	var err error
 
-func (a *app) revisionEditHandler(rw http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	revisionID, err := strconv.Atoi(vars["revision"])
-	if err != nil {
-		a.errorHandler(http.StatusBadRequest, rw, req, err)
-		return
-	}
-	article, err := a.articles.GetArticleByRevisionID(vars["article"], revisionID)
-	if err == wiki.ErrRevisionNotFound {
-		article = wiki.NewArticle(vars["article"], cases.Title(language.AmericanEnglish).String(vars["article"]), "")
-		article.Hash = "new"
-	} else if err != nil {
-		a.errorHandler(http.StatusInternalServerError, rw, req, err)
-		return
+	// Check if editing a specific revision (for restore)
+	if revisionStr := params.Get("revision"); revisionStr != "" {
+		revisionID, err := strconv.Atoi(revisionStr)
+		if err != nil {
+			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			return
+		}
+		article, err = a.articles.GetArticleByRevisionID(articleURL, revisionID)
+		if err == wiki.ErrRevisionNotFound {
+			article = wiki.NewArticle(articleURL, cases.Title(language.AmericanEnglish).String(articleURL), "")
+			article.Hash = "new"
+		} else if err != nil {
+			a.errorHandler(http.StatusInternalServerError, rw, req, err)
+			return
+		}
+	} else {
+		// Edit current revision
+		article, err = a.articles.GetArticle(articleURL)
+		if err == wiki.ErrGenericNotFound {
+			article = wiki.NewArticle(articleURL, cases.Title(language.AmericanEnglish).String(articleURL), "")
+			article.Hash = "new"
+		} else if err != nil {
+			a.errorHandler(http.StatusInternalServerError, rw, req, err)
+			return
+		}
 	}
 
 	other := make(map[string]interface{})
@@ -372,11 +432,111 @@ func (a *app) revisionEditHandler(rw http.ResponseWriter, req *http.Request) {
 	check(err)
 }
 
-func (a *app) revisionPostHandler(rw http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	article := &wiki.Article{}
+// handleDiff handles diff view between revisions.
+// Smart defaults:
+//   - ?diff&old=N&new=M - explicit diff between N and M
+//   - ?diff&old=N - diff from N to current
+//   - ?diff&new=M - diff from (M-1) to M (previous to M)
+//   - ?diff - diff between two most recent revisions
+func (a *app) handleDiff(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
+	var oldArticle, newArticle *wiki.Article
+	var err error
 
-	article.URL = vars["article"]
+	oldStr := params.Get("old")
+	newStr := params.Get("new")
+
+	// Determine the "new" revision
+	if newStr != "" {
+		newID, err := strconv.Atoi(newStr)
+		if err != nil {
+			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			return
+		}
+		newArticle, err = a.articles.GetArticleByRevisionID(articleURL, newID)
+		if err != nil {
+			a.errorHandler(http.StatusNotFound, rw, req, err)
+			return
+		}
+	} else {
+		// Default to current revision
+		newArticle, err = a.articles.GetArticle(articleURL)
+		if err != nil {
+			a.errorHandler(http.StatusNotFound, rw, req, err)
+			return
+		}
+	}
+
+	// Determine the "old" revision
+	if oldStr != "" {
+		oldID, err := strconv.Atoi(oldStr)
+		if err != nil {
+			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			return
+		}
+		oldArticle, err = a.articles.GetArticleByRevisionID(articleURL, oldID)
+		if err != nil {
+			a.errorHandler(http.StatusNotFound, rw, req, err)
+			return
+		}
+	} else {
+		// Default to previous revision of the "new" revision
+		if newArticle.PreviousID > 0 {
+			oldArticle, err = a.articles.GetArticleByRevisionID(articleURL, newArticle.PreviousID)
+			if err != nil {
+				a.errorHandler(http.StatusNotFound, rw, req, err)
+				return
+			}
+		} else {
+			// No previous revision, diff against empty
+			oldArticle = wiki.NewArticle(articleURL, "", "")
+		}
+	}
+
+	// Generate diff
+	dmp := diffmatchpatch.New()
+	diffs := dmp.DiffMain(oldArticle.Markdown, newArticle.Markdown, true)
+	diffs = dmp.DiffCleanupSemantic(diffs)
+
+	var buff bytes.Buffer
+	for _, diff := range diffs {
+		text := html.EscapeString(diff.Text)
+		switch diff.Type {
+		case diffmatchpatch.DiffInsert:
+			_, _ = buff.WriteString("<ins style=\"background:#e6ffe6;\">")
+			_, _ = buff.WriteString(text)
+			_, _ = buff.WriteString("</ins>")
+		case diffmatchpatch.DiffDelete:
+			_, _ = buff.WriteString("<del style=\"background:#ffe6e6;\">")
+			_, _ = buff.WriteString(text)
+			_, _ = buff.WriteString("</del>")
+		case diffmatchpatch.DiffEqual:
+			_, _ = buff.WriteString("<span>")
+			_, _ = buff.WriteString(text)
+			_, _ = buff.WriteString("</span>")
+		}
+	}
+
+	// Get current revision ID for template comparisons
+	current, _ := a.articles.GetArticle(articleURL)
+	var currentRevisionID int
+	if current != nil {
+		currentRevisionID = current.ID
+	}
+
+	err = a.RenderTemplate(rw, "diff.html", "index.html", map[string]interface{}{
+		"Article":           oldArticle,
+		"NewRevision":       newArticle,
+		"DiffString":        template.HTML(buff.String()),
+		"Context":           req.Context(),
+		"CurrentRevisionID": currentRevisionID,
+	})
+	check(err)
+}
+
+// handleArticlePost handles POST requests for article editing.
+func (a *app) handleArticlePost(rw http.ResponseWriter, req *http.Request, articleURL string) {
+	article := &wiki.Article{}
+	article.URL = articleURL
 	article.Revision = &wiki.Revision{}
 
 	article.Title = req.PostFormValue("title")
@@ -389,15 +549,23 @@ func (a *app) revisionPostHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	article.Creator = user
-	previousID, err := strconv.Atoi(vars["revision"])
-	if err != nil {
-		a.errorHandler(http.StatusBadRequest, rw, req, err)
-		return
+
+	// Get previous_id from form body
+	previousIDStr := req.PostFormValue("previous_id")
+	if previousIDStr == "" {
+		// For new articles, previous_id might be 0 or not set
+		article.PreviousID = 0
+	} else {
+		previousID, err := strconv.Atoi(previousIDStr)
+		if err != nil {
+			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			return
+		}
+		article.PreviousID = previousID
 	}
-	article.PreviousID = previousID
 
 	if req.PostFormValue("action") == "preview" {
-		article.ID = previousID
+		article.ID = article.PreviousID
 		a.articlePreviewHandler(article, rw, req)
 		return
 	}
@@ -465,89 +633,6 @@ func (a *app) errorHandler(responseCode int, rw http.ResponseWriter, req *http.R
 	if err != nil {
 		slog.Error("failed to render error page", "error", err)
 		panic(err)
-	}
-}
-
-func (a *app) diffHandler(rw http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-
-	var orginal *wiki.Article
-	var err error
-	if vars["original"] == "current" {
-		orginal, err = a.articles.GetArticle(vars["article"])
-	} else {
-		var originalID int
-		originalID, err = strconv.Atoi(vars["original"])
-		if err != nil {
-			a.errorHandler(http.StatusBadRequest, rw, req, err)
-			return
-		}
-		orginal, err = a.articles.GetArticleByRevisionID(vars["article"], originalID)
-	}
-	if err != nil {
-		a.errorHandler(http.StatusNotFound, rw, req, err)
-		return
-	}
-
-	var new *wiki.Article
-	if vars["new"] == "current" {
-		new, err = a.articles.GetArticle(vars["article"])
-	} else {
-		var newID int
-		newID, err = strconv.Atoi(vars["new"])
-		if err != nil {
-			a.errorHandler(http.StatusBadRequest, rw, req, err)
-			return
-		}
-		new, err = a.articles.GetArticleByRevisionID(vars["article"], newID)
-	}
-	if err != nil {
-		a.errorHandler(http.StatusNotFound, rw, req, err)
-		return
-	}
-
-	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(orginal.Markdown, new.Markdown, true)
-	diffs = dmp.DiffCleanupSemantic(diffs)
-
-	var buff bytes.Buffer
-	for _, diff := range diffs {
-		text := html.EscapeString(diff.Text)
-		switch diff.Type {
-		case diffmatchpatch.DiffInsert:
-			_, _ = buff.WriteString("<ins style=\"background:#e6ffe6;\">")
-			_, _ = buff.WriteString(text)
-			_, _ = buff.WriteString("</ins>")
-		case diffmatchpatch.DiffDelete:
-			_, _ = buff.WriteString("<del style=\"background:#ffe6e6;\">")
-			_, _ = buff.WriteString(text)
-			_, _ = buff.WriteString("</del>")
-		case diffmatchpatch.DiffEqual:
-			_, _ = buff.WriteString("<span>")
-			_, _ = buff.WriteString(text)
-			_, _ = buff.WriteString("</span>")
-		}
-	}
-	pretty := buff.String()
-
-	// Get current revision to determine which (if any) is current
-	current, _ := a.articles.GetArticle(vars["article"])
-	var currentRevisionID int
-	if current != nil {
-		currentRevisionID = current.ID
-	}
-
-	slog.Debug("diff viewed", "category", "article", "action", "diff", "article", vars["article"], "from", orginal.ID, "to", new.ID)
-	err = a.RenderTemplate(rw, "diff.html", "index.html", map[string]interface{}{
-		"Article":           orginal,
-		"Context":           req.Context(),
-		"NewRevision":       new,
-		"DiffString":        template.HTML(pretty),
-		"CurrentRevisionID": currentRevisionID,
-	})
-
-	if err != nil {
-		slog.Error("failed to render diff template", "error", err)
 	}
 }
 

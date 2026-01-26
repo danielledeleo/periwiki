@@ -35,10 +35,7 @@ func setupArticleEditTestServer(t *testing.T) (*httptest.Server, *testutil.TestA
 	router.Use(app.SessionMiddleware)
 
 	router.HandleFunc("/", app.homeHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}", app.articleHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}/r/{revision}", app.revisionHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}/r/{revision}", app.revisionPostHandler).Methods("POST")
-	router.HandleFunc("/wiki/{article}/r/{revision}/edit", app.revisionEditHandler).Methods("GET")
+	router.HandleFunc("/wiki/{article}", app.articleDispatcher).Methods("GET", "POST")
 	router.HandleFunc("/user/login", app.loginPostHander).Methods("POST")
 
 	server := httptest.NewServer(router)
@@ -101,12 +98,13 @@ func TestCreateNewArticle(t *testing.T) {
 
 	// Create a new article by posting to revision 0
 	formData := url.Values{
-		"title":   {"New Test Article"},
-		"body":    {"# Hello World\n\nThis is the content."},
-		"comment": {"Initial creation"},
+		"title":       {"New Test Article"},
+		"body":        {"# Hello World\n\nThis is the content."},
+		"comment":     {"Initial creation"},
+		"previous_id": {"0"},
 	}
 
-	resp, err := client.PostForm(server.URL+"/wiki/new-test-article/r/0", formData)
+	resp, err := client.PostForm(server.URL+"/wiki/new-test-article", formData)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -160,12 +158,13 @@ func TestEditExistingArticle(t *testing.T) {
 
 	// Edit the article (create new revision)
 	formData := url.Values{
-		"title":   {"Edit Test Updated"},
-		"body":    {"Updated content with changes"},
-		"comment": {"Updated the article"},
+		"title":       {"Edit Test Updated"},
+		"body":        {"Updated content with changes"},
+		"comment":     {"Updated the article"},
+		"previous_id": {"1"},
 	}
 
-	resp, err := client.PostForm(server.URL+"/wiki/edit-test/r/1", formData)
+	resp, err := client.PostForm(server.URL+"/wiki/edit-test", formData)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -215,12 +214,13 @@ func TestPreviewArticle(t *testing.T) {
 
 	// Request preview
 	formData := url.Values{
-		"title":  {"Preview Test"},
-		"body":   {"# Preview Content\n\nThis should be rendered."},
-		"action": {"preview"},
+		"title":       {"Preview Test"},
+		"body":        {"# Preview Content\n\nThis should be rendered."},
+		"action":      {"preview"},
+		"previous_id": {"1"},
 	}
 
-	resp, err := client.PostForm(server.URL+"/wiki/preview-test/r/1", formData)
+	resp, err := client.PostForm(server.URL+"/wiki/preview-test", formData)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -269,11 +269,12 @@ func TestEditRequiresChange(t *testing.T) {
 
 	// Try to post identical content
 	formData := url.Values{
-		"title": {"No Change"},
-		"body":  {"Same content"},
+		"title":       {"No Change"},
+		"body":        {"Same content"},
+		"previous_id": {"1"},
 	}
 
-	resp, err := client.PostForm(server.URL+"/wiki/nochange-test/r/1", formData)
+	resp, err := client.PostForm(server.URL+"/wiki/nochange-test", formData)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -342,16 +343,17 @@ func TestMarkdownRendering(t *testing.T) {
 		},
 	}
 
-	for i, tc := range tests {
+	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			articleURL := "render-test-" + tc.name
 
 			formData := url.Values{
-				"title": {"Render Test " + tc.name},
-				"body":  {tc.markdown},
+				"title":       {"Render Test " + tc.name},
+				"body":        {tc.markdown},
+				"previous_id": {"0"},
 			}
 
-			resp, err := client.PostForm(server.URL+"/wiki/"+articleURL+"/r/"+string(rune('0'+i)), formData)
+			resp, err := client.PostForm(server.URL+"/wiki/"+articleURL, formData)
 			if err != nil {
 				t.Fatalf("request failed: %v", err)
 			}
@@ -390,11 +392,12 @@ func TestWikiLinkRendering(t *testing.T) {
 
 	// Create an article with wikilinks
 	formData := url.Values{
-		"title": {"Wiki Link Test"},
-		"body":  {"Check out [[Other Page]] and [[Another Article|custom text]]."},
+		"title":       {"Wiki Link Test"},
+		"body":        {"Check out [[Other Page]] and [[Another Article|custom text]]."},
+		"previous_id": {"0"},
 	}
 
-	resp, err := client.PostForm(server.URL+"/wiki/wikilink-test/r/0", formData)
+	resp, err := client.PostForm(server.URL+"/wiki/wikilink-test", formData)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -432,7 +435,7 @@ func TestEditHandlerShowsContent(t *testing.T) {
 	testutil.CreateTestArticle(t, testApp, "content-test", "Content Test", "This is the article content to edit.", user)
 
 	// Request the edit page
-	resp, err := http.Get(server.URL + "/wiki/content-test/r/1/edit")
+	resp, err := http.Get(server.URL + "/wiki/content-test?edit&revision=1")
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -461,11 +464,12 @@ func TestAnonymousUserCannotCreateArticle(t *testing.T) {
 
 	// Create article as anonymous (no login)
 	formData := url.Values{
-		"title": {"Anonymous Article"},
-		"body":  {"Content from anonymous"},
+		"title":       {"Anonymous Article"},
+		"body":        {"Content from anonymous"},
+		"previous_id": {"0"},
 	}
 
-	resp, err := http.PostForm(server.URL+"/wiki/anon-article/r/0", formData)
+	resp, err := http.PostForm(server.URL+"/wiki/anon-article", formData)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -517,17 +521,19 @@ func TestRevisionConflict(t *testing.T) {
 
 	// Both users edit from revision 1
 	formData1 := url.Values{
-		"title": {"Conflict Test"},
-		"body":  {"Edit from user 1"},
+		"title":       {"Conflict Test"},
+		"body":        {"Edit from user 1"},
+		"previous_id": {"1"},
 	}
 
 	formData2 := url.Values{
-		"title": {"Conflict Test"},
-		"body":  {"Edit from user 2"},
+		"title":       {"Conflict Test"},
+		"body":        {"Edit from user 2"},
+		"previous_id": {"1"},
 	}
 
 	// User 1 edits first
-	resp1, err := client1.PostForm(server.URL+"/wiki/conflict-test/r/1", formData1)
+	resp1, err := client1.PostForm(server.URL+"/wiki/conflict-test", formData1)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -538,7 +544,7 @@ func TestRevisionConflict(t *testing.T) {
 	}
 
 	// User 2 tries to edit from same revision - should get conflict
-	resp2, err := client2.PostForm(server.URL+"/wiki/conflict-test/r/1", formData2)
+	resp2, err := client2.PostForm(server.URL+"/wiki/conflict-test", formData2)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -547,6 +553,47 @@ func TestRevisionConflict(t *testing.T) {
 	// Should get conflict error
 	if resp2.StatusCode != http.StatusConflict {
 		t.Errorf("expected status 409 (Conflict), got %d", resp2.StatusCode)
+	}
+}
+
+func TestEditWithoutPreviousID(t *testing.T) {
+	server, testApp, cleanup := setupArticleEditTestServer(t)
+	defer cleanup()
+
+	password := "noprevpassword"
+	user := &wiki.User{
+		ScreenName:  "noprevuser",
+		Email:       "noprev@example.com",
+		RawPassword: password,
+	}
+	testApp.Users.PostUser(user)
+
+	createdUser, _ := testApp.Users.GetUserByScreenName("noprevuser")
+	testutil.CreateTestArticle(t, testApp, "noprev-test", "No Previous Test", "Original content", createdUser)
+
+	client := loginUser(t, server, "noprevuser", password)
+
+	// Submit edit without previous_id field - should conflict because
+	// missing previous_id defaults to 0, and revision 1 already exists
+	formData := url.Values{
+		"title": {"No Previous Test"},
+		"body":  {"Updated content"},
+	}
+
+	resp, err := client.PostForm(server.URL+"/wiki/noprev-test", formData)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusConflict {
+		t.Errorf("expected status 409 (Conflict) when previous_id is missing, got %d", resp.StatusCode)
+	}
+
+	// Verify article was NOT modified
+	article, _ := testApp.Articles.GetArticle("noprev-test")
+	if article.Markdown != "Original content" {
+		t.Errorf("article should not have been modified, got %q", article.Markdown)
 	}
 }
 
@@ -569,11 +616,12 @@ func TestEditFormPreservesContentOnError(t *testing.T) {
 
 	// Try to save with identical content (which should fail)
 	formData := url.Values{
-		"title": {"Preserve Test"},
-		"body":  {"Original content"},
+		"title":       {"Preserve Test"},
+		"body":        {"Original content"},
+		"previous_id": {"1"},
 	}
 
-	resp, err := client.PostForm(server.URL+"/wiki/preserve-test/r/1", formData)
+	resp, err := client.PostForm(server.URL+"/wiki/preserve-test", formData)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

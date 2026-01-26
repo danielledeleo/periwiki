@@ -6,7 +6,7 @@
             {{if .Articles}}
             <ul>
                 {{range .Articles}}
-                <li><a href="/wiki/{{.URL}}">{{.Title}}</a></li>
+                <li><a href="{{articleURL .URL}}">{{.Title}}</a></li>
                 {{end}}
             </ul>
             {{else}}

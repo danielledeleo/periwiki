@@ -2,8 +2,8 @@
 <div id="article-area">
     {{with .Article}}
     <ul class="pw-tabs">
-        <li><a href="/wiki/{{.URL}}">Article</a></li>
-        <li class="pw-active"><a href="/wiki/{{.URL}}/history">History</a></li>
+        <li><a href="{{articleURL .URL}}">Article</a></li>
+        <li class="pw-active"><a href="{{historyURL .URL}}">History</a></li>
     </ul>
     <article>
         <h1>{{.Title}}</h1>
@@ -12,11 +12,11 @@
             <ul>
             {{range .Revisions}}
                 <li>
-                    <a href="/wiki/{{$.Article.URL}}/r/{{.ID}}">
+                    <a href="{{revisionURL $.Article.URL .ID}}">
                         {{ .Created.Format "2006, Jan _2 3:04 MST" }}
-                    </a> by {{.Creator.ScreenName}} ({{.Markdown}} bytes){{if .Comment}} ... 
-                    <em>({{.Comment}})</em>{{end}}{{if or (gt .PreviousID 0) (ne .ID $.CurrentRevisionID)}} 
-                    ({{if gt .PreviousID 0}}<a href="/wiki/{{$.Article.URL}}/diff/{{.PreviousID}}/{{.ID}}">diff</a>{{end}}{{if and (gt .PreviousID 0) (ne .ID $.CurrentRevisionID)}} | {{end}}{{if ne .ID $.CurrentRevisionID}}<a href="/wiki/{{$.Article.URL}}/diff/{{.ID}}/current">curr</a>{{end}}){{end}}
+                    </a> by {{.Creator.ScreenName}} ({{.Markdown}} bytes){{if .Comment}} ...
+                    <em>({{.Comment}})</em>{{end}}{{if or (gt .PreviousID 0) (ne .ID $.CurrentRevisionID)}}
+                    ({{if gt .PreviousID 0}}<a href="{{diffURL $.Article.URL .PreviousID .ID}}">diff</a>{{end}}{{if and (gt .PreviousID 0) (ne .ID $.CurrentRevisionID)}} | {{end}}{{if ne .ID $.CurrentRevisionID}}<a href="{{diffURL $.Article.URL .ID 0}}">curr</a>{{end}}){{end}}
                 </li>
             {{end}}
             </ul>
