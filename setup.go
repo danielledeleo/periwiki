@@ -24,6 +24,11 @@ func Setup() *app {
 	bm.AllowAttrs("style").OnElements("ins", "del")
 	bm.AllowAttrs("style").Matching(regexp.MustCompile(`^text-align:\s+(left|right|center);$`)).OnElements("td", "th")
 
+	// Allow checkbox and label for TOC toggle
+	bm.AllowElements("input", "label")
+	bm.AllowAttrs("type", "id", "class", "checked").OnElements("input")
+	bm.AllowAttrs("for").OnElements("label")
+
 	t := templater.New()
 
 	if err := t.Load("templates/layouts/*.html", "templates/*.html", "templates/special/*.html"); err != nil {

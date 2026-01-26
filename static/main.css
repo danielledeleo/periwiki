@@ -159,10 +159,11 @@ a.pw-deadlink {
 
 article {
     padding: 20px 24px 24px 24px;
+    margin: 0 -1px 0.5em 0;
     background-color: #ffffff;
     border: 1px solid var(--periwiki-purple);
-    border-right: none;
     line-height: 1.6;
+    max-width: 948px;
 }
 
 article h1,
@@ -283,9 +284,50 @@ article #toc {
     width: auto;
 }
 
-article #toc span {
+/* Hide the checkbox */
+article #toc .toc-toggle {
+    display: none;
+}
+
+article #toc .toc-header {
     display: block;
     text-align: center;
+}
+
+/* Style the brackets as plain text */
+article #toc .toc-brackets {
+    color: var(--link-color);
+    font-size: 0.85em;
+}
+
+/* Style the label as the toggle */
+article #toc .toc-header label {
+    color: var(--link-color);
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+/* Show hide when checked, show when unchecked */
+article #toc .toc-toggle:checked ~ .toc-header label::before {
+    content: 'hide';
+}
+
+article #toc .toc-toggle:not(:checked) ~ .toc-header label::before {
+    content: 'show';
+}
+
+/* Underline on hover */
+article #toc .toc-header label:hover {
+    text-decoration: underline;
+}
+
+/* Hide content when unchecked */
+article #toc .toc-toggle:not(:checked) ~ ol {
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
 }
 
 article #toc ol {
@@ -458,9 +500,11 @@ article.pw-preview {
 
     /* Article: Remove left/right borders, adjust padding */
     article {
+        margin-right: 0;
         padding: 16px;
         border-left: none;
         border-right: none;
+        max-width: 100%;
     }
 
     /* Infobox: Full width, stack above content */
@@ -508,6 +552,7 @@ article.pw-preview {
     /* Tighter article padding */
     article {
         padding: 12px;
+        max-width: 100%;
     }
 
     /* Smaller headings */

@@ -1,5 +1,9 @@
 <div id="toc">
-    <span><strong>Contents</strong></span>
+    <input type="checkbox" id="toc-toggle" class="toc-toggle" checked>
+    <div class="toc-header">
+        <strong>Contents</strong>
+        <span class="toc-brackets">[</span><label for="toc-toggle"></label><span class="toc-brackets">]</span>
+    </div>
     <ol>{{ range .Headers }}
         <li>
             <a href="#{{ range .Attr }}{{ if eq .Key "id" }}{{ .Val }}{{ end }}{{ end }}">
