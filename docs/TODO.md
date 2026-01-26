@@ -3,7 +3,8 @@ In progress
 
 Soon(ish)
 - [HIGH] Anonymous editing toggle (env config for now)
-- Frontmatter schema design (initial global fields: redirect, others TBD)
+- Frontmatter schema design (see docs/plans/frontmatter-design.md)
+  - Consider ORM replacement first (see Dependency Maintenance section)
 - Content re-render job (due to template changes or edits, on launch, slow trickle, manually triggered, cron)
 - When editing from an old revision (restoring, essentially), allow it to publish instead of 409.
 - CLAUDE.md (how to behave in the code base, strategy, hygiene)
@@ -35,6 +36,7 @@ Soon(ish)
 - File:image.jpg static file handing (and design overall media strategy...)
   - Asset metadata is tracked by the wiki system, but blobs are not stored in the database
   - References are kept to an externally managed media system (local filesystem, S3, static files on an nginx server, etc.)
+- Article content injection fuzzing
 
 Configuration and Runtime
 - Store cookie secret in database instead of .cookiesecret.yaml (update docs/security.md)
