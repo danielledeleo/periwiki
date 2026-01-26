@@ -154,13 +154,22 @@ func (a *app) registerPostHandler(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (a *app) loginHander(rw http.ResponseWriter, req *http.Request) {
-	err := a.RenderTemplate(rw, "login.html", "index.html", map[string]interface{}{
+	render := map[string]interface{}{
 		"Article": map[string]string{
-			"Title":         "Login",
-			"referrerValue": req.Referer(),
+			"Title": "Login",
 		},
 		"Context": req.Context(),
-	})
+	}
+
+	// Check if redirected here because login is required
+	if req.URL.Query().Get("reason") == "login_required" {
+		render["loginRequired"] = true
+		render["referrerValue"] = req.URL.Query().Get("referrer")
+	} else {
+		render["referrerValue"] = req.Referer()
+	}
+
+	err := a.RenderTemplate(rw, "login.html", "index.html", render)
 	check(err)
 }
 
@@ -395,7 +404,7 @@ func (a *app) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 	// Check if anonymous editing is allowed
 	user := req.Context().Value(wiki.UserKey).(*wiki.User)
 	if !a.config.AllowAnonymousEditsGlobal && user.IsAnonymous() {
-		loginURL := "/user/login?referrer=" + url.QueryEscape(req.URL.String())
+		loginURL := "/user/login?reason=login_required&referrer=" + url.QueryEscape(req.URL.String())
 		http.Redirect(rw, req, loginURL, http.StatusSeeOther)
 		return
 	}

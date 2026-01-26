@@ -3,6 +3,9 @@
     <article>
         <h1>Login</h1>
         <div class="pw-article-content">
+            {{ if .loginRequired }}
+            <div class="pw-callout pw-info">You must be logged in to make edits.</div>
+            {{ end }}
             {{ if .calloutMessage }}
             <div class="pw-callout {{ .calloutClasses }}">{{ .calloutMessage }}</div>
             {{ end }}
@@ -22,6 +25,7 @@
                     </tr>
                 </table>
             </form>
+            <p>Don't have an account? <a href="/user/register">Register</a></p>
         </div>
     </article>
 </div>
