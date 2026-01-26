@@ -2,22 +2,27 @@ In progress
 - Docs-on-docs (ship the documentation for Periwiki as sample files)
 
 Soon(ish)
-- Backlinks feature (will help trigger redlink re-renders)
+- [HIGH] Anonymous editing toggle (env config for now)
+- Frontmatter schema design (initial global fields: redirect, others TBD)
+- Content re-render job (due to template changes or edits, on launch, slow trickle, manually triggered, cron)
+- When editing from an old revision (restoring, essentially), allow it to publish instead of 409.
 - CLAUDE.md (how to behave in the code base, strategy, hygiene)
-- Page alias system (e.g. allow /sitemap.xml to point to /wiki/Special:Sitemap.xml)
+- Page alias and redirect system (see docs/plans/alias-redirect-design.md)
+- Backlinks feature (will help trigger redlink re-renders)
 - Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - Improve editing request flow
   - unmodified content submissions should still re-render
   - submission errors should appear above editor window, not a new page (unmodified, conflicts)
 - Include better sample pages
-- Links on history pages to diff of live page
 - Move .go files out of root directory
 - User-defined templates system (see docs/plans/user-templates-design.md)
   - Prerequisites: content re-render queue, article type field
   - Subsumes: widgets, tagging/frontmatter, rich homepage, special page customization
+  - See: wikipedia {Navbar} + {Template that calls navbar}
+  - **Privileged templates defined in the theme, dynamic templates defined as Articles**
 - Auto populate new databases with an Admin user with id 1 as the owner of all the default pages
 - Create Markdown templates for default pages (user profiles, admin pages, etc.)
-- Re-render pages on launch (somehow determine if they are stale, e.g. if the renderer changes)
+- Action rate limiting (saves per x time, anti-crawl, etc.)
 - Make user pages, index, and other special pages all types of Articles (and revisions)
 - User profiles pages to be ~user URLs, which are linked to with wikilinks e.g. [[~dani]]
 - User settings
@@ -38,7 +43,6 @@ Configuration and Runtime
 - CLI flags to override config file path, database file, host, log level, etc.
 
 Down the line
-- Content re-render job (on launch, slow trickle, manually triggered, cron)
 - Moderation tools?
 - Admin panel
 - A theme system (custom templates)
