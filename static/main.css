@@ -1,11 +1,18 @@
 :root {
-    --link-color: #0645ad;
+    --pw-link-color: #0645ad;
     --pw-purple: #a7aef9;
-    --underline: #a2a9b1;
+    --pw-underline: #a2a9b1;
     --pw-grey: #9a9a9a;
     --pw-dark-grey: #555555;
     --pw-light-grey: #f6f6f6;
     --pw-deadlink-color: #bf3c2c;
+
+    /* Surface colors */
+    --pw-white: #ffffff;
+    --pw-black: #000000;
+    --pw-surface-bg: #fbfbfb;
+    --pw-table-stripe-bg: #f6f8fa;
+    --pw-table-border: #c6cbd1;
 
     /* Callout colors */
     --pw-success-border: #8ed28e;
@@ -24,11 +31,11 @@ body {
 
     background-color: var(--pw-light-grey);
     font-family: "Helvetica", sans-serif;
-    line-height: 1.1em;
+    line-height: 1.1;
 }
 
 a {
-    color: var(--link-color);
+    color: var(--pw-link-color);
     text-decoration: none;
 }
 a:hover {
@@ -44,17 +51,17 @@ a.pw-deadlink {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 0.5em 0.75em 0 0.75em;
+    margin: 0.5rem 0.75rem 0 0.75rem;
 }
 
 #navbar #logo-link {
     display: block;
-    width: 140px;
-    margin: 0 0.5em;
+    width: 8.75rem;
+    margin: 0 0.5rem;
 }
 
 #navbar #logo {
-    max-width: 12em;
+    max-width: 12rem;
     width: auto;
 }
 
@@ -65,13 +72,13 @@ a.pw-deadlink {
 #login-bar {
     align-self: flex-start;
     text-align: right;
-    font-size: .75em;
+    font-size: .75rem;
 }
 
 #login-bar a,
 #login-bar .pw-logout-btn {
     display: inline-block;
-    margin: 0 0 0 0.75em;
+    margin: 0 0 0 0.75rem;
 }
 
 #login-bar form {
@@ -81,7 +88,7 @@ a.pw-deadlink {
 #login-bar button.pw-logout-btn {
     display: inline-block;
     background: none;
-    color: var(--link-color);
+    color: var(--pw-link-color);
     border: none;
     padding: 0;
     font: inherit;
@@ -93,24 +100,24 @@ a.pw-deadlink {
 }
 
 #sidebar {
-    margin: 0 0.75em;
-    padding: 0.5em;
-    width: 140px;
-    min-width: 140px;
+    margin: 0 0.75rem;
+    padding: 0.5rem;
+    width: 8.75rem;
+    min-width: 8.75rem;
 }
 
 #sidebar ul {
     margin: 0;
     padding: 0;
 
-    font-size: .75em;
+    font-size: .75rem;
     list-style: none;
 }
 
 #sidebar ul li.pw-sidebar-title {
     width: 80%;
-    margin: 0.4em 0;
-    border-bottom: 1px solid var(--underline);
+    margin: 0.4rem 0;
+    border-bottom: 1px solid var(--pw-underline);
 }
 
 #right-panel {
@@ -135,70 +142,65 @@ a.pw-deadlink {
 }
 
 #article-area ul.pw-tabs li {
-    font-size: 0.8em;
+    font-size: 0.8rem;
     text-align: center;
-    padding: 0.5em 0.8em 0.3em 0.8em;
+    padding: 0.5rem 0.8rem 0.3rem 0.8rem;
 
     border-top: 1px solid var(--pw-purple);
     border-right: 1px solid var(--pw-purple);
 }
 
 #article-area ul.pw-tabs li.pw-active {
-    background-color: #ffffff;
-    border-bottom: 1px solid #ffffff;
+    background-color: var(--pw-white);
+    border-bottom: 1px solid var(--pw-white);
 }
 
 #article-area textarea#body-edit {
     display: block;
     width: 80%;
-    min-height: 160px;
-    height: 320px;
+    min-height: 10rem;
+    height: 20rem;
 }
 
 #article-area input#title-edit {
     font-family: Georgia, 'Times New Roman', Times, serif;
-    font-size: 1.8em;
+    font-size: 1.8rem;
     font-weight: 400;
 }
 
 #article-area .pw-last-edited {
-    font-size: 0.75em;
+    font-size: 0.75rem;
     color: var(--pw-grey);
     display: block;
 }
 
 article {
-    padding: 20px 24px 24px 24px;
-    margin: 0 -1px 0.5em 0;
-    background-color: #ffffff;
+    padding: 1.25rem 1.5rem 1.5rem 1.5rem;
+    margin: 0 -1px 0.5rem 0;
+    background-color: var(--pw-white);
     border: 1px solid var(--pw-purple);
     line-height: 1.6;
 }
 
-/* Constrain content width while allowing background to extend full-width */
-article > * {
-    max-width: 900px;
-}
-
 article h1,
 article h2 {
-    line-height: 1.3em;
-    margin: 0 0 .25em 0;
+    line-height: 1.3;
+    margin: 0 0 .25rem 0;
     overflow: hidden;
 
     font-family: Georgia, 'Times New Roman', Times, serif;
-    font-size: 1.8em;
+    font-size: 1.8rem;
     font-weight: 400;
-    border-bottom: 1px solid var(--underline);
+    border-bottom: 1px solid var(--pw-underline);
 }
 
 article h2 {
-    margin: 1em 0 .25em 0;
-    font-size: 1.5em;
+    margin: 1rem 0 .25rem 0;
+    font-size: 1.5rem;
 }
 
 article section.footnotes {
-    margin: 1em 0 0 0;
+    margin: 1rem 0 0 0;
 }
 
 article section.footnotes p {
@@ -208,7 +210,7 @@ article section.footnotes p {
 article section.footnotes hr {
     border: 0;
     height: 0;
-    border-bottom: 1px solid var(--underline);
+    border-bottom: 1px solid var(--pw-underline);
 }
 
 article section.footnotes ol {
@@ -225,57 +227,57 @@ article section.footnotes .footnote-letter {
 
 article div.pw-article-content > table {
     border-collapse: collapse;
-    border-spacing: 0px;
+    border-spacing: 0;
 }
 
 article div.pw-article-content > table tr:nth-child(2n),
 article div.pw-article-content > table thead {
-    background-color: #f6f8fa;
+    background-color: var(--pw-table-stripe-bg);
 }
 
 article div.pw-article-content > table td,
 article div.pw-article-content > table th {
-    border: 1px solid #c6cbd1;
-    padding: 0.4em 1em;
+    border: 1px solid var(--pw-table-border);
+    padding: 0.4rem 1rem;
 }
 
 article pre {
     overflow: hidden;
     border: 1px solid var(--pw-purple);
-    padding: 0.75em;
-    background-color: #FBFBFB;
+    padding: 0.75rem;
+    background-color: var(--pw-surface-bg);
 }
 
 article .infobox {
-    font-size: 0.95em;
-    width: 14em;
+    font-size: 0.95rem;
+    width: 14rem;
     float: right;
     clear: right;
-    margin: 0 0 0.75em 1.0em;
-    padding: 0.3em;
+    margin: 0 0 0.75rem 1.0rem;
+    padding: 0.3rem;
     line-height: 1.1;
 }
 
 article .infobox h1,
 article .infobox h2,
 article .infobox h3 {
-    margin: 0.25em 0;
+    margin: 0.25rem 0;
     text-align: center;
-    font-size: 1.1em;
+    font-size: 1.1rem;
     font-weight: bold;
     font-family: sans-serif;
 }
 
 article .infobox ul {
-    margin: 0 0.5em 0 1em;
+    margin: 0 0.5rem 0 1rem;
 }
 
 article .infobox p {
-    margin: 0.25em 0;
+    margin: 0.25rem 0;
 }
 
 article .infobox figure {
-    margin: 0.5em 0;
+    margin: 0.5rem 0;
 }
 
 article .infobox figure img {
@@ -288,12 +290,12 @@ article .infobox figure figcaption {
 
 article #toc,
 article .infobox {
-    border: 1px solid var(--underline);
-    background-color: #FBFBFB;
+    border: 1px solid var(--pw-underline);
+    background-color: var(--pw-surface-bg);
 }
 
 article #toc {
-    padding: 0.3em 0.5em;
+    padding: 0.3rem 0.5rem;
     display: inline-block;
     width: auto;
 }
@@ -310,15 +312,15 @@ article #toc .toc-header {
 
 /* Style the brackets as plain text */
 article #toc .toc-brackets {
-    color: var(--link-color);
-    font-size: 0.85em;
+    color: var(--pw-link-color);
+    font-size: 0.85rem;
 }
 
 /* Style the label as the toggle */
 article #toc .toc-header label {
-    color: var(--link-color);
+    color: var(--pw-link-color);
     cursor: pointer;
-    font-size: 0.85em;
+    font-size: 0.85rem;
 }
 
 /* Show hide when checked, show when unchecked */
@@ -359,7 +361,7 @@ article #toc ol > li {
 article #toc ol > li:before {
     content: counters(item, ".") " ";
     display: table-cell;
-    padding-right: 0.6em;
+    padding-right: 0.6rem;
 }
 
 article #toc li ol > li {
@@ -372,13 +374,13 @@ article #toc li ol > li:before {
 
 article code {
     font-family: "Andale Mono", "Consolas", monospace;
-    font-size: 1em;
+    font-size: 1rem;
 }
 
 article code a {
     display: inline-block;
     width: 100%;
-    color: black;
+    color: var(--pw-black);
 }
 
 article code a:hover {
@@ -391,25 +393,26 @@ article pre.lineNumbers a::before {
 }
 
 article ul {
-    margin: 0.3em 0 0 1.6em;
+    margin: 0.3rem 0 0 1.6rem;
     padding: 0;
 }
 
 article ul li {
-    margin: 0 0 0.1em 0;
+    margin: 0 0 0.1rem 0;
 }
 
-article pre:has(.pw-diff) {
+article pre code.pw-diff {
     overflow-x: auto;
     max-width: 100%;
+    white-space: pre-wrap;
 }
 
 article .pw-diff {
-    line-height: 1em;
+    line-height: 1;
 }
 
 article .pw-diff-info p {
-    margin: 0.5em 0;
+    margin: 0.5rem 0;
 }
 
 article .pw-diff-comment {
@@ -419,14 +422,14 @@ article .pw-diff-comment {
 }
 
 article.pw-preview {
-    margin: 24px 0 0 0;
+    margin: 1.5rem 0 0 0;
 }
 
 .pw-callout {
     width: 100%;
     display: inline-block;
-    margin: 0.5em 0;
-    padding: 10px;
+    margin: 0.5rem 0;
+    padding: 0.625rem;
     border: 1px solid;
 }
 
@@ -459,17 +462,17 @@ article.pw-preview {
 
 #footer {
     text-align: center;
-    margin: 1em 0;
+    margin: 1rem 0;
     color: var(--pw-grey);
 }
 
 #footer small.pw-powered-by {
-    font-size: 0.75em;
+    font-size: 0.75rem;
 }
 
 #footer .pw-powered-by .pw-heart {
     color: var(--pw-purple);
-    font-size: 1.4em;
+    font-size: 1.4rem;
     margin: 0 0 0 1px;
     display: inline-block;
     transform: rotate(35deg);
@@ -484,12 +487,21 @@ article.pw-preview {
     /* Navbar: adjust for mobile, smaller logo */
     #navbar {
         width: auto;
-        margin: 0.5em 0.75em;
+        margin: 0.5rem 0.75rem;
         padding: 0;
     }
 
     #navbar #logo {
-        max-width: 8em;
+        max-width: 8rem;
+    }
+
+    #navbar #logo-link {
+        margin-left: 0;
+    }
+
+    /* Last edited timestamp: add padding on mobile */
+    #article-area .pw-last-edited {
+        padding: 0 1rem;
     }
 
     /* Stack layout vertically */
@@ -504,7 +516,7 @@ article.pw-preview {
 
     /* Login bar: slightly larger font on tablet */
     #login-bar {
-        font-size: 0.85em;
+        font-size: 0.85rem;
     }
 
     /* Tabs: keep left-justified, remove left border */
@@ -515,22 +527,16 @@ article.pw-preview {
     /* Article: Remove left/right borders, adjust padding */
     article {
         margin-right: 0;
-        padding: 16px;
+        padding: 1rem;
         border-left: none;
         border-right: none;
-        max-width: 100%;
-    }
-
-    /* Content: Full width on tablet */
-    article > * {
-        max-width: 100%;
     }
 
     /* Infobox: Full width, stack above content */
     article .infobox {
         float: none;
         width: 100%;
-        margin: 0 0 1em 0;
+        margin: 0 0 1rem 0;
     }
 
     /* TOC: Full width */
@@ -550,13 +556,11 @@ article.pw-preview {
     article div.pw-article-content > table {
         display: block;
         overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
     }
 
     /* Code blocks: Horizontal scroll */
     article pre {
         overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
     }
 }
 
@@ -564,40 +568,39 @@ article.pw-preview {
 @media screen and (max-width: 480px) {
     /* Smaller tabs */
     #article-area ul.pw-tabs li {
-        padding: 0.5em 0.4em 0.3em 0.4em;
-        font-size: 0.75em;
+        padding: 0.5rem 0.4rem 0.3rem 0.4rem;
+        font-size: 0.75rem;
     }
 
     /* Tighter article padding */
     article {
-        padding: 12px;
-        max-width: 100%;
+        padding: 0.75rem;
     }
 
-    /* Content: Full width on mobile */
-    article > * {
-        max-width: 100%;
+    /* Match tighter padding for last-edited */
+    #article-area .pw-last-edited {
+        padding: 0 0.75rem;
     }
 
     /* Smaller headings */
     article h1 {
-        font-size: 1.4em;
+        font-size: 1.4rem;
     }
 
     article h2 {
-        font-size: 1.2em;
+        font-size: 1.2rem;
     }
 
     /* Edit form adjustments */
     #article-area textarea#body-edit {
-        height: 200px;
-        min-height: 120px;
+        height: 12.5rem;
+        min-height: 7.5rem;
     }
 
     #article-area input#title-edit {
         width: 100%;
         box-sizing: border-box;
-        font-size: 1.4em;
+        font-size: 1.4rem;
     }
 
     /* Stack form table cells */
@@ -610,6 +613,6 @@ article.pw-preview {
     article table input[type="password"] {
         width: 100%;
         box-sizing: border-box;
-        margin-bottom: 0.5em;
+        margin-bottom: 0.5rem;
     }
 }
