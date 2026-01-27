@@ -641,7 +641,6 @@ func TestEditFormPreservesContentOnError(t *testing.T) {
 	}
 }
 
-
 // setupTestServerWithAnonEditsDisabled creates a test server with anonymous editing disabled.
 func setupTestServerWithAnonEditsDisabled(t *testing.T) (*httptest.Server, *testutil.TestApp, func()) {
 	t.Helper()
@@ -821,50 +820,6 @@ func TestAnonymousCanEditWhenEnabled(t *testing.T) {
 	}
 	if article.Title != "Anonymous Article" {
 		t.Errorf("expected title 'Anonymous Article', got %q", article.Title)
-	}
-}
-
-func TestRerenderRequiresAuthentication(t *testing.T) {
-	server, testApp, cleanup := setupArticleEditTestServer(t)
-	defer cleanup()
-
-	// Create a user and article
-	password := "rerenderpass"
-	user := &wiki.User{
-		ScreenName:  "rerenderuser",
-		Email:       "rerender@example.com",
-		RawPassword: password,
-	}
-	err := testApp.Users.PostUser(user)
-	if err != nil {
-		t.Fatalf("failed to create user: %v", err)
-	}
-	createdUser, _ := testApp.Users.GetUserByScreenName("rerenderuser")
-	testutil.CreateTestArticle(t, testApp, "rerender-test", "Rerender Test", "Test content", createdUser)
-
-	// Try to rerender without authentication
-	jar, _ := cookiejar.New(nil)
-	client := &http.Client{
-		Jar: jar,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	resp, err := client.Get(server.URL + "/wiki/rerender-test?rerender")
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// Should redirect to login
-	if resp.StatusCode != http.StatusSeeOther {
-		t.Fatalf("expected redirect 303, got %d", resp.StatusCode)
-	}
-
-	location := resp.Header.Get("Location")
-	if !strings.HasPrefix(location, "/user/login?reason=login_required") {
-		t.Errorf("expected redirect to login with reason, got %q", location)
 	}
 }
 

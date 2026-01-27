@@ -221,8 +221,8 @@ func (a *App) ArticleHandler(rw http.ResponseWriter, req *http.Request) {
 //   - /wiki/{article}?diff&old=N - diff from N to current
 //   - /wiki/{article}?diff&new=M - diff from previous to M
 //   - /wiki/{article}?diff - diff between two most recent revisions
-//   - /wiki/{article}?rerender - force re-render current revision (auth required)
-//   - /wiki/{article}?rerender&revision=N - force re-render revision N (auth required)
+//   - /wiki/{article}?rerender - force re-render current revision
+//   - /wiki/{article}?rerender&revision=N - force re-render revision N
 func (a *App) ArticleDispatcher(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	params := req.URL.Query()
@@ -288,15 +288,9 @@ func (a *App) handleView(rw http.ResponseWriter, req *http.Request, articleURL s
 }
 
 // handleRerender handles re-rendering an article revision.
-// Requires authentication. Supports ?rerender or ?rerender&revision=N
+// Supports ?rerender or ?rerender&revision=N
 func (a *App) handleRerender(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
 	user := req.Context().Value(wiki.UserKey).(*wiki.User)
-
-	// Require authenticated user (not anonymous)
-	if user == nil || user.ID == 0 {
-		http.Redirect(rw, req, "/user/login?reason=login_required&referrer="+url.QueryEscape(req.URL.String()), http.StatusSeeOther)
-		return
-	}
 
 	// Get revision ID (0 means current)
 	var revisionID int
