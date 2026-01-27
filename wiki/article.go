@@ -22,6 +22,11 @@ func (article *Article) String() string {
 	return fmt.Sprintf("%s %v", article.URL, *article.Revision)
 }
 
+// DisplayTitle returns the article's title for display.
+func (a *Article) DisplayTitle() string {
+	return a.Title
+}
+
 // ArticleSummary represents minimal article info for sitemaps.
 type ArticleSummary struct {
 	URL          string    `db:"url"`

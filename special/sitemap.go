@@ -90,6 +90,7 @@ func (p *SitemapPage) handleXML(rw http.ResponseWriter, articles []*wiki.Article
 
 func (p *SitemapPage) handleHTML(rw http.ResponseWriter, req *http.Request, articles []*wiki.ArticleSummary) {
 	data := map[string]interface{}{
+		"Page":     wiki.NewStaticPage("Sitemap"),
 		"Articles": articles,
 		"Context":  req.Context(),
 	}

@@ -20,6 +20,7 @@ import (
 func (a *App) RegisterHandler(rw http.ResponseWriter, req *http.Request) {
 	err := a.RenderTemplate(rw, "register.html", "index.html",
 		map[string]interface{}{
+			"Page":    wiki.NewStaticPage("Register"),
 			"Article": map[string]string{"Title": "Register"},
 			"Context": req.Context()})
 	check(err)
@@ -33,6 +34,7 @@ func (a *App) RegisterPostHandler(rw http.ResponseWriter, req *http.Request) {
 	user.RawPassword = req.PostFormValue("password")
 
 	render := map[string]interface{}{
+		"Page":           wiki.NewStaticPage("Register"),
 		"Article":        map[string]string{"Title": "Register"},
 		"calloutClasses": "pw-success",
 		"calloutMessage": "Successfully registered!",
@@ -60,6 +62,7 @@ func (a *App) RegisterPostHandler(rw http.ResponseWriter, req *http.Request) {
 
 func (a *App) LoginHandler(rw http.ResponseWriter, req *http.Request) {
 	render := map[string]interface{}{
+		"Page": wiki.NewStaticPage("Login"),
 		"Article": map[string]string{
 			"Title": "Login",
 		},
@@ -87,6 +90,7 @@ func (a *App) LoginPostHandler(rw http.ResponseWriter, req *http.Request) {
 	err := a.Users.CheckUserPassword(user)
 
 	render := map[string]interface{}{
+		"Page":           wiki.NewStaticPage("Login"),
 		"Article":        map[string]string{"Title": "Login"},
 		"calloutClasses": "pw-success",
 		"calloutMessage": "Successfully logged in!",
@@ -150,12 +154,14 @@ func (a *App) LogoutPostHandler(rw http.ResponseWriter, req *http.Request) {
 func (a *App) HomeHandler(rw http.ResponseWriter, req *http.Request) {
 	data := make(map[string]interface{})
 
-	data["Article"] = &wiki.Article{
+	article := &wiki.Article{
 		Revision: &wiki.Revision{
 			Title: "Home",
 			HTML:  "Welcome to periwiki! Why don't you check out <a href='/wiki/Test'>Test</a>?",
 		},
 	}
+	data["Page"] = article
+	data["Article"] = article
 	data["Context"] = req.Context()
 
 	err := a.RenderTemplate(rw, "home.html", "index.html", data)
@@ -194,6 +200,7 @@ func (a *App) ArticleHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	render["Page"] = article
 	render["Article"] = article
 	render["Context"] = req.Context()
 
@@ -276,6 +283,7 @@ func (a *App) handleView(rw http.ResponseWriter, req *http.Request, articleURL s
 			return
 		}
 		err = a.RenderTemplate(rw, "article.html", "index.html", map[string]interface{}{
+			"Page":    article,
 			"Article": article,
 			"Context": req.Context(),
 		})
@@ -336,6 +344,7 @@ func (a *App) handleHistory(rw http.ResponseWriter, req *http.Request, articleUR
 	}
 
 	err = a.RenderTemplate(rw, "article_history.html", "index.html", map[string]interface{}{
+		"Page": wiki.NewStaticPage("History of " + articleURL),
 		"Article": map[string]interface{}{
 			"URL":   articleURL,
 			"Title": "History of " + articleURL},
@@ -389,6 +398,7 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 	other["Preview"] = false
 
 	err = a.RenderTemplate(rw, "article_edit.html", "index.html", map[string]interface{}{
+		"Page":    article,
 		"Article": article,
 		"Context": req.Context(),
 		"Other":   other})
@@ -487,6 +497,7 @@ func (a *App) handleDiff(rw http.ResponseWriter, req *http.Request, articleURL s
 	}
 
 	err = a.RenderTemplate(rw, "diff.html", "index.html", map[string]interface{}{
+		"Page":              newArticle,
 		"Article":           oldArticle,
 		"NewRevision":       newArticle,
 		"DiffString":        template.HTML(buff.String()),
@@ -555,6 +566,7 @@ func (a *App) articlePreviewHandler(article *wiki.Article, rw http.ResponseWrite
 
 	err = a.RenderTemplate(rw, "article_edit.html", "index.html",
 		map[string]interface{}{
+			"Page":    article,
 			"Article": article,
 			"Context": req.Context(),
 			"Other":   other})
@@ -585,9 +597,11 @@ func (a *App) articlePostHandler(article *wiki.Article, rw http.ResponseWriter, 
 
 func (a *App) ErrorHandler(responseCode int, rw http.ResponseWriter, req *http.Request, errors ...error) {
 	rw.WriteHeader(responseCode)
+	errorTitle := fmt.Sprintf("%d: %s", responseCode, http.StatusText(responseCode))
 	err := a.RenderTemplate(rw, "error.html", "index.html",
 		map[string]interface{}{
-			"Article": &wiki.Article{Revision: &wiki.Revision{Title: fmt.Sprintf("%d: %s", responseCode, http.StatusText(responseCode))}},
+			"Page":    wiki.NewStaticPage(errorTitle),
+			"Article": &wiki.Article{Revision: &wiki.Revision{Title: errorTitle}},
 			"Context": req.Context(),
 			"Error": map[string]interface{}{
 				"Code":       responseCode,
