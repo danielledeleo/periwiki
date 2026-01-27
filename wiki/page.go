@@ -1,5 +1,27 @@
 package wiki
 
+import (
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
+
+// InferTitle converts a URL slug to a display title.
+// It replaces underscores with spaces and capitalizes only the first character.
+func InferTitle(url string) string {
+	if url == "" {
+		return ""
+	}
+	// Replace underscores with spaces
+	title := strings.ReplaceAll(url, "_", " ")
+	// Capitalize first character only
+	r, size := utf8.DecodeRuneInString(title)
+	if r == utf8.RuneError {
+		return title
+	}
+	return string(unicode.ToUpper(r)) + title[size:]
+}
+
 // Page represents any page that can be displayed with a title.
 type Page interface {
 	DisplayTitle() string

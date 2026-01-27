@@ -23,8 +23,12 @@ func (article *Article) String() string {
 }
 
 // DisplayTitle returns the article's title for display.
+// If the title is empty, it falls back to inferring a title from the URL.
 func (a *Article) DisplayTitle() string {
-	return a.Title
+	if a.Title != "" {
+		return a.Title
+	}
+	return InferTitle(a.URL)
 }
 
 // ArticleSummary represents minimal article info for sitemaps.

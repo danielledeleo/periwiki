@@ -87,9 +87,9 @@ func TestArticleDisplayTitle(t *testing.T) {
 			expected: "Test Article",
 		},
 		{
-			name:     "returns empty title when revision title is empty",
+			name:     "falls back to inferred title when revision title is empty",
 			article:  NewArticle("another-url", "", "# Content"),
-			expected: "",
+			expected: "Another-url",
 		},
 		{
 			name:     "returns title with special characters",
@@ -109,3 +109,119 @@ func TestArticleDisplayTitle(t *testing.T) {
 
 // Compile-time check that StaticPage implements Page interface
 var _ Page = (*StaticPage)(nil)
+
+func TestArticleDisplayTitleWithInference(t *testing.T) {
+	tests := []struct {
+		name     string
+		url      string
+		title    string
+		expected string
+	}{
+		{
+			name:     "title set takes precedence",
+			url:      "test_article",
+			title:    "Custom Title",
+			expected: "Custom Title",
+		},
+		{
+			name:     "empty title falls back to inferred title",
+			url:      "test_article",
+			title:    "",
+			expected: "Test article",
+		},
+		{
+			name:     "infers title from URL with underscores",
+			url:      "My_Page",
+			title:    "",
+			expected: "My Page",
+		},
+		{
+			name:     "title takes precedence over URL",
+			url:      "some_url",
+			title:    "Explicit Title",
+			expected: "Explicit Title",
+		},
+		{
+			name:     "empty URL with empty title returns empty",
+			url:      "",
+			title:    "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			article := NewArticle(tt.url, tt.title, "# Content")
+			if got := article.DisplayTitle(); got != tt.expected {
+				t.Errorf("Article.DisplayTitle() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestInferTitle(t *testing.T) {
+	tests := []struct {
+		name     string
+		url      string
+		expected string
+	}{
+		{
+			name:     "underscores to spaces with existing capitalization",
+			url:      "Provinces_of_Canada",
+			expected: "Provinces of Canada",
+		},
+		{
+			name:     "capitalizes first character only",
+			url:      "mechanical_keyboards",
+			expected: "Mechanical keyboards",
+		},
+		{
+			name:     "preserves all caps",
+			url:      "HTML",
+			expected: "HTML",
+		},
+		{
+			name:     "preserves mixed case after first char",
+			url:      "snake_Case",
+			expected: "Snake Case",
+		},
+		{
+			name:     "single lowercase word",
+			url:      "test",
+			expected: "Test",
+		},
+		{
+			name:     "single uppercase word",
+			url:      "TEST",
+			expected: "TEST",
+		},
+		{
+			name:     "single character",
+			url:      "a",
+			expected: "A",
+		},
+		{
+			name:     "empty string",
+			url:      "",
+			expected: "",
+		},
+		{
+			name:     "already title case with underscores",
+			url:      "already_Title_Case",
+			expected: "Already Title Case",
+		},
+		{
+			name:     "double underscores preserved as double spaces",
+			url:      "with__double__underscores",
+			expected: "With  double  underscores",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := InferTitle(tt.url); got != tt.expected {
+				t.Errorf("InferTitle(%q) = %q, want %q", tt.url, got, tt.expected)
+			}
+		})
+	}
+}
