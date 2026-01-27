@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -19,29 +19,29 @@ func setupHandlerTestRouter(t *testing.T) (*mux.Router, *testutil.TestApp, func(
 
 	testApp, cleanup := testutil.SetupTestApp(t)
 
-	app := &app{
+	app := &App{
 		Templater:    testApp.Templater,
-		articles:     testApp.Articles,
-		users:        testApp.Users,
-		sessions:     testApp.Sessions,
-		rendering:    testApp.Rendering,
-		preferences:  testApp.Preferences,
-		specialPages: testApp.SpecialPages,
-		config:       testApp.Config,
+		Articles:     testApp.Articles,
+		Users:        testApp.Users,
+		Sessions:     testApp.Sessions,
+		Rendering:    testApp.Rendering,
+		Preferences:  testApp.Preferences,
+		SpecialPages: testApp.SpecialPages,
+		Config:       testApp.Config,
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.Use(app.SessionMiddleware)
 
-	router.HandleFunc("/", app.homeHandler).Methods("GET")
-	router.HandleFunc("/wiki/Special:{page}", app.specialPageHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}", app.articleDispatcher).Methods("GET", "POST")
+	router.HandleFunc("/", app.HomeHandler).Methods("GET")
+	router.HandleFunc("/wiki/Special:{page}", app.SpecialPageHandler).Methods("GET")
+	router.HandleFunc("/wiki/{article}", app.ArticleDispatcher).Methods("GET", "POST")
 
-	router.HandleFunc("/user/register", app.registerHandler).Methods("GET")
-	router.HandleFunc("/user/register", app.registerPostHandler).Methods("POST")
-	router.HandleFunc("/user/login", app.loginHander).Methods("GET")
-	router.HandleFunc("/user/login", app.loginPostHander).Methods("POST")
-	router.HandleFunc("/user/logout", app.logoutPostHander).Methods("POST")
+	router.HandleFunc("/user/register", app.RegisterHandler).Methods("GET")
+	router.HandleFunc("/user/register", app.RegisterPostHandler).Methods("POST")
+	router.HandleFunc("/user/login", app.LoginHandler).Methods("GET")
+	router.HandleFunc("/user/login", app.LoginPostHandler).Methods("POST")
+	router.HandleFunc("/user/logout", app.LogoutPostHandler).Methods("POST")
 
 	return router, testApp, cleanup
 }
@@ -507,15 +507,15 @@ func TestSessionMiddleware(t *testing.T) {
 	testApp, cleanup := testutil.SetupTestApp(t)
 	defer cleanup()
 
-	app := &app{
+	app := &App{
 		Templater:    testApp.Templater,
-		articles:     testApp.Articles,
-		users:        testApp.Users,
-		sessions:     testApp.Sessions,
-		rendering:    testApp.Rendering,
-		preferences:  testApp.Preferences,
-		specialPages: testApp.SpecialPages,
-		config:       testApp.Config,
+		Articles:     testApp.Articles,
+		Users:        testApp.Users,
+		Sessions:     testApp.Sessions,
+		Rendering:    testApp.Rendering,
+		Preferences:  testApp.Preferences,
+		SpecialPages: testApp.SpecialPages,
+		Config:       testApp.Config,
 	}
 
 	t.Run("sets anonymous user for new session", func(t *testing.T) {
@@ -566,20 +566,20 @@ func TestSpecialPageRegistry(t *testing.T) {
 	registry := special.NewRegistry()
 	registry.Register("Custom", customPage)
 
-	app := &app{
+	app := &App{
 		Templater:    testApp.Templater,
-		articles:     testApp.Articles,
-		users:        testApp.Users,
-		sessions:     testApp.Sessions,
-		rendering:    testApp.Rendering,
-		preferences:  testApp.Preferences,
-		specialPages: registry,
-		config:       testApp.Config,
+		Articles:     testApp.Articles,
+		Users:        testApp.Users,
+		Sessions:     testApp.Sessions,
+		Rendering:    testApp.Rendering,
+		Preferences:  testApp.Preferences,
+		SpecialPages: registry,
+		Config:       testApp.Config,
 	}
 
 	router := mux.NewRouter()
 	router.Use(app.SessionMiddleware)
-	router.HandleFunc("/wiki/Special:{page}", app.specialPageHandler).Methods("GET")
+	router.HandleFunc("/wiki/Special:{page}", app.SpecialPageHandler).Methods("GET")
 
 	req := httptest.NewRequest("GET", "/wiki/Special:Custom", nil)
 	rr := httptest.NewRecorder()
@@ -611,15 +611,15 @@ func TestUserContextInHandlers(t *testing.T) {
 	user := testutil.CreateTestUser(t, testApp.DB, "contextuser", "context@example.com", "password123")
 	testutil.CreateTestArticle(t, testApp, "context-test", "Context Test", "Content", user)
 
-	app := &app{
+	app := &App{
 		Templater:    testApp.Templater,
-		articles:     testApp.Articles,
-		users:        testApp.Users,
-		sessions:     testApp.Sessions,
-		rendering:    testApp.Rendering,
-		preferences:  testApp.Preferences,
-		specialPages: testApp.SpecialPages,
-		config:       testApp.Config,
+		Articles:     testApp.Articles,
+		Users:        testApp.Users,
+		Sessions:     testApp.Sessions,
+		Rendering:    testApp.Rendering,
+		Preferences:  testApp.Preferences,
+		SpecialPages: testApp.SpecialPages,
+		Config:       testApp.Config,
 	}
 
 	// Create a handler that checks for user context

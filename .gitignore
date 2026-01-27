@@ -5,7 +5,7 @@ static/images
 model/
 .serena/
 
-periwiki
+/periwiki
 *.db
 config.yaml
 .cookiesecret.yaml

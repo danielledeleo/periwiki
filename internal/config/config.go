@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"encoding/base64"
@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/danielledeleo/periwiki/internal/logger"
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/gorilla/securecookie"
 	"github.com/spf13/viper"
@@ -42,9 +43,9 @@ func SetupConfig() *wiki.Config {
 	}
 
 	// Initialize logger with configured format and level
-	InitLogger(
-		ParseLogFormat(viper.GetString("log_format")),
-		ParseLogLevel(viper.GetString("log_level")),
+	logger.InitLogger(
+		logger.ParseLogFormat(viper.GetString("log_format")),
+		logger.ParseLogLevel(viper.GetString("log_level")),
 	)
 
 	var secretBytes []byte

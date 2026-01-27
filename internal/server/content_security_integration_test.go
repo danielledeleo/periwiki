@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"io"
@@ -20,23 +20,23 @@ func setupSecurityTestServer(t *testing.T) (*httptest.Server, *testutil.TestApp,
 
 	testApp, cleanup := testutil.SetupTestApp(t)
 
-	app := &app{
+	app := &App{
 		Templater:    testApp.Templater,
-		articles:     testApp.Articles,
-		users:        testApp.Users,
-		sessions:     testApp.Sessions,
-		rendering:    testApp.Rendering,
-		preferences:  testApp.Preferences,
-		specialPages: testApp.SpecialPages,
-		config:       testApp.Config,
+		Articles:     testApp.Articles,
+		Users:        testApp.Users,
+		Sessions:     testApp.Sessions,
+		Rendering:    testApp.Rendering,
+		Preferences:  testApp.Preferences,
+		SpecialPages: testApp.SpecialPages,
+		Config:       testApp.Config,
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.Use(app.SessionMiddleware)
 
-	router.HandleFunc("/", app.homeHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}", app.articleDispatcher).Methods("GET", "POST")
-	router.HandleFunc("/user/login", app.loginPostHander).Methods("POST")
+	router.HandleFunc("/", app.HomeHandler).Methods("GET")
+	router.HandleFunc("/wiki/{article}", app.ArticleDispatcher).Methods("GET", "POST")
+	router.HandleFunc("/user/login", app.LoginPostHandler).Methods("POST")
 
 	server := httptest.NewServer(router)
 

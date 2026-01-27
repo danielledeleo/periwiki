@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"io"
@@ -20,27 +20,27 @@ func setupAuthTestServer(t *testing.T) (*httptest.Server, *testutil.TestApp, fun
 
 	testApp, cleanup := testutil.SetupTestApp(t)
 
-	app := &app{
+	app := &App{
 		Templater:    testApp.Templater,
-		articles:     testApp.Articles,
-		users:        testApp.Users,
-		sessions:     testApp.Sessions,
-		rendering:    testApp.Rendering,
-		preferences:  testApp.Preferences,
-		specialPages: testApp.SpecialPages,
-		config:       testApp.Config,
+		Articles:     testApp.Articles,
+		Users:        testApp.Users,
+		Sessions:     testApp.Sessions,
+		Rendering:    testApp.Rendering,
+		Preferences:  testApp.Preferences,
+		SpecialPages: testApp.SpecialPages,
+		Config:       testApp.Config,
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.Use(app.SessionMiddleware)
 
-	router.HandleFunc("/", app.homeHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}", app.articleHandler).Methods("GET")
-	router.HandleFunc("/user/register", app.registerHandler).Methods("GET")
-	router.HandleFunc("/user/register", app.registerPostHandler).Methods("POST")
-	router.HandleFunc("/user/login", app.loginHander).Methods("GET")
-	router.HandleFunc("/user/login", app.loginPostHander).Methods("POST")
-	router.HandleFunc("/user/logout", app.logoutPostHander).Methods("POST")
+	router.HandleFunc("/", app.HomeHandler).Methods("GET")
+	router.HandleFunc("/wiki/{article}", app.ArticleHandler).Methods("GET")
+	router.HandleFunc("/user/register", app.RegisterHandler).Methods("GET")
+	router.HandleFunc("/user/register", app.RegisterPostHandler).Methods("POST")
+	router.HandleFunc("/user/login", app.LoginHandler).Methods("GET")
+	router.HandleFunc("/user/login", app.LoginPostHandler).Methods("POST")
+	router.HandleFunc("/user/logout", app.LogoutPostHandler).Methods("POST")
 
 	server := httptest.NewServer(router)
 
@@ -370,22 +370,22 @@ func TestSessionMiddlewareAuthenticatedUser(t *testing.T) {
 		t.Fatalf("failed to create test user: %v", err)
 	}
 
-	app := &app{
+	app := &App{
 		Templater:    testApp.Templater,
-		articles:     testApp.Articles,
-		users:        testApp.Users,
-		sessions:     testApp.Sessions,
-		rendering:    testApp.Rendering,
-		preferences:  testApp.Preferences,
-		specialPages: testApp.SpecialPages,
-		config:       testApp.Config,
+		Articles:     testApp.Articles,
+		Users:        testApp.Users,
+		Sessions:     testApp.Sessions,
+		Rendering:    testApp.Rendering,
+		Preferences:  testApp.Preferences,
+		SpecialPages: testApp.SpecialPages,
+		Config:       testApp.Config,
 	}
 
 	router := mux.NewRouter()
 	router.Use(app.SessionMiddleware)
 
 	// Add login handler
-	router.HandleFunc("/user/login", app.loginPostHander).Methods("POST")
+	router.HandleFunc("/user/login", app.LoginPostHandler).Methods("POST")
 
 	// Add a test handler that captures the user
 	var capturedUser *wiki.User
@@ -447,15 +447,15 @@ func TestAnonymousUser(t *testing.T) {
 	testApp, cleanup := testutil.SetupTestApp(t)
 	defer cleanup()
 
-	app := &app{
+	app := &App{
 		Templater:    testApp.Templater,
-		articles:     testApp.Articles,
-		users:        testApp.Users,
-		sessions:     testApp.Sessions,
-		rendering:    testApp.Rendering,
-		preferences:  testApp.Preferences,
-		specialPages: testApp.SpecialPages,
-		config:       testApp.Config,
+		Articles:     testApp.Articles,
+		Users:        testApp.Users,
+		Sessions:     testApp.Sessions,
+		Rendering:    testApp.Rendering,
+		Preferences:  testApp.Preferences,
+		SpecialPages: testApp.SpecialPages,
+		Config:       testApp.Config,
 	}
 
 	var capturedUser *wiki.User

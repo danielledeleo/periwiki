@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -9,10 +9,10 @@ import (
 	"github.com/danielledeleo/periwiki/wiki"
 )
 
-func (a *app) SessionMiddleware(handler http.Handler) http.Handler {
+func (a *App) SessionMiddleware(handler http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		session, err := a.sessions.GetCookie(req, "periwiki-login")
+		session, err := a.Sessions.GetCookie(req, "periwiki-login")
 		check(err)
 		// Helper to serve as anonymous user
 		serveAsAnonymous := func() {
@@ -36,7 +36,7 @@ func (a *app) SessionMiddleware(handler http.Handler) http.Handler {
 			return
 		}
 
-		user, err := a.users.GetUserByScreenName(screenname)
+		user, err := a.Users.GetUserByScreenName(screenname)
 		if err != nil || user == nil {
 			// User not found in database, treat as anonymous
 			serveAsAnonymous()

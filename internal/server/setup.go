@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"log/slog"
@@ -7,6 +7,7 @@ import (
 	"runtime"
 
 	"github.com/danielledeleo/periwiki/extensions"
+	"github.com/danielledeleo/periwiki/internal/config"
 	"github.com/danielledeleo/periwiki/internal/renderqueue"
 	"github.com/danielledeleo/periwiki/internal/storage"
 	"github.com/danielledeleo/periwiki/render"
@@ -16,10 +17,10 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-// Setup initializes the application and returns the app instance along with
+// Setup initializes the application and returns the App instance along with
 // the render queue (which must be shut down when the server stops).
-func Setup() (*app, *renderqueue.Queue) {
-	modelConf := SetupConfig()
+func Setup() (*App, *renderqueue.Queue) {
+	modelConf := config.SetupConfig()
 
 	bm := bluemonday.UGCPolicy()
 
@@ -107,14 +108,14 @@ func Setup() (*app, *renderqueue.Queue) {
 	specialPages.Register("Sitemap", sitemapHandler)
 	specialPages.Register("Sitemap.xml", sitemapHandler)
 
-	return &app{
+	return &App{
 		Templater:    t,
-		articles:     articleService,
-		users:        userService,
-		sessions:     sessionService,
-		rendering:    renderingService,
-		preferences:  preferenceService,
-		specialPages: specialPages,
-		config:       modelConf,
+		Articles:     articleService,
+		Users:        userService,
+		Sessions:     sessionService,
+		Rendering:    renderingService,
+		Preferences:  preferenceService,
+		SpecialPages: specialPages,
+		Config:       modelConf,
 	}, renderQueue
 }

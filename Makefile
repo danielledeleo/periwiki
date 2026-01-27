@@ -18,7 +18,7 @@ model: internal/storage/skeleton.db sqlboiler.toml .bin/sqlboiler .bin/sqlboiler
 	PATH="$(shell pwd)/.bin:$(PATH)" go generate
 
 periwiki: model $(gosources)
-	go build
+	go build -o periwiki ./cmd/periwiki
 
 run: periwiki
 	./periwiki

@@ -1,152 +1,23 @@
-package main
+package server
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"html"
 	"html/template"
 	"log/slog"
 	"net/http"
 	"net/url"
-	"os"
-	"os/signal"
 	"strconv"
-	"syscall"
-	"time"
 
-	"github.com/danielledeleo/periwiki/special"
-	"github.com/danielledeleo/periwiki/templater"
 	"github.com/danielledeleo/periwiki/wiki"
-	"github.com/danielledeleo/periwiki/wiki/service"
+	"github.com/gorilla/mux"
+	"github.com/sergi/go-diff/diffmatchpatch"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-
-	"github.com/gorilla/mux"
-
-	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-type app struct {
-	*templater.Templater
-	articles     service.ArticleService
-	users        service.UserService
-	sessions     service.SessionService
-	rendering    service.RenderingService
-	preferences  service.PreferenceService
-	specialPages *special.Registry
-	config       *wiki.Config
-}
-
-// responseWriter wraps http.ResponseWriter to capture the status code
-type responseWriter struct {
-	http.ResponseWriter
-	status int
-	size   int
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.status = code
-	rw.ResponseWriter.WriteHeader(code)
-}
-
-func (rw *responseWriter) Write(b []byte) (int, error) {
-	n, err := rw.ResponseWriter.Write(b)
-	rw.size += n
-	return n, err
-}
-
-// slogLoggingMiddleware logs HTTP requests using slog
-func slogLoggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-
-		wrapped := &responseWriter{ResponseWriter: w, status: http.StatusOK}
-		next.ServeHTTP(wrapped, r)
-
-		slog.Info("http request",
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", wrapped.status,
-			"size", wrapped.size,
-			"duration", time.Since(start),
-			"remote", r.RemoteAddr,
-		)
-	})
-}
-
-func main() {
-	app, renderQueue := Setup()
-
-	router := mux.NewRouter().StrictSlash(true)
-
-	router.Use(app.SessionMiddleware)
-
-	// Routes are documented in docs/urls.md — update it when adding or changing routes.
-	fs := http.FileServer(http.Dir("./static"))
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
-	router.HandleFunc("/", app.homeHandler).Methods("GET")
-
-	router.HandleFunc("/wiki/Special:{page}", app.specialPageHandler).Methods("GET")
-
-	router.HandleFunc("/wiki/{article}", app.articleDispatcher).Methods("GET", "POST")
-
-	router.HandleFunc("/user/register", app.registerHandler).Methods("GET")
-	router.HandleFunc("/user/register", app.registerPostHandler).Methods("POST")
-	router.HandleFunc("/user/login", app.loginHander).Methods("GET")
-	router.HandleFunc("/user/login", app.loginPostHander).Methods("POST")
-	router.HandleFunc("/user/logout", app.logoutPostHander).Methods("POST")
-
-	manageRouter := mux.NewRouter().PathPrefix("/manage").Subrouter()
-	manageRouter.HandleFunc("/{page}", func(rw http.ResponseWriter, req *http.Request) {
-		vars := mux.Vars(req)
-		fmt.Fprintln(rw, vars["page"])
-	})
-	router.Handle("/manage/{page}", manageRouter)
-
-	handler := slogLoggingMiddleware(router)
-
-	srv := &http.Server{
-		Addr:    app.config.Host,
-		Handler: handler,
-	}
-
-	// Start server in goroutine
-	go func() {
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			slog.Error("server error", "error", err)
-			os.Exit(1)
-		}
-	}()
-
-	slog.Info("server starting", "url", "http://"+app.config.Host)
-
-	// Wait for shutdown signal
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	slog.Info("shutting down server...")
-
-	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// Shutdown HTTP server first (stop accepting new requests)
-	if err := srv.Shutdown(ctx); err != nil {
-		slog.Error("server shutdown error", "error", err)
-	}
-
-	// Shutdown render queue (wait for in-flight jobs)
-	slog.Info("shutting down render queue...")
-	if err := renderQueue.Shutdown(ctx); err != nil {
-		slog.Error("render queue shutdown error", "error", err)
-	}
-
-	slog.Info("server stopped")
-}
-
-func (a *app) registerHandler(rw http.ResponseWriter, req *http.Request) {
+func (a *App) RegisterHandler(rw http.ResponseWriter, req *http.Request) {
 	err := a.RenderTemplate(rw, "register.html", "index.html",
 		map[string]interface{}{
 			"Article": map[string]string{"Title": "Register"},
@@ -154,7 +25,7 @@ func (a *app) registerHandler(rw http.ResponseWriter, req *http.Request) {
 	check(err)
 }
 
-func (a *app) registerPostHandler(rw http.ResponseWriter, req *http.Request) {
+func (a *App) RegisterPostHandler(rw http.ResponseWriter, req *http.Request) {
 	user := &wiki.User{}
 
 	user.Email = req.PostFormValue("email")
@@ -170,7 +41,7 @@ func (a *app) registerPostHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// fill form with previously submitted values and display registration errors
-	err := a.users.PostUser(user)
+	err := a.Users.PostUser(user)
 	if err != nil {
 		slog.Warn("registration failed", "category", "auth", "action", "register", "username", user.ScreenName, "reason", err.Error(), "ip", req.RemoteAddr)
 		render["calloutMessage"] = err.Error()
@@ -187,7 +58,7 @@ func (a *app) registerPostHandler(rw http.ResponseWriter, req *http.Request) {
 
 }
 
-func (a *app) loginHander(rw http.ResponseWriter, req *http.Request) {
+func (a *App) LoginHandler(rw http.ResponseWriter, req *http.Request) {
 	render := map[string]interface{}{
 		"Article": map[string]string{
 			"Title": "Login",
@@ -207,13 +78,13 @@ func (a *app) loginHander(rw http.ResponseWriter, req *http.Request) {
 	check(err)
 }
 
-func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
+func (a *App) LoginPostHandler(rw http.ResponseWriter, req *http.Request) {
 	user := &wiki.User{}
 	user.ScreenName = req.PostFormValue("screenname")
 	user.RawPassword = req.PostFormValue("password")
 	referrer := req.PostFormValue("referrer")
 
-	err := a.users.CheckUserPassword(user)
+	err := a.Users.CheckUserPassword(user)
 
 	render := map[string]interface{}{
 		"Article":        map[string]string{"Title": "Login"},
@@ -235,16 +106,16 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	session, err := a.sessions.GetCookie(req, "periwiki-login")
+	session, err := a.Sessions.GetCookie(req, "periwiki-login")
 	if err != nil {
-		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
-	session.Options.MaxAge = a.config.CookieExpiry
+	session.Options.MaxAge = a.Config.CookieExpiry
 	session.Values["username"] = user.ScreenName
 	err = session.Save(req, rw)
 	if err != nil {
-		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
 
@@ -256,19 +127,19 @@ func (a *app) loginPostHander(rw http.ResponseWriter, req *http.Request) {
 	http.Redirect(rw, req, referrer, http.StatusSeeOther)
 }
 
-func (a *app) logoutPostHander(rw http.ResponseWriter, req *http.Request) {
-	session, err := a.sessions.GetCookie(req, "periwiki-login")
+func (a *App) LogoutPostHandler(rw http.ResponseWriter, req *http.Request) {
+	session, err := a.Sessions.GetCookie(req, "periwiki-login")
 	if err != nil {
-		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
 
 	// Capture username before session is deleted
 	username, _ := session.Values["username"].(string)
 
-	err = a.sessions.DeleteCookie(req, rw, session)
+	err = a.Sessions.DeleteCookie(req, rw, session)
 	if err != nil {
-		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
 
@@ -276,7 +147,7 @@ func (a *app) logoutPostHander(rw http.ResponseWriter, req *http.Request) {
 	http.Redirect(rw, req, "/", http.StatusSeeOther)
 }
 
-func (a *app) homeHandler(rw http.ResponseWriter, req *http.Request) {
+func (a *App) HomeHandler(rw http.ResponseWriter, req *http.Request) {
 	data := make(map[string]interface{})
 
 	data["Article"] = &wiki.Article{
@@ -291,18 +162,18 @@ func (a *app) homeHandler(rw http.ResponseWriter, req *http.Request) {
 	check(err)
 }
 
-func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
+func (a *App) ArticleHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	render := map[string]interface{}{}
-	article, err := a.articles.GetArticle(vars["article"])
+	article, err := a.Articles.GetArticle(vars["article"])
 
 	if err != wiki.ErrGenericNotFound && err != nil {
-		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
 	user, ok := req.Context().Value(wiki.UserKey).(*wiki.User)
 	if !ok || user == nil {
-		a.errorHandler(http.StatusInternalServerError, rw, req, fmt.Errorf("user context not set"))
+		a.ErrorHandler(http.StatusInternalServerError, rw, req, fmt.Errorf("user context not set"))
 		return
 	}
 
@@ -339,7 +210,7 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 	check(err)
 }
 
-// articleDispatcher routes article requests based on query parameters.
+// ArticleDispatcher routes article requests based on query parameters.
 // URL scheme:
 //   - /wiki/{article} - view article (current revision)
 //   - /wiki/{article}?revision=N - view specific revision
@@ -352,7 +223,7 @@ func (a *app) articleHandler(rw http.ResponseWriter, req *http.Request) {
 //   - /wiki/{article}?diff - diff between two most recent revisions
 //   - /wiki/{article}?rerender - force re-render current revision (auth required)
 //   - /wiki/{article}?rerender&revision=N - force re-render revision N (auth required)
-func (a *app) articleDispatcher(rw http.ResponseWriter, req *http.Request) {
+func (a *App) ArticleDispatcher(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	params := req.URL.Query()
 
@@ -391,17 +262,17 @@ func (a *app) articleDispatcher(rw http.ResponseWriter, req *http.Request) {
 }
 
 // handleView handles viewing an article or specific revision.
-func (a *app) handleView(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
+func (a *App) handleView(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
 	// Check if viewing a specific revision
 	if revisionStr := params.Get("revision"); revisionStr != "" {
 		revisionID, err := strconv.Atoi(revisionStr)
 		if err != nil {
-			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			a.ErrorHandler(http.StatusBadRequest, rw, req, err)
 			return
 		}
-		article, err := a.articles.GetArticleByRevisionID(articleURL, revisionID)
+		article, err := a.Articles.GetArticleByRevisionID(articleURL, revisionID)
 		if err != nil {
-			a.errorHandler(http.StatusNotFound, rw, req, err)
+			a.ErrorHandler(http.StatusNotFound, rw, req, err)
 			return
 		}
 		err = a.RenderTemplate(rw, "article.html", "index.html", map[string]interface{}{
@@ -413,12 +284,12 @@ func (a *app) handleView(rw http.ResponseWriter, req *http.Request, articleURL s
 	}
 
 	// View current revision (delegate to existing handler logic)
-	a.articleHandler(rw, req)
+	a.ArticleHandler(rw, req)
 }
 
 // handleRerender handles re-rendering an article revision.
 // Requires authentication. Supports ?rerender or ?rerender&revision=N
-func (a *app) handleRerender(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
+func (a *App) handleRerender(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
 	user := req.Context().Value(wiki.UserKey).(*wiki.User)
 
 	// Require authenticated user (not anonymous)
@@ -433,15 +304,15 @@ func (a *app) handleRerender(rw http.ResponseWriter, req *http.Request, articleU
 		var err error
 		revisionID, err = strconv.Atoi(revisionStr)
 		if err != nil {
-			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			a.ErrorHandler(http.StatusBadRequest, rw, req, err)
 			return
 		}
 	}
 
 	// Re-render the revision
-	if err := a.articles.RerenderRevision(req.Context(), articleURL, revisionID); err != nil {
+	if err := a.Articles.RerenderRevision(req.Context(), articleURL, revisionID); err != nil {
 		slog.Error("rerender failed", "article", articleURL, "revision", revisionID, "error", err)
-		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
 
@@ -456,10 +327,10 @@ func (a *app) handleRerender(rw http.ResponseWriter, req *http.Request, articleU
 }
 
 // handleHistory handles viewing revision history.
-func (a *app) handleHistory(rw http.ResponseWriter, req *http.Request, articleURL string) {
-	revisions, err := a.articles.GetRevisionHistory(articleURL)
+func (a *App) handleHistory(rw http.ResponseWriter, req *http.Request, articleURL string) {
+	revisions, err := a.Articles.GetRevisionHistory(articleURL)
 	if err != nil {
-		a.errorHandler(http.StatusNotFound, rw, req, err)
+		a.ErrorHandler(http.StatusNotFound, rw, req, err)
 		return
 	}
 
@@ -481,10 +352,10 @@ func (a *app) handleHistory(rw http.ResponseWriter, req *http.Request, articleUR
 }
 
 // handleEdit handles the edit form display.
-func (a *app) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
+func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
 	// Check if anonymous editing is allowed
 	user := req.Context().Value(wiki.UserKey).(*wiki.User)
-	if !a.config.AllowAnonymousEditsGlobal && user.IsAnonymous() {
+	if !a.Config.AllowAnonymousEditsGlobal && user.IsAnonymous() {
 		loginURL := "/user/login?reason=login_required&referrer=" + url.QueryEscape(req.URL.String())
 		http.Redirect(rw, req, loginURL, http.StatusSeeOther)
 		return
@@ -497,25 +368,25 @@ func (a *app) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 	if revisionStr := params.Get("revision"); revisionStr != "" {
 		revisionID, err := strconv.Atoi(revisionStr)
 		if err != nil {
-			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			a.ErrorHandler(http.StatusBadRequest, rw, req, err)
 			return
 		}
-		article, err = a.articles.GetArticleByRevisionID(articleURL, revisionID)
+		article, err = a.Articles.GetArticleByRevisionID(articleURL, revisionID)
 		if err == wiki.ErrRevisionNotFound {
 			article = wiki.NewArticle(articleURL, cases.Title(language.AmericanEnglish).String(articleURL), "")
 			article.Hash = "new"
 		} else if err != nil {
-			a.errorHandler(http.StatusInternalServerError, rw, req, err)
+			a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
 			return
 		}
 	} else {
 		// Edit current revision
-		article, err = a.articles.GetArticle(articleURL)
+		article, err = a.Articles.GetArticle(articleURL)
 		if err == wiki.ErrGenericNotFound {
 			article = wiki.NewArticle(articleURL, cases.Title(language.AmericanEnglish).String(articleURL), "")
 			article.Hash = "new"
 		} else if err != nil {
-			a.errorHandler(http.StatusInternalServerError, rw, req, err)
+			a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
 			return
 		}
 	}
@@ -536,7 +407,7 @@ func (a *app) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 //   - ?diff&old=N - diff from N to current
 //   - ?diff&new=M - diff from (M-1) to M (previous to M)
 //   - ?diff - diff between two most recent revisions
-func (a *app) handleDiff(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
+func (a *App) handleDiff(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
 	var oldArticle, newArticle *wiki.Article
 	var err error
 
@@ -547,19 +418,19 @@ func (a *app) handleDiff(rw http.ResponseWriter, req *http.Request, articleURL s
 	if newStr != "" {
 		newID, err := strconv.Atoi(newStr)
 		if err != nil {
-			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			a.ErrorHandler(http.StatusBadRequest, rw, req, err)
 			return
 		}
-		newArticle, err = a.articles.GetArticleByRevisionID(articleURL, newID)
+		newArticle, err = a.Articles.GetArticleByRevisionID(articleURL, newID)
 		if err != nil {
-			a.errorHandler(http.StatusNotFound, rw, req, err)
+			a.ErrorHandler(http.StatusNotFound, rw, req, err)
 			return
 		}
 	} else {
 		// Default to current revision
-		newArticle, err = a.articles.GetArticle(articleURL)
+		newArticle, err = a.Articles.GetArticle(articleURL)
 		if err != nil {
-			a.errorHandler(http.StatusNotFound, rw, req, err)
+			a.ErrorHandler(http.StatusNotFound, rw, req, err)
 			return
 		}
 	}
@@ -568,20 +439,20 @@ func (a *app) handleDiff(rw http.ResponseWriter, req *http.Request, articleURL s
 	if oldStr != "" {
 		oldID, err := strconv.Atoi(oldStr)
 		if err != nil {
-			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			a.ErrorHandler(http.StatusBadRequest, rw, req, err)
 			return
 		}
-		oldArticle, err = a.articles.GetArticleByRevisionID(articleURL, oldID)
+		oldArticle, err = a.Articles.GetArticleByRevisionID(articleURL, oldID)
 		if err != nil {
-			a.errorHandler(http.StatusNotFound, rw, req, err)
+			a.ErrorHandler(http.StatusNotFound, rw, req, err)
 			return
 		}
 	} else {
 		// Default to previous revision of the "new" revision
 		if newArticle.PreviousID > 0 {
-			oldArticle, err = a.articles.GetArticleByRevisionID(articleURL, newArticle.PreviousID)
+			oldArticle, err = a.Articles.GetArticleByRevisionID(articleURL, newArticle.PreviousID)
 			if err != nil {
-				a.errorHandler(http.StatusNotFound, rw, req, err)
+				a.ErrorHandler(http.StatusNotFound, rw, req, err)
 				return
 			}
 		} else {
@@ -615,7 +486,7 @@ func (a *app) handleDiff(rw http.ResponseWriter, req *http.Request, articleURL s
 	}
 
 	// Get current revision ID for template comparisons
-	current, _ := a.articles.GetArticle(articleURL)
+	current, _ := a.Articles.GetArticle(articleURL)
 	var currentRevisionID int
 	if current != nil {
 		currentRevisionID = current.ID
@@ -632,7 +503,7 @@ func (a *app) handleDiff(rw http.ResponseWriter, req *http.Request, articleURL s
 }
 
 // handleArticlePost handles POST requests for article editing.
-func (a *app) handleArticlePost(rw http.ResponseWriter, req *http.Request, articleURL string) {
+func (a *App) handleArticlePost(rw http.ResponseWriter, req *http.Request, articleURL string) {
 	article := &wiki.Article{}
 	article.URL = articleURL
 	article.Revision = &wiki.Revision{}
@@ -643,13 +514,13 @@ func (a *app) handleArticlePost(rw http.ResponseWriter, req *http.Request, artic
 
 	user, ok := req.Context().Value(wiki.UserKey).(*wiki.User)
 	if !ok || user == nil {
-		a.errorHandler(http.StatusInternalServerError, rw, req, fmt.Errorf("user context not set"))
+		a.ErrorHandler(http.StatusInternalServerError, rw, req, fmt.Errorf("user context not set"))
 		return
 	}
 
 	// Check if anonymous editing is allowed
-	if !a.config.AllowAnonymousEditsGlobal && user.IsAnonymous() {
-		a.errorHandler(http.StatusForbidden, rw, req, fmt.Errorf("anonymous editing is disabled"))
+	if !a.Config.AllowAnonymousEditsGlobal && user.IsAnonymous() {
+		a.ErrorHandler(http.StatusForbidden, rw, req, fmt.Errorf("anonymous editing is disabled"))
 		return
 	}
 
@@ -663,7 +534,7 @@ func (a *app) handleArticlePost(rw http.ResponseWriter, req *http.Request, artic
 	} else {
 		previousID, err := strconv.Atoi(previousIDStr)
 		if err != nil {
-			a.errorHandler(http.StatusBadRequest, rw, req, err)
+			a.ErrorHandler(http.StatusBadRequest, rw, req, err)
 			return
 		}
 		article.PreviousID = previousID
@@ -677,10 +548,10 @@ func (a *app) handleArticlePost(rw http.ResponseWriter, req *http.Request, artic
 	a.articlePostHandler(article, rw, req)
 }
 
-func (a *app) articlePreviewHandler(article *wiki.Article, rw http.ResponseWriter, req *http.Request) {
-	html, err := a.rendering.PreviewMarkdown(article.Markdown)
+func (a *App) articlePreviewHandler(article *wiki.Article, rw http.ResponseWriter, req *http.Request) {
+	html, err := a.Rendering.PreviewMarkdown(article.Markdown)
 	if err != nil {
-		a.errorHandler(http.StatusInternalServerError, rw, req, err)
+		a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
 	article.HTML = html
@@ -695,8 +566,8 @@ func (a *app) articlePreviewHandler(article *wiki.Article, rw http.ResponseWrite
 			"Other":   other})
 	check(err)
 }
-func (a *app) articlePostHandler(article *wiki.Article, rw http.ResponseWriter, req *http.Request) {
-	err := a.articles.PostArticle(article)
+func (a *App) articlePostHandler(article *wiki.Article, rw http.ResponseWriter, req *http.Request) {
+	err := a.Articles.PostArticle(article)
 	if err != nil {
 		username := "anonymous"
 		if article.Creator != nil {
@@ -704,10 +575,10 @@ func (a *app) articlePostHandler(article *wiki.Article, rw http.ResponseWriter, 
 		}
 		slog.Warn("article save failed", "category", "article", "action", "save", "article", article.URL, "username", username, "reason", err.Error())
 		if err == wiki.ErrRevisionAlreadyExists {
-			a.errorHandler(http.StatusConflict, rw, req, err)
+			a.ErrorHandler(http.StatusConflict, rw, req, err)
 			return
 		}
-		a.errorHandler(http.StatusBadRequest, rw, req, err)
+		a.ErrorHandler(http.StatusBadRequest, rw, req, err)
 		return
 	}
 	username := "anonymous"
@@ -718,13 +589,7 @@ func (a *app) articlePostHandler(article *wiki.Article, rw http.ResponseWriter, 
 	http.Redirect(rw, req, "/wiki/"+article.URL, http.StatusSeeOther) // To prevent "browser must resend..."
 }
 
-func check(err error) {
-	if err != nil {
-		slog.Error("unexpected error", "error", err)
-	}
-}
-
-func (a *app) errorHandler(responseCode int, rw http.ResponseWriter, req *http.Request, errors ...error) {
+func (a *App) ErrorHandler(responseCode int, rw http.ResponseWriter, req *http.Request, errors ...error) {
 	rw.WriteHeader(responseCode)
 	err := a.RenderTemplate(rw, "error.html", "index.html",
 		map[string]interface{}{
@@ -741,13 +606,13 @@ func (a *app) errorHandler(responseCode int, rw http.ResponseWriter, req *http.R
 	}
 }
 
-func (a *app) specialPageHandler(rw http.ResponseWriter, req *http.Request) {
+func (a *App) SpecialPageHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	pageName := vars["page"]
 
-	handler, ok := a.specialPages.Get(pageName)
+	handler, ok := a.SpecialPages.Get(pageName)
 	if !ok {
-		a.errorHandler(http.StatusNotFound, rw, req,
+		a.ErrorHandler(http.StatusNotFound, rw, req,
 			fmt.Errorf("special page '%s' does not exist", pageName))
 		return
 	}
