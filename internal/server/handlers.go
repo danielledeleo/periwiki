@@ -13,8 +13,6 @@ import (
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/gorilla/mux"
 	"github.com/sergi/go-diff/diffmatchpatch"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 func (a *App) RegisterHandler(rw http.ResponseWriter, req *http.Request) {
@@ -186,7 +184,7 @@ func (a *App) ArticleHandler(rw http.ResponseWriter, req *http.Request) {
 	found := article != nil
 
 	if !found {
-		article = wiki.NewArticle(vars["article"], cases.Title(language.AmericanEnglish).String(vars["article"]), "")
+		article = wiki.NewArticle(vars["article"], wiki.InferTitle(vars["article"]), "")
 		article.Hash = "new"
 	}
 
@@ -376,7 +374,7 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 		}
 		article, err = a.Articles.GetArticleByRevisionID(articleURL, revisionID)
 		if err == wiki.ErrRevisionNotFound {
-			article = wiki.NewArticle(articleURL, cases.Title(language.AmericanEnglish).String(articleURL), "")
+			article = wiki.NewArticle(articleURL, wiki.InferTitle(articleURL), "")
 			article.Hash = "new"
 		} else if err != nil {
 			a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
@@ -386,7 +384,7 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 		// Edit current revision
 		article, err = a.Articles.GetArticle(articleURL)
 		if err == wiki.ErrGenericNotFound {
-			article = wiki.NewArticle(articleURL, cases.Title(language.AmericanEnglish).String(articleURL), "")
+			article = wiki.NewArticle(articleURL, wiki.InferTitle(articleURL), "")
 			article.Hash = "new"
 		} else if err != nil {
 			a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
