@@ -2,23 +2,17 @@ In progress
 - Docs-on-docs (ship the documentation for Periwiki as sample files)
 
 Soon(ish)
-- [HIGH] Content re-render job
-  - due to on-disk template changes
-  - on edits
-  - on binary launch
-  - slow trickle
-  - manually triggered, cron
-- [HIGH] CLAUDE.md (how to behave in the code base, strategy, hygiene)
-  - mission alignment
-  - development techniques, how to handle agents (serena, memories)
-  - testing requirements and strategy
-  - git workflows
+- [BUG] Wikilinks with name overrides in tables carry escape \| forward
 - [MED] Implement frontmatter schema (see docs/plans/frontmatter-design.md)
-  - Consider ORM replacement first (see Dependency Maintenance section)
+  - ✅ Phase 0: Page interface and title inference complete
+  - ⏳ Phase 2: Frontmatter parser (NestedText-based, isolated package)
+  - ⏳ Phase 3: Integrate frontmatter into Article.DisplayTitle()
+  - Branch: `refactor/article-revision-separation`
 - [MED] When editing from an old revision (restoring, essentially), allow it to publish instead of 409.
 - [MED] Backlinks feature (will help trigger redlink re-renders)
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - [MED] Article content injection fuzzing (security, testing)
+- Theme template file watcher (force re-render)
 - Page alias and redirect system (see docs/plans/alias-redirect-design.md)
 - Improve editing request flow
   - unmodified content submissions should still re-render
@@ -41,7 +35,7 @@ Soon(ish)
 - 404 page with "Did you mean /wiki/notfound?" link
 - Two column References section layout like wikipedia
 - Add extension for custom superscripts/subscripts, [citation needed]-style, not bound to a footnote
-- When editing a page that does not yet exist, replace underscores with spaces in title
+- ~~When editing a page that does not yet exist, replace underscores with spaces in title~~ ✅ Done via InferTitle
 - File:image.jpg static file handing (and design overall media strategy...)
   - Asset metadata is tracked by the wiki system, but blobs are not stored in the database
   - References are kept to an externally managed media system (local filesystem, S3, static files on an nginx server, etc.)
