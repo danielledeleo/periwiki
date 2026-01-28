@@ -2,7 +2,7 @@ In progress
 - Docs-on-docs (ship the documentation for Periwiki as sample files)
 
 Soon(ish)
-- [BUG] Wikilinks with name overrides in tables carry escape \| forward
+
 - [MED] Implement frontmatter schema (see docs/plans/frontmatter-design.md)
   - ✅ Phase 0: Page interface and title inference complete
   - ⏳ Phase 2: Frontmatter parser (NestedText-based, isolated package)
@@ -47,6 +47,7 @@ Configuration and Runtime
 - CLI flags to override config file path, database file, host, log level, etc.
 
 Down the line
+- Custom goldmark table ParagraphTransformer that tracks [[/]] bracket depth, allowing unescaped pipes in wikilinks inside tables (currently requires \| escape)
 - Moderation tools?
 - Admin panel
 - A theme system (custom templates)

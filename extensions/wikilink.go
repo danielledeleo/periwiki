@@ -17,7 +17,7 @@ import (
 	"regexp"
 )
 
-var wikiLinkRegexp = regexp.MustCompile(`\[\[\s*((?P<truelink>.+?)\s*\|\s*(?P<replacement>.+?)\s*|(?P<link>.+?))\s*\]\]`)
+var wikiLinkRegexp = regexp.MustCompile(`\[\[\s*((?P<truelink>[^\[\]]+?)\s*(?:\\\||\|)\s*(?P<replacement>[^\[\]]+?)\s*|(?P<link>[^\[\]]+?))\s*\]\]`)
 
 const (
 	optWikiLinkerResolver parser.OptionName = "WikiLinkResolver"
@@ -157,6 +157,10 @@ func (p *wikiLinkerParser) Parse(parent gast.Node, block text.Reader, pc parser.
 
 	} else if m[p.trueLinkIdx] != -1 && m[p.replacementIdx] != -1 {
 		originalDest = line[m[p.trueLinkIdx]:m[p.trueLinkIdx+1]]
+		// Strip trailing backslash from escaped pipe syntax (e.g., [[Page\|Text]] in tables)
+		if len(originalDest) > 0 && originalDest[len(originalDest)-1] == '\\' {
+			originalDest = originalDest[:len(originalDest)-1]
+		}
 		title = line[m[p.replacementIdx]:m[p.replacementIdx+1]]
 
 	} else {

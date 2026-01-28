@@ -285,3 +285,63 @@ func TestWikiLinkExistenceAwareResolver_NilChecker(t *testing.T) {
 		t.Errorf("with nil checker, should not have deadlink class, got: %s", result)
 	}
 }
+
+
+// TestWikiLinkEdgeCases tests bug fixes for wikilink parsing edge cases.
+func TestWikiLinkEdgeCases(t *testing.T) {
+	markdown := goldmark.New(
+		goldmark.WithRendererOptions(
+			html.WithUnsafe(),
+		),
+		goldmark.WithExtensions(
+			NewWikiLinker(nil, []WikiLinkRendererOption{WithWikiLinkTemplates(testWikiLinkTemplates())}),
+		),
+	)
+
+	tests := []struct {
+		name     string
+		input    string
+		wantHref string // expected href value (or substring)
+		wantText string // expected link text
+	}{
+		{
+			name:     "multiple wikilinks not greedy",
+			input:    "([[abalone]], [[periwinkle|snails]])",
+			wantHref: `href="abalone"`,
+			wantText: ">abalone</a>",
+		},
+		{
+			name:     "escaped pipe in table context",
+			input:    `[[Sea snail\|sea snails]]`,
+			wantHref: `href="Sea%20snail"`, // URL-encoded, no backslash
+			wantText: ">sea snails</a>",
+		},
+		{
+			name:     "escaped pipe destination has no backslash",
+			input:    `[[Page Name\|Display]]`,
+			wantHref: `href="Page%20Name"`, // URL-encoded, no backslash
+			wantText: ">Display</a>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := []byte(tt.input)
+			reader := text.NewReader(source)
+			node := markdown.Parser().Parse(reader)
+
+			var buf bytes.Buffer
+			if err := markdown.Renderer().Render(&buf, source, node); err != nil {
+				t.Fatal(err)
+			}
+
+			result := buf.String()
+			if !strings.Contains(result, tt.wantHref) {
+				t.Errorf("expected href containing %q, got: %s", tt.wantHref, result)
+			}
+			if !strings.Contains(result, tt.wantText) {
+				t.Errorf("expected text containing %q, got: %s", tt.wantText, result)
+			}
+		})
+	}
+}
