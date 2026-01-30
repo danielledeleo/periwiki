@@ -1,31 +1,27 @@
 package config
 
 import (
-	"encoding/base64"
-	"errors"
 	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/danielledeleo/periwiki/internal/logger"
 	"github.com/danielledeleo/periwiki/wiki"
-	"github.com/gorilla/securecookie"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
 const configFilename = "config.yaml"
 
+// SetupConfig loads file-based configuration needed for bootstrap.
+// Runtime configuration (cookie secret, etc.) is loaded from the database
+// after the database connection is established.
 func SetupConfig() *wiki.Config {
 	viper.SetDefault("dbfile", "periwiki.db")
-	viper.SetDefault("min_password_length", 8)
-	viper.SetDefault("cookie_expiry", 86400*7) // a week
 	viper.SetDefault("host", "0.0.0.0:8080")
 	viper.SetDefault("log_format", "pretty") // pretty, json, or text
 	viper.SetDefault("log_level", "info")    // debug, info, warn, error
 	viper.SetDefault("base_url", "http://localhost:8080")
-	viper.SetDefault("allow_anonymous_edits_global", true)
-	viper.SetDefault("render_workers", 0) // 0 = auto-detect
 
 	viper.SetConfigFile(configFilename)
 	viper.AddConfigPath(".")
@@ -48,54 +44,12 @@ func SetupConfig() *wiki.Config {
 		logger.ParseLogLevel(viper.GetString("log_level")),
 	)
 
-	var secretBytes []byte
-	_, err = os.Stat(".cookiesecret.yaml")
-
-	if err == nil {
-		viper.SetConfigFile(".cookiesecret.yaml")
-		viper.AddConfigPath(".")
-		err = viper.MergeInConfig()
-		if err != nil {
-			slog.Error("failed to read cookie secret config", "error", err)
-			os.Exit(1)
-		}
-		secretBytes, err = base64.StdEncoding.DecodeString(viper.GetString("cookie_secret"))
-		if err != nil {
-			slog.Error("failed to decode cookie secret", "error", err)
-			os.Exit(1)
-		}
-	} else {
-
-		file, err := os.Create(".cookiesecret.yaml")
-		if err != nil {
-			slog.Error("failed to create cookie secret file", "error", err)
-			os.Exit(1)
-		}
-		defer file.Close()
-
-		secretBytes = securecookie.GenerateRandomKey(64)
-		if secretBytes == nil {
-			slog.Error("failed to generate cookie secret", "error", errors.New("securecookie.GenerateRandomKey returned nil"))
-			os.Exit(1)
-		}
-		secret := base64.StdEncoding.EncodeToString(secretBytes)
-
-		_, err = file.WriteString("cookie_secret: " + secret + "\n")
-		if err != nil {
-			slog.Error("failed to write cookie secret", "error", err)
-			os.Exit(1)
-		}
-	}
-
 	config := &wiki.Config{
-		MinimumPasswordLength:     viper.GetInt("min_password_length"),
-		DatabaseFile:              viper.GetString("dbfile"),
-		CookieSecret:              secretBytes,
-		CookieExpiry:              viper.GetInt("cookie_expiry"),
-		Host:                      viper.GetString("host"),
-		BaseURL:                   viper.GetString("base_url"),
-		AllowAnonymousEditsGlobal: viper.GetBool("allow_anonymous_edits_global"),
-		RenderWorkers:             viper.GetInt("render_workers"),
+		DatabaseFile: viper.GetString("dbfile"),
+		Host:         viper.GetString("host"),
+		BaseURL:      viper.GetString("base_url"),
+		LogFormat:    viper.GetString("log_format"),
+		LogLevel:     viper.GetString("log_level"),
 	}
 
 	if createDefaultConfigFile {

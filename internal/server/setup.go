@@ -13,14 +13,41 @@ import (
 	"github.com/danielledeleo/periwiki/render"
 	"github.com/danielledeleo/periwiki/special"
 	"github.com/danielledeleo/periwiki/templater"
+	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/danielledeleo/periwiki/wiki/service"
+	"github.com/jmoiron/sqlx"
 	"github.com/microcosm-cc/bluemonday"
 )
 
 // Setup initializes the application and returns the App instance along with
 // the render queue (which must be shut down when the server stops).
 func Setup() (*App, *renderqueue.Queue) {
+	// Phase 1: Load file-based config
 	modelConf := config.SetupConfig()
+
+	// Phase 2: Open database connection
+	db, err := sqlx.Open("sqlite3", modelConf.DatabaseFile)
+	if err != nil {
+		slog.Error("failed to open database", "error", err)
+		os.Exit(1)
+	}
+
+	// Phase 3: Run migrations
+	if err := storage.RunMigrations(db); err != nil {
+		slog.Error("failed to run migrations", "error", err)
+		os.Exit(1)
+	}
+
+	// Phase 4: Load runtime config from database
+	runtimeConfig, err := wiki.LoadRuntimeConfig(db.DB)
+	if err != nil {
+		slog.Error("failed to load runtime config", "error", err)
+		os.Exit(1)
+	}
+
+	// Phase 5: Initialize storage with runtime config
+	database, err := storage.Init(db, runtimeConfig)
+	check(err)
 
 	bm := bluemonday.UGCPolicy()
 
@@ -58,9 +85,6 @@ func Setup() (*App, *renderqueue.Queue) {
 		os.Exit(1)
 	}
 
-	database, err := storage.Init(modelConf)
-	check(err)
-
 	// Create existence checker for wiki links
 	existenceChecker := func(url string) bool {
 		const prefix = "/wiki/"
@@ -82,7 +106,7 @@ func Setup() (*App, *renderqueue.Queue) {
 	renderingService := service.NewRenderingService(renderer, bm)
 
 	// Create render queue
-	workerCount := modelConf.RenderWorkers
+	workerCount := runtimeConfig.RenderWorkers
 	if workerCount == 0 {
 		workerCount = runtime.NumCPU()
 	}
@@ -93,7 +117,7 @@ func Setup() (*App, *renderqueue.Queue) {
 	sessionService := service.NewSessionService(database)
 
 	// Create user service
-	userService := service.NewUserService(database, modelConf.MinimumPasswordLength)
+	userService := service.NewUserService(database, runtimeConfig.MinimumPasswordLength)
 
 	// Create article service
 	articleService := service.NewArticleService(database, renderingService, renderQueue)
@@ -109,13 +133,14 @@ func Setup() (*App, *renderqueue.Queue) {
 	specialPages.Register("Sitemap.xml", sitemapHandler)
 
 	return &App{
-		Templater:    t,
-		Articles:     articleService,
-		Users:        userService,
-		Sessions:     sessionService,
-		Rendering:    renderingService,
-		Preferences:  preferenceService,
-		SpecialPages: specialPages,
-		Config:       modelConf,
+		Templater:     t,
+		Articles:      articleService,
+		Users:         userService,
+		Sessions:      sessionService,
+		Rendering:     renderingService,
+		Preferences:   preferenceService,
+		SpecialPages:  specialPages,
+		Config:        modelConf,
+		RuntimeConfig: runtimeConfig,
 	}, renderQueue
 }

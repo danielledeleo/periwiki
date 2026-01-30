@@ -21,14 +21,15 @@ func setupAuthTestServer(t *testing.T) (*httptest.Server, *testutil.TestApp, fun
 	testApp, cleanup := testutil.SetupTestApp(t)
 
 	app := &App{
-		Templater:    testApp.Templater,
-		Articles:     testApp.Articles,
-		Users:        testApp.Users,
-		Sessions:     testApp.Sessions,
-		Rendering:    testApp.Rendering,
-		Preferences:  testApp.Preferences,
-		SpecialPages: testApp.SpecialPages,
-		Config:       testApp.Config,
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
@@ -371,14 +372,15 @@ func TestSessionMiddlewareAuthenticatedUser(t *testing.T) {
 	}
 
 	app := &App{
-		Templater:    testApp.Templater,
-		Articles:     testApp.Articles,
-		Users:        testApp.Users,
-		Sessions:     testApp.Sessions,
-		Rendering:    testApp.Rendering,
-		Preferences:  testApp.Preferences,
-		SpecialPages: testApp.SpecialPages,
-		Config:       testApp.Config,
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
 	}
 
 	router := mux.NewRouter()
@@ -448,14 +450,15 @@ func TestAnonymousUser(t *testing.T) {
 	defer cleanup()
 
 	app := &App{
-		Templater:    testApp.Templater,
-		Articles:     testApp.Articles,
-		Users:        testApp.Users,
-		Sessions:     testApp.Sessions,
-		Rendering:    testApp.Rendering,
-		Preferences:  testApp.Preferences,
-		SpecialPages: testApp.SpecialPages,
-		Config:       testApp.Config,
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
 	}
 
 	var capturedUser *wiki.User

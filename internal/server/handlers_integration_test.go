@@ -20,14 +20,15 @@ func setupHandlerTestRouter(t *testing.T) (*mux.Router, *testutil.TestApp, func(
 	testApp, cleanup := testutil.SetupTestApp(t)
 
 	app := &App{
-		Templater:    testApp.Templater,
-		Articles:     testApp.Articles,
-		Users:        testApp.Users,
-		Sessions:     testApp.Sessions,
-		Rendering:    testApp.Rendering,
-		Preferences:  testApp.Preferences,
-		SpecialPages: testApp.SpecialPages,
-		Config:       testApp.Config,
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
@@ -508,14 +509,15 @@ func TestSessionMiddleware(t *testing.T) {
 	defer cleanup()
 
 	app := &App{
-		Templater:    testApp.Templater,
-		Articles:     testApp.Articles,
-		Users:        testApp.Users,
-		Sessions:     testApp.Sessions,
-		Rendering:    testApp.Rendering,
-		Preferences:  testApp.Preferences,
-		SpecialPages: testApp.SpecialPages,
-		Config:       testApp.Config,
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
 	}
 
 	t.Run("sets anonymous user for new session", func(t *testing.T) {
@@ -567,14 +569,15 @@ func TestSpecialPageRegistry(t *testing.T) {
 	registry.Register("Custom", customPage)
 
 	app := &App{
-		Templater:    testApp.Templater,
-		Articles:     testApp.Articles,
-		Users:        testApp.Users,
-		Sessions:     testApp.Sessions,
-		Rendering:    testApp.Rendering,
-		Preferences:  testApp.Preferences,
-		SpecialPages: registry,
-		Config:       testApp.Config,
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  registry,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
 	}
 
 	router := mux.NewRouter()
@@ -612,14 +615,15 @@ func TestUserContextInHandlers(t *testing.T) {
 	testutil.CreateTestArticle(t, testApp, "context-test", "Context Test", "Content", user)
 
 	app := &App{
-		Templater:    testApp.Templater,
-		Articles:     testApp.Articles,
-		Users:        testApp.Users,
-		Sessions:     testApp.Sessions,
-		Rendering:    testApp.Rendering,
-		Preferences:  testApp.Preferences,
-		SpecialPages: testApp.SpecialPages,
-		Config:       testApp.Config,
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
 	}
 
 	// Create a handler that checks for user context

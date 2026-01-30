@@ -14,13 +14,14 @@ import (
 // App holds all application dependencies and services.
 type App struct {
 	*templater.Templater
-	Articles     service.ArticleService
-	Users        service.UserService
-	Sessions     service.SessionService
-	Rendering    service.RenderingService
-	Preferences  service.PreferenceService
-	SpecialPages *special.Registry
-	Config       *wiki.Config
+	Articles      service.ArticleService
+	Users         service.UserService
+	Sessions      service.SessionService
+	Rendering     service.RenderingService
+	Preferences   service.PreferenceService
+	SpecialPages  *special.Registry
+	Config        *wiki.Config
+	RuntimeConfig *wiki.RuntimeConfig
 }
 
 // responseWriter wraps http.ResponseWriter to capture the status code

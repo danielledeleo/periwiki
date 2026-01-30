@@ -76,4 +76,11 @@ CREATE TABLE IF NOT EXISTS PreferencePage (
     FOREIGN KEY (pref_group) REFERENCES PreferenceGroup(group_id)
 );
 
+CREATE TABLE IF NOT EXISTS Setting (
+    key TEXT PRIMARY KEY NOT NULL,
+    value TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 INSERT OR IGNORE INTO User(id, email, screenname) VALUES (0, "", "Anonymous");

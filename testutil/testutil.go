@@ -37,15 +37,16 @@ type TestDB struct {
 // TestApp wraps the full application for integration tests.
 type TestApp struct {
 	*templater.Templater
-	Articles     service.ArticleService
-	Users        service.UserService
-	Sessions     service.SessionService
-	Rendering    service.RenderingService
-	Preferences  service.PreferenceService
-	SpecialPages *special.Registry
-	Config       *wiki.Config
-	Router       *mux.Router
-	DB           *TestDB
+	Articles      service.ArticleService
+	Users         service.UserService
+	Sessions      service.SessionService
+	Rendering     service.RenderingService
+	Preferences   service.PreferenceService
+	SpecialPages  *special.Registry
+	Config        *wiki.Config
+	RuntimeConfig *wiki.RuntimeConfig
+	Router        *mux.Router
+	DB            *TestDB
 }
 
 // projectRoot returns the root directory of the project.
@@ -108,12 +109,17 @@ func SetupTestApp(t *testing.T) (*TestApp, func()) {
 	db, dbCleanup := SetupTestDB(t)
 
 	config := &wiki.Config{
+		DatabaseFile: ":memory:",
+		Host:         "localhost:8080",
+		BaseURL:      "http://localhost:8080",
+	}
+
+	runtimeConfig := &wiki.RuntimeConfig{
 		CookieSecret:              []byte("test-secret-key-for-sessions-32b"),
 		CookieExpiry:              86400,
-		DatabaseFile:              ":memory:",
 		MinimumPasswordLength:     8,
-		Host:                      "localhost:8080",
 		AllowAnonymousEditsGlobal: true,
+		RenderWorkers:             0,
 	}
 
 	// Create sanitizer matching production config
@@ -177,7 +183,7 @@ func SetupTestApp(t *testing.T) (*TestApp, func()) {
 	sessionService := service.NewSessionService(db)
 
 	// Create user service
-	userService := service.NewUserService(db, config.MinimumPasswordLength)
+	userService := service.NewUserService(db, runtimeConfig.MinimumPasswordLength)
 
 	// Create article service (nil queue for synchronous rendering in tests)
 	articleService := service.NewArticleService(db, renderingService, nil)
@@ -189,15 +195,16 @@ func SetupTestApp(t *testing.T) (*TestApp, func()) {
 	specialPages.Register("Random", special.NewRandomPage(articleService))
 
 	app := &TestApp{
-		Templater:    tmpl,
-		Articles:     articleService,
-		Users:        userService,
-		Sessions:     sessionService,
-		Rendering:    renderingService,
-		Preferences:  preferenceService,
-		SpecialPages: specialPages,
-		Config:       config,
-		DB:           db,
+		Templater:     tmpl,
+		Articles:      articleService,
+		Users:         userService,
+		Sessions:      sessionService,
+		Rendering:     renderingService,
+		Preferences:   preferenceService,
+		SpecialPages:  specialPages,
+		Config:        config,
+		RuntimeConfig: runtimeConfig,
+		DB:            db,
 	}
 
 	cleanup := func() {

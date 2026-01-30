@@ -21,14 +21,15 @@ func setupArticleEditTestServer(t *testing.T) (*httptest.Server, *testutil.TestA
 	testApp, cleanup := testutil.SetupTestApp(t)
 
 	app := &App{
-		Templater:    testApp.Templater,
-		Articles:     testApp.Articles,
-		Users:        testApp.Users,
-		Sessions:     testApp.Sessions,
-		Rendering:    testApp.Rendering,
-		Preferences:  testApp.Preferences,
-		SpecialPages: testApp.SpecialPages,
-		Config:       testApp.Config,
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
@@ -648,17 +649,18 @@ func setupTestServerWithAnonEditsDisabled(t *testing.T) (*httptest.Server, *test
 	testApp, cleanup := testutil.SetupTestApp(t)
 
 	// Disable anonymous editing
-	testApp.Config.AllowAnonymousEditsGlobal = false
+	testApp.RuntimeConfig.AllowAnonymousEditsGlobal = false
 
 	app := &App{
-		Templater:    testApp.Templater,
-		Articles:     testApp.Articles,
-		Users:        testApp.Users,
-		Sessions:     testApp.Sessions,
-		Rendering:    testApp.Rendering,
-		Preferences:  testApp.Preferences,
-		SpecialPages: testApp.SpecialPages,
-		Config:       testApp.Config,
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
 	}
 
 	router := mux.NewRouter().StrictSlash(true)

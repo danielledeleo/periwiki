@@ -8,7 +8,6 @@ model/
 /periwiki
 *.db
 config.yaml
-.cookiesecret.yaml
 
 .DS_Store
 

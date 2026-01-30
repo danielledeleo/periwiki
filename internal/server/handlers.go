@@ -113,7 +113,7 @@ func (a *App) LoginPostHandler(rw http.ResponseWriter, req *http.Request) {
 		a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
 		return
 	}
-	session.Options.MaxAge = a.Config.CookieExpiry
+	session.Options.MaxAge = a.RuntimeConfig.CookieExpiry
 	session.Values["username"] = user.ScreenName
 	err = session.Save(req, rw)
 	if err != nil {
@@ -356,7 +356,7 @@ func (a *App) handleHistory(rw http.ResponseWriter, req *http.Request, articleUR
 func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
 	// Check if anonymous editing is allowed
 	user := req.Context().Value(wiki.UserKey).(*wiki.User)
-	if !a.Config.AllowAnonymousEditsGlobal && user.IsAnonymous() {
+	if !a.RuntimeConfig.AllowAnonymousEditsGlobal && user.IsAnonymous() {
 		loginURL := "/user/login?reason=login_required&referrer=" + url.QueryEscape(req.URL.String())
 		http.Redirect(rw, req, loginURL, http.StatusSeeOther)
 		return
@@ -522,7 +522,7 @@ func (a *App) handleArticlePost(rw http.ResponseWriter, req *http.Request, artic
 	}
 
 	// Check if anonymous editing is allowed
-	if !a.Config.AllowAnonymousEditsGlobal && user.IsAnonymous() {
+	if !a.RuntimeConfig.AllowAnonymousEditsGlobal && user.IsAnonymous() {
 		a.ErrorHandler(http.StatusForbidden, rw, req, fmt.Errorf("anonymous editing is disabled"))
 		return
 	}

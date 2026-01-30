@@ -21,14 +21,15 @@ func setupSecurityTestServer(t *testing.T) (*httptest.Server, *testutil.TestApp,
 	testApp, cleanup := testutil.SetupTestApp(t)
 
 	app := &App{
-		Templater:    testApp.Templater,
-		Articles:     testApp.Articles,
-		Users:        testApp.Users,
-		Sessions:     testApp.Sessions,
-		Rendering:    testApp.Rendering,
-		Preferences:  testApp.Preferences,
-		SpecialPages: testApp.SpecialPages,
-		Config:       testApp.Config,
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
 	}
 
 	router := mux.NewRouter().StrictSlash(true)

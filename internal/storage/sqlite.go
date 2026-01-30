@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"os"
-
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/jmoiron/sqlx"
 	"github.com/michaeljs1990/sqlitestore"
@@ -26,8 +24,8 @@ func InitializeStatements(conn *sqlx.DB) (*PreparedStatements, error) {
 	var err error
 
 	q := `SELECT url, Revision.id, title, markdown, html, hashval, created, previous_id, comment, User.id AS user_id, User.screenname
-			FROM Article 
-			JOIN Revision ON Article.id = Revision.article_id 
+			FROM Article
+			JOIN Revision ON Article.id = Revision.article_id
 			JOIN User ON Revision.user_id = User.id
 			WHERE Article.url = ?`
 
@@ -73,49 +71,22 @@ type sqliteDb struct {
 	conn *sqlx.DB
 }
 
-func Init(config *wiki.Config) (*sqliteDb, error) {
-	conn, err := sqlx.Open("sqlite3", config.DatabaseFile)
+// Init initializes the storage layer with an existing database connection and runtime config.
+// The database connection should already have migrations applied via RunMigrations.
+func Init(db *sqlx.DB, runtimeConfig *wiki.RuntimeConfig) (*sqliteDb, error) {
+	var err error
 
-	if err != nil {
-		return nil, err
-	}
-
-	sqlFile, err := os.ReadFile("internal/storage/schema.sql")
-	if err != nil {
-		return nil, err
-	}
-
-	sqlStmt := string(sqlFile)
-	_, err = conn.Exec(sqlStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	// Migration: Add render_status column to Revision table if it doesn't exist.
-	// This is idempotent - safe to run multiple times on the same database.
-	var colExists int
-	err = conn.Get(&colExists, `SELECT COUNT(*) FROM pragma_table_info('Revision') WHERE name = 'render_status'`)
-	if err != nil {
-		return nil, err
-	}
-	if colExists == 0 {
-		_, err = conn.Exec(`ALTER TABLE Revision ADD COLUMN render_status TEXT NOT NULL DEFAULT 'rendered'`)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	db := &sqliteDb{conn: conn}
-	db.SqliteStore, err = sqlitestore.NewSqliteStoreFromConnection(conn, "sessions", "/", config.CookieExpiry, config.CookieSecret)
+	store := &sqliteDb{conn: db}
+	store.SqliteStore, err = sqlitestore.NewSqliteStoreFromConnection(db, "sessions", "/", runtimeConfig.CookieExpiry, runtimeConfig.CookieSecret)
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize prepared statements using shared function
-	db.PreparedStatements, err = InitializeStatements(conn)
+	store.PreparedStatements, err = InitializeStatements(db)
 	if err != nil {
 		return nil, err
 	}
 
-	return db, nil
+	return store, nil
 }

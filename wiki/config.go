@@ -1,13 +1,12 @@
 package wiki
 
-// Config holds the configuration for the wiki.
+// Config holds the file-based configuration for the wiki.
+// These are bootstrap settings loaded from config.yaml that are needed
+// before the database connection is established.
 type Config struct {
-	CookieSecret              []byte `yaml:"-"`
-	CookieExpiry              int    `yaml:"cookie_expiry"`
-	DatabaseFile              string `yaml:"dbfile"`
-	MinimumPasswordLength     int    `yaml:"minimum_password_length"`
-	Host                      string `yaml:"host"`
-	BaseURL                   string `yaml:"base_url"`
-	AllowAnonymousEditsGlobal bool   `yaml:"allow_anonymous_edits_global"`
-	RenderWorkers             int    `yaml:"render_workers"`
+	DatabaseFile string `yaml:"dbfile"`
+	Host         string `yaml:"host"`
+	BaseURL      string `yaml:"base_url"`
+	LogFormat    string `yaml:"log_format"`
+	LogLevel     string `yaml:"log_level"`
 }
