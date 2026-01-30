@@ -34,6 +34,11 @@ type TestDB struct {
 	conn *sqlx.DB
 }
 
+// Conn returns the underlying database connection.
+func (tdb *TestDB) Conn() *sqlx.DB {
+	return tdb.conn
+}
+
 // TestApp wraps the full application for integration tests.
 type TestApp struct {
 	*templater.Templater

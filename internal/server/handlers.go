@@ -110,8 +110,15 @@ func (a *App) LoginPostHandler(rw http.ResponseWriter, req *http.Request) {
 
 	session, err := a.Sessions.GetCookie(req, "periwiki-login")
 	if err != nil {
-		a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
-		return
+		// GetCookie returns an error when the existing cookie can't be decoded
+		// (e.g., signed with a different secret). In this case, it also returns
+		// a new valid session we can use. Only fail if we didn't get a session.
+		if session == nil {
+			a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
+			return
+		}
+		// Log the error but proceed with the new session
+		slog.Debug("existing session cookie invalid, creating new session", "error", err)
 	}
 	session.Options.MaxAge = a.RuntimeConfig.CookieExpiry
 	session.Values["username"] = user.ScreenName
@@ -132,7 +139,14 @@ func (a *App) LoginPostHandler(rw http.ResponseWriter, req *http.Request) {
 func (a *App) LogoutPostHandler(rw http.ResponseWriter, req *http.Request) {
 	session, err := a.Sessions.GetCookie(req, "periwiki-login")
 	if err != nil {
-		a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
+		// If we can't decode the cookie, the user is effectively already logged out.
+		// Just redirect to home. Only fail if we got a nil session (shouldn't happen).
+		if session == nil {
+			a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
+			return
+		}
+		slog.Debug("logout with invalid session cookie, redirecting to home", "error", err)
+		http.Redirect(rw, req, "/", http.StatusSeeOther)
 		return
 	}
 

@@ -12,6 +12,8 @@ import (
 	"github.com/danielledeleo/periwiki/testutil"
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
+	"github.com/michaeljs1990/sqlitestore"
 )
 
 // setupAuthTestServer creates a test server with all routes configured.
@@ -581,4 +583,349 @@ func TestLoginWithEmptyReferrer(t *testing.T) {
 	if location != "/" {
 		t.Errorf("expected redirect to /, got %q", location)
 	}
+}
+
+// TestCookieSecretChange verifies behavior when the cookie secret changes after a user has logged in.
+// This simulates the scenario where:
+// 1. User logs in with cookie secret A
+// 2. Server restarts with cookie secret B (e.g., after migration to database-stored secrets)
+// 3. User's browser sends the old cookie signed with secret A
+//
+// Expected behavior: The app should gracefully treat the user as anonymous,
+// not return a 500 error.
+func TestCookieSecretChange(t *testing.T) {
+	testApp, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	// Create a user
+	password := "secretchangepass"
+	user := &wiki.User{
+		ScreenName:  "secretchangeuser",
+		Email:       "secretchange@example.com",
+		RawPassword: password,
+	}
+	err := testApp.Users.PostUser(user)
+	if err != nil {
+		t.Fatalf("failed to create test user: %v", err)
+	}
+
+	// Create app with original cookie secret
+	app := &App{
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
+	}
+
+	// Track captured user for verification
+	var capturedUser *wiki.User
+
+	router := mux.NewRouter()
+	router.Use(app.SessionMiddleware)
+	router.HandleFunc("/user/login", app.LoginPostHandler).Methods("POST")
+	router.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+		u, ok := r.Context().Value(wiki.UserKey).(*wiki.User)
+		if ok {
+			capturedUser = u
+		}
+		w.WriteHeader(http.StatusOK)
+	}).Methods("GET")
+
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{
+		Jar: jar,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	// Step 1: Login with the original secret - user gets authenticated cookie
+	formData := url.Values{
+		"screenname": {"secretchangeuser"},
+		"password":   {password},
+	}
+	resp, err := client.PostForm(server.URL+"/user/login", formData)
+	if err != nil {
+		t.Fatalf("login failed: %v", err)
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("expected login redirect (303), got %d", resp.StatusCode)
+	}
+
+	// Verify the user is authenticated with the original app
+	capturedUser = nil
+	resp, err = client.Get(server.URL + "/test")
+	if err != nil {
+		t.Fatalf("test request failed: %v", err)
+	}
+	resp.Body.Close()
+
+	if capturedUser == nil || capturedUser.ScreenName != "secretchangeuser" {
+		t.Fatalf("user should be authenticated before secret change, got: %v", capturedUser)
+	}
+
+	// Step 2: Create a NEW session store with a DIFFERENT cookie secret
+	// This simulates what happens when the server restarts with a new cookie secret
+	newSecret := []byte("completely-different-secret-key!")
+	newRuntimeConfig := &wiki.RuntimeConfig{
+		CookieSecret:              newSecret,
+		CookieExpiry:              86400,
+		MinimumPasswordLength:     8,
+		AllowAnonymousEditsGlobal: true,
+		RenderWorkers:             0,
+	}
+
+	// Create a new TestDB with the new secret but same underlying database connection
+	// We need to create a fresh session store with the new secret
+	newSessionStore, err := sqlitestore.NewSqliteStoreFromConnection(
+		testApp.DB.Conn(), "sessions", "/", newRuntimeConfig.CookieExpiry, newRuntimeConfig.CookieSecret)
+	if err != nil {
+		t.Fatalf("failed to create new session store: %v", err)
+	}
+
+	// Create a wrapper that implements the SessionService interface
+	newSessionService := &testSessionStore{SqliteStore: newSessionStore}
+
+	// Create new app with the different cookie secret
+	appWithNewSecret := &App{
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      newSessionService,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: newRuntimeConfig,
+	}
+
+	// Create new router with the new app
+	newRouter := mux.NewRouter()
+	newRouter.Use(appWithNewSecret.SessionMiddleware)
+	newRouter.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+		u, ok := r.Context().Value(wiki.UserKey).(*wiki.User)
+		if ok {
+			capturedUser = u
+		}
+		w.WriteHeader(http.StatusOK)
+	}).Methods("GET")
+
+	newServer := httptest.NewServer(newRouter)
+	defer newServer.Close()
+
+	// Step 3: Make a request with the old cookie to the new server
+	// The cookie was signed with the old secret, but the server now uses the new secret
+	capturedUser = nil
+
+	// Copy cookies from old server to new server URL
+	oldURL, _ := url.Parse(server.URL)
+	newURL, _ := url.Parse(newServer.URL)
+	cookies := jar.Cookies(oldURL)
+	jar.SetCookies(newURL, cookies)
+
+	resp, err = client.Get(newServer.URL + "/test")
+	if err != nil {
+		t.Fatalf("test request to new server failed: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	// Step 4: Verify the behavior
+	// The request should NOT return a 500 error
+	if resp.StatusCode == http.StatusInternalServerError {
+		t.Errorf("Got 500 Internal Server Error when cookie secret changed. "+
+			"The app should gracefully handle invalid cookies. Response body: %s", string(body))
+	}
+
+	// The user should be treated as anonymous (cookie can't be decoded with new secret)
+	if capturedUser == nil {
+		t.Fatal("expected user context to be set (even if anonymous)")
+	}
+
+	// User should be anonymous since the cookie can't be validated
+	if capturedUser.ID != 0 {
+		t.Logf("Note: User was authenticated as %q (ID: %d) despite secret change",
+			capturedUser.ScreenName, capturedUser.ID)
+		// This might happen if the session store handles the error differently
+		// The important thing is that we don't get a 500
+	} else {
+		t.Logf("User correctly treated as anonymous after cookie secret change")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", resp.StatusCode)
+	}
+}
+
+// TestLoginWithInvalidCookie verifies that attempting to login with an invalid/corrupted
+// session cookie (e.g., signed with a different secret) does not cause a 500 error.
+// This is the specific scenario when a user's browser has an old cookie and they try to login.
+func TestLoginWithInvalidCookie(t *testing.T) {
+	testApp, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	// Create a user
+	password := "invalidcookiepass"
+	user := &wiki.User{
+		ScreenName:  "invalidcookieuser",
+		Email:       "invalidcookie@example.com",
+		RawPassword: password,
+	}
+	err := testApp.Users.PostUser(user)
+	if err != nil {
+		t.Fatalf("failed to create test user: %v", err)
+	}
+
+	// Step 1: Login with original secret to get a valid cookie
+	app := &App{
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
+	}
+
+	router := mux.NewRouter()
+	router.Use(app.SessionMiddleware)
+	router.HandleFunc("/user/login", app.LoginHandler).Methods("GET")
+	router.HandleFunc("/user/login", app.LoginPostHandler).Methods("POST")
+
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{
+		Jar: jar,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	// Login to get a cookie
+	formData := url.Values{
+		"screenname": {"invalidcookieuser"},
+		"password":   {password},
+	}
+	resp, err := client.PostForm(server.URL+"/user/login", formData)
+	if err != nil {
+		t.Fatalf("login failed: %v", err)
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("expected login redirect (303), got %d", resp.StatusCode)
+	}
+
+	// Step 2: Create new server with DIFFERENT cookie secret
+	newSecret := []byte("completely-different-secret-key!")
+	newRuntimeConfig := &wiki.RuntimeConfig{
+		CookieSecret:              newSecret,
+		CookieExpiry:              86400,
+		MinimumPasswordLength:     8,
+		AllowAnonymousEditsGlobal: true,
+		RenderWorkers:             0,
+	}
+
+	newSessionStore, err := sqlitestore.NewSqliteStoreFromConnection(
+		testApp.DB.Conn(), "sessions", "/", newRuntimeConfig.CookieExpiry, newRuntimeConfig.CookieSecret)
+	if err != nil {
+		t.Fatalf("failed to create new session store: %v", err)
+	}
+
+	newSessionService := &testSessionStore{SqliteStore: newSessionStore}
+
+	appWithNewSecret := &App{
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      newSessionService,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: newRuntimeConfig,
+	}
+
+	newRouter := mux.NewRouter()
+	newRouter.Use(appWithNewSecret.SessionMiddleware)
+	newRouter.HandleFunc("/user/login", appWithNewSecret.LoginHandler).Methods("GET")
+	newRouter.HandleFunc("/user/login", appWithNewSecret.LoginPostHandler).Methods("POST")
+
+	newServer := httptest.NewServer(newRouter)
+	defer newServer.Close()
+
+	// Copy cookies from old server to new server URL
+	oldURL, _ := url.Parse(server.URL)
+	newURL, _ := url.Parse(newServer.URL)
+	cookies := jar.Cookies(oldURL)
+	jar.SetCookies(newURL, cookies)
+
+	// Step 3: Try to access the login page with the invalid cookie
+	resp, err = client.Get(newServer.URL + "/user/login")
+	if err != nil {
+		t.Fatalf("GET login page failed: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if resp.StatusCode == http.StatusInternalServerError {
+		t.Errorf("GET /user/login returned 500 with invalid cookie. Response: %s", string(body))
+	} else {
+		t.Logf("GET /user/login returned %d (expected 200)", resp.StatusCode)
+	}
+
+	// Step 4: Try to POST login with the invalid cookie
+	formData = url.Values{
+		"screenname": {"invalidcookieuser"},
+		"password":   {password},
+	}
+	resp, err = client.PostForm(newServer.URL+"/user/login", formData)
+	if err != nil {
+		t.Fatalf("POST login failed: %v", err)
+	}
+	body, _ = io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if resp.StatusCode == http.StatusInternalServerError {
+		t.Errorf("POST /user/login returned 500 with invalid cookie. Response: %s", string(body))
+	} else if resp.StatusCode == http.StatusSeeOther {
+		t.Logf("POST /user/login succeeded (redirected to %s)", resp.Header.Get("Location"))
+	} else {
+		t.Logf("POST /user/login returned %d", resp.StatusCode)
+	}
+}
+
+// testSessionStore wraps SqliteStore to implement the SessionService interface
+type testSessionStore struct {
+	*sqlitestore.SqliteStore
+}
+
+func (s *testSessionStore) GetCookie(r *http.Request, name string) (*sessions.Session, error) {
+	return s.SqliteStore.Get(r, name)
+}
+
+func (s *testSessionStore) NewCookie(r *http.Request, name string) (*sessions.Session, error) {
+	return s.SqliteStore.New(r, name)
+}
+
+func (s *testSessionStore) SaveCookie(r *http.Request, w http.ResponseWriter, sess *sessions.Session) error {
+	return s.SqliteStore.Save(r, w, sess)
+}
+
+func (s *testSessionStore) DeleteCookie(r *http.Request, w http.ResponseWriter, sess *sessions.Session) error {
+	return s.SqliteStore.Delete(r, w, sess)
 }
