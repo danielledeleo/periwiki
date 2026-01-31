@@ -11,16 +11,16 @@
 <body>
     <nav id="navbar">
         <a href="/" id="logo-link"><img id="logo" src="/static/logo.svg" alt="periwiki" /></a>
-        <div id="login-bar">
+        <ul id="login-bar">
             {{ if and .User (ne .User.ScreenName "Anonymous") }}
-                <a href="/profile/{{ pathEscape .User.ScreenName }}">My Profile</a>
-                <a href="/user/settings">Settings</a>
-                <form method="POST" action="/user/logout"><button class="pw-logout-btn" type="submit">Logout</button></form>
+                <li><a href="/profile/{{ pathEscape .User.ScreenName }}">{{.User.ScreenName}}</a></li>
+                <li><a href="/user/settings">Settings</a></li>
+                <li><form method="POST" action="/user/logout"><button class="pw-logout-btn" type="submit">Logout</button></form></li>
             {{ else }}
-                <a href="/user/login">Login</a>
-                <a href="/user/register">Register</a>
+                <li><a href="/user/login">Login</a></li>
+                <li><a href="/user/register">Register</a></li>
             {{ end }}
-        </div>
+        </ul>
     </nav>
     <div id="flex-container">
         {{template "sidebar" .Sidebar }}

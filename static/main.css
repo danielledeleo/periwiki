@@ -69,14 +69,14 @@ a.pw-deadlink {
     display: flex;
 }
 
-#login-bar {
+ul#login-bar {
     align-self: flex-start;
     text-align: right;
     font-size: .75rem;
+    margin: 0;
 }
 
-#login-bar a,
-#login-bar .pw-logout-btn {
+#login-bar li {
     display: inline-block;
     margin: 0 0 0 0.75rem;
 }
