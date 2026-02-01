@@ -1,47 +1,51 @@
 In progress
-- Docs-on-docs (ship the documentation for Periwiki as sample files)
 
 Soon(ish)
-
+- [MED] Backlinks feature (will help trigger redlink re-renders)
 - [MED] Implement frontmatter schema (see docs/plans/frontmatter-design.md)
   - ✅ Phase 0: Page interface and title inference complete
   - ⏳ Phase 2: Frontmatter parser (NestedText-based, isolated package)
   - ⏳ Phase 3: Integrate frontmatter into Article.DisplayTitle()
-  - Branch: `refactor/article-revision-separation`
 - [MED] When editing from an old revision (restoring, essentially), allow it to publish instead of 409.
-- [MED] Backlinks feature (will help trigger redlink re-renders)
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - [MED] Article content injection fuzzing (security, testing)
 - Theme template file watcher (force re-render)
 - Page alias and redirect system (see docs/plans/alias-redirect-design.md)
+- Article visibility settings
+  - draft
+  - private
+  - internal-only
+- Home page as a stanard article
 - Improve editing request flow
   - unmodified content submissions should still re-render
   - submission errors should appear above editor window, not a new page (unmodified, conflicts)
+- Docs-on-docs (ship the documentation for Periwiki as sample files)
 - Include better sample pages
 - Move .go files out of root directory
 - User-defined templates system (see docs/plans/user-templates-design.md)
   - Prerequisites: content re-render queue, article type field
-  - Subsumes: widgets, tagging/frontmatter, rich homepage, special page customization
+  - Subsumes: widgets, tagging/frontmatter, rich homepage, some special page customization
   - See: wikipedia {Navbar} + {Template that calls navbar}
   - **Privileged templates defined in the theme, dynamic templates defined as Articles**
-- Auto populate new databases with an Admin user with id 1 as the owner of all the default pages
+  - In order for runtime privileged templates to work, we'll likely need a theming system
+  - They should have distinct names
 - Create Markdown templates for default pages (user profiles, admin pages, etc.)
-- Action rate limiting (saves per x time, anti-crawl, etc.)
 - Make user pages, index, and other special pages all types of Articles (and revisions)
 - User profiles pages to be ~user URLs, which are linked to with wikilinks e.g. [[~dani]]
 - User settings
 - Password recovery, 2FA, Login providers
 - Backup/data export mechanism
-- 404 page with "Did you mean /wiki/notfound?" link
+- 404 page with "Did you mean /wiki/notfound?" link (?)
 - Two column References section layout like wikipedia
 - Add extension for custom superscripts/subscripts, [citation needed]-style, not bound to a footnote
-- ~~When editing a page that does not yet exist, replace underscores with spaces in title~~ ✅ Done via InferTitle
 - File:image.jpg static file handing (and design overall media strategy...)
   - Asset metadata is tracked by the wiki system, but blobs are not stored in the database
   - References are kept to an externally managed media system (local filesystem, S3, static files on an nginx server, etc.)
+- Allow the binary to launch in the event of database errors/connectivity loss (at least display an error page)
 
 Configuration and Runtime
-- [HIGH] Store cookie secret in database instead of .cookiesecret.yaml (update docs/security.md)
+- First run/setup mode
+  - Auto populate new databases with an Admin user with id 1 as the owner of all the default pages
 - Compile template files into the binary (embed) (possible wontfix)
 - Improve "server failed to start" error message with specific reason (port in use, permission denied, etc.)
 - CLI flags to override config file path, database file, host, log level, etc.
@@ -52,6 +56,7 @@ Down the line
 - Admin panel
 - A theme system (custom templates)
 - Theme configurability (custom logo, custom colours)
+- Action rate limiting (saves per x time, anti-crawl, etc.)
 - WebAssembly plugin system
   - Plugin Interface
   - There may be different classes of plugin, requiring different interfaces
