@@ -44,6 +44,11 @@ type ArticleService interface {
 	// RerenderRevision re-renders an existing revision's markdown and updates its HTML.
 	// If revisionID is 0, re-renders the current (latest) revision.
 	RerenderRevision(ctx context.Context, url string, revisionID int) error
+
+	// QueueRerenderRevision queues a rerender without waiting for completion.
+	// Returns a channel that receives the result when the render and DB update complete.
+	// If revisionID is 0, re-renders the current (latest) revision.
+	QueueRerenderRevision(ctx context.Context, url string, revisionID int) (<-chan RerenderResult, error)
 }
 
 // articleService is the default implementation of ArticleService.
@@ -254,4 +259,81 @@ func (s *articleService) RerenderRevision(ctx context.Context, url string, revis
 		_ = s.repo.UpdateRevisionHTML(url, article.ID, article.HTML, "failed")
 		return ctx.Err()
 	}
+}
+
+// RerenderResult contains the outcome of an async rerender operation.
+type RerenderResult struct {
+	URL string
+	Err error
+}
+
+// QueueRerenderRevision queues a rerender without waiting for completion.
+// Returns a channel that will receive the result when rendering and DB update complete.
+// The DB update is handled internally by a goroutine.
+func (s *articleService) QueueRerenderRevision(ctx context.Context, url string, revisionID int) (<-chan RerenderResult, error) {
+	// Get the revision to re-render
+	var article *wiki.Article
+	var err error
+
+	if revisionID == 0 {
+		article, err = s.GetArticle(url)
+	} else {
+		article, err = s.GetArticleByRevisionID(url, revisionID)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// If no queue, render synchronously and return completed channel
+	if s.queue == nil {
+		html, err := s.rendering.Render(article.Markdown)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.repo.UpdateRevisionHTML(url, article.ID, html, "rendered"); err != nil {
+			return nil, err
+		}
+		ch := make(chan RerenderResult, 1)
+		ch <- RerenderResult{URL: url}
+		close(ch)
+		return ch, nil
+	}
+
+	// Mark as queued
+	if err := s.repo.UpdateRevisionHTML(url, article.ID, article.HTML, "queued"); err != nil {
+		return nil, err
+	}
+
+	// Submit to queue
+	waitCh := make(chan renderqueue.Result, 1)
+	job := renderqueue.Job{
+		ArticleURL:  url,
+		RevisionID:  int64(article.ID),
+		Markdown:    article.Markdown,
+		Tier:        renderqueue.TierBackground,
+	}
+
+	if err := s.queue.Submit(ctx, job, waitCh); err != nil {
+		_ = s.repo.UpdateRevisionHTML(url, article.ID, article.HTML, "failed")
+		return nil, err
+	}
+
+	// Spawn goroutine to wait for result and update DB
+	resultCh := make(chan RerenderResult, 1)
+	go func() {
+		defer close(resultCh)
+		result := <-waitCh
+		if result.Err != nil {
+			_ = s.repo.UpdateRevisionHTML(url, article.ID, article.HTML, "failed")
+			resultCh <- RerenderResult{URL: url, Err: result.Err}
+			return
+		}
+		if err := s.repo.UpdateRevisionHTML(url, article.ID, result.HTML, "rendered"); err != nil {
+			resultCh <- RerenderResult{URL: url, Err: err}
+			return
+		}
+		resultCh <- RerenderResult{URL: url}
+	}()
+
+	return resultCh, nil
 }

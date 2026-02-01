@@ -131,6 +131,7 @@ func Setup() (*App, *renderqueue.Queue) {
 	sitemapHandler := special.NewSitemapPage(articleService, t, modelConf.BaseURL)
 	specialPages.Register("Sitemap", sitemapHandler)
 	specialPages.Register("Sitemap.xml", sitemapHandler)
+	specialPages.Register("RerenderAll", special.NewRerenderAllPage(articleService, t))
 
 	return &App{
 		Templater:     t,

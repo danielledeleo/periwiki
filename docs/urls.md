@@ -32,6 +32,7 @@ Edit forms POST to `/wiki/{article}` with form data including:
 | URL | Description |
 |-----|-------------|
 | `/wiki/Special:Random` | Redirect to random article |
+| `/wiki/Special:RerenderAll` | Rerender all articles (auth required) |
 | `/wiki/Special:Sitemap` | HTML sitemap |
 | `/wiki/Special:Sitemap.xml` | XML sitemap |
 

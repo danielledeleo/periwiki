@@ -1,0 +1,17 @@
+{{define "content"}}
+<div id="article-area">
+    <article>
+        <h1>Rerender All Pages</h1>
+        <div class="pw-article-content">
+            {{ if .calloutMessage }}
+            <div class="pw-callout {{ .calloutClasses }}">{{ .calloutMessage }}</div>
+            {{ end }}
+            <p>This will queue all articles for rerendering. Each page will be re-processed through the rendering pipeline in the background.</p>
+            <p>Check the server logs for completion status.</p>
+            <form method="POST">
+                <button type="submit">Rerender All Pages</button>
+            </form>
+        </div>
+    </article>
+</div>
+{{end}}
