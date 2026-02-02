@@ -347,6 +347,81 @@ func TestSelectAllArticles(t *testing.T) {
 	}
 }
 
+func TestSelectAllArticlesWithFrontmatterTitle(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	userID := createTestUser(t, db, "testuser", "test@example.com", "hashedpassword")
+
+	// Article with frontmatter title
+	articleWithTitle := &wiki.Article{
+		URL: "my_article",
+		Revision: &wiki.Revision{
+			Markdown:   "---\ndisplay_title: Custom Title\n---\n# Content",
+			HTML:       "<h1>Content</h1>",
+			Hash:       "hash-with-title",
+			Creator:    &wiki.User{ID: int(userID)},
+			PreviousID: 0,
+		},
+	}
+	err := db.InsertArticle(articleWithTitle)
+	if err != nil {
+		t.Fatalf("InsertArticle failed: %v", err)
+	}
+
+	// Article without frontmatter title
+	articleWithoutTitle := &wiki.Article{
+		URL: "another_article",
+		Revision: &wiki.Revision{
+			Markdown:   "# Just Content",
+			HTML:       "<h1>Just Content</h1>",
+			Hash:       "hash-without-title",
+			Creator:    &wiki.User{ID: int(userID)},
+			PreviousID: 0,
+		},
+	}
+	err = db.InsertArticle(articleWithoutTitle)
+	if err != nil {
+		t.Fatalf("InsertArticle failed: %v", err)
+	}
+
+	// Get all articles
+	articles, err := db.SelectAllArticles()
+	if err != nil {
+		t.Fatalf("SelectAllArticles failed: %v", err)
+	}
+
+	if len(articles) != 2 {
+		t.Fatalf("expected 2 articles, got %d", len(articles))
+	}
+
+	// Find article with frontmatter title (sorted by URL: another_article, my_article)
+	var withTitle, withoutTitle *wiki.ArticleSummary
+	for _, a := range articles {
+		if a.URL == "my_article" {
+			withTitle = a
+		} else if a.URL == "another_article" {
+			withoutTitle = a
+		}
+	}
+
+	// Verify frontmatter title is cached and returned
+	if withTitle.Title != "Custom Title" {
+		t.Errorf("expected cached Title 'Custom Title', got %q", withTitle.Title)
+	}
+	if withTitle.DisplayTitle() != "Custom Title" {
+		t.Errorf("expected DisplayTitle() 'Custom Title', got %q", withTitle.DisplayTitle())
+	}
+
+	// Verify article without frontmatter falls back to URL inference
+	if withoutTitle.Title != "" {
+		t.Errorf("expected empty cached Title, got %q", withoutTitle.Title)
+	}
+	if withoutTitle.DisplayTitle() != "Another article" {
+		t.Errorf("expected DisplayTitle() 'Another article' (from URL), got %q", withoutTitle.DisplayTitle())
+	}
+}
+
 func TestSelectRevisionHistory(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()

@@ -2,7 +2,8 @@ PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS Article (
     id INTEGER PRIMARY KEY,
-    url TEXT NOT NULL UNIQUE
+    url TEXT NOT NULL UNIQUE,
+    frontmatter BLOB  -- JSONB cache of latest revision's frontmatter
 );
 
 CREATE TABLE IF NOT EXISTS User (

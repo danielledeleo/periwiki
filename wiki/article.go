@@ -33,14 +33,18 @@ func (a *Article) DisplayTitle() string {
 
 // ArticleSummary represents minimal article info for sitemaps.
 // Note: Does not include markdown for performance - use InferTitle for display.
-// For frontmatter-based titles, use full Article with DisplayTitle().
+// ArticleSummary is a lightweight article representation for listings.
 type ArticleSummary struct {
 	URL          string    `db:"url"`
 	LastModified time.Time `db:"last_modified"`
+	Title        string    `db:"title"` // Cached from frontmatter, may be empty
 }
 
 // DisplayTitle returns the display title for the article summary.
-// Uses URL inference only - ArticleSummary doesn't fetch markdown for performance.
+// Uses cached frontmatter title if available, otherwise infers from URL.
 func (s *ArticleSummary) DisplayTitle() string {
+	if s.Title != "" {
+		return s.Title
+	}
 	return InferTitle(s.URL)
 }

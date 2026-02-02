@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
@@ -132,7 +133,8 @@ func (db *sqliteDb) SelectRandomArticleURL() (string, error) {
 
 func (db *sqliteDb) SelectAllArticles() ([]*wiki.ArticleSummary, error) {
 	rows, err := db.conn.Queryx(`
-		SELECT a.url, MAX(r.created) as last_modified
+		SELECT a.url, MAX(r.created) as last_modified,
+		       COALESCE(json_extract(a.frontmatter, '$.display_title'), '') as title
 		FROM Article a
 		JOIN Revision r ON a.id = r.article_id
 		GROUP BY a.id
@@ -145,8 +147,8 @@ func (db *sqliteDb) SelectAllArticles() ([]*wiki.ArticleSummary, error) {
 
 	var articles []*wiki.ArticleSummary
 	for rows.Next() {
-		var url, lastModStr string
-		if err := rows.Scan(&url, &lastModStr); err != nil {
+		var url, lastModStr, title string
+		if err := rows.Scan(&url, &lastModStr, &title); err != nil {
 			return nil, err
 		}
 		lastMod, err := time.Parse("2006-01-02 15:04:05.000", lastModStr)
@@ -156,6 +158,7 @@ func (db *sqliteDb) SelectAllArticles() ([]*wiki.ArticleSummary, error) {
 		articles = append(articles, &wiki.ArticleSummary{
 			URL:          url,
 			LastModified: lastMod,
+			Title:        title,
 		})
 	}
 	return articles, rows.Err()
@@ -222,6 +225,17 @@ func (db *sqliteDb) InsertArticle(article *wiki.Article) (err error) {
 				return wiki.ErrRevisionAlreadyExists
 			}
 		}
+	}
+
+	// Update frontmatter cache
+	fm, _ := wiki.ParseFrontmatter(article.Markdown)
+	fmJSON, err := json.Marshal(fm)
+	if err != nil {
+		return
+	}
+	_, err = tx.Exec(`UPDATE Article SET frontmatter = jsonb(?) WHERE url = ?`, string(fmJSON), article.URL)
+	if err != nil {
+		return
 	}
 
 	// Success!
@@ -292,6 +306,17 @@ func (db *sqliteDb) InsertArticleQueued(article *wiki.Article) (revisionID int64
 		}
 	} else {
 		return 0, insertErr
+	}
+
+	// Update frontmatter cache
+	fm, _ := wiki.ParseFrontmatter(article.Markdown)
+	fmJSON, err := json.Marshal(fm)
+	if err != nil {
+		return 0, err
+	}
+	_, err = tx.Exec(`UPDATE Article SET frontmatter = jsonb(?) WHERE url = ?`, string(fmJSON), article.URL)
+	if err != nil {
+		return 0, err
 	}
 
 	return newRevisionID, nil

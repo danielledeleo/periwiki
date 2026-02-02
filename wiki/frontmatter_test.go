@@ -1,6 +1,9 @@
 package wiki
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestParseFrontmatter(t *testing.T) {
 	tests := []struct {
@@ -52,9 +55,9 @@ func TestParseFrontmatter(t *testing.T) {
 			expectedContent: "\n# Heading\n\nBody text here.",
 		},
 		{
-			name:            "unknown fields are ignored",
-			input:           "---\ndisplay_title: Known\nunknown_field: Ignored\n---\n# Hello",
-			expectedFM:      Frontmatter{DisplayTitle: "Known"},
+			name:            "unknown fields captured in Extra",
+			input:           "---\ndisplay_title: Known\nunknown_field: Value\n---\n# Hello",
+			expectedFM:      Frontmatter{DisplayTitle: "Known", Extra: map[string]string{"unknown_field": "Value"}},
 			expectedContent: "# Hello",
 		},
 		{
@@ -117,7 +120,7 @@ func TestParseFrontmatter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fm, content := ParseFrontmatter(tt.input)
-			if fm != tt.expectedFM {
+			if !reflect.DeepEqual(fm, tt.expectedFM) {
 				t.Errorf("ParseFrontmatter() frontmatter = %+v, want %+v", fm, tt.expectedFM)
 			}
 			if content != tt.expectedContent {
