@@ -327,7 +327,7 @@ func TestSQLInjectionInArticleURL(t *testing.T) {
 
 	// Create a normal article first
 	user := testutil.CreateTestUser(t, testApp.DB, "sqliuser", "sqli@example.com", "sqlipassword")
-	testutil.CreateTestArticle(t, testApp, "normal-article", "Normal Article", "Normal content", user)
+	testutil.CreateTestArticle(t, testApp, "normal-article", "Normal content", user)
 
 	// Test SQL injection attempts in URL
 	sqlInjectionPayloads := []string{

@@ -147,16 +147,16 @@ func (t *Templater) RenderTemplate(w io.Writer, name string, base string, data m
 		data["User"] = data["Context"].(context.Context).Value(wiki.UserKey).(*wiki.User)
 	}
 
-	// Ensure Article.Title is set for page title
+	// Ensure Article has a display title for page title
 	t.ensureTitle(data, name)
 
 	return tmpl.ExecuteTemplate(w, base, data)
 }
 
-// ensureTitle checks if data["Article"] has a Title set. If not, it derives
+// ensureTitle checks if data["Article"] has a display title. If not, it derives
 // a title from the template name and logs a debug message.
 func (t *Templater) ensureTitle(data map[string]interface{}, templateName string) {
-	// Check if Article exists and has a Title
+	// Check if Article exists and has a display title
 	if article, ok := data["Article"]; ok {
 		switch a := article.(type) {
 		case map[string]string:
@@ -168,7 +168,7 @@ func (t *Templater) ensureTitle(data map[string]interface{}, templateName string
 				return
 			}
 		case *wiki.Article:
-			if a != nil && a.Revision != nil && a.Title != "" {
+			if a != nil && a.Revision != nil && a.DisplayTitle() != "" {
 				return
 			}
 		default:

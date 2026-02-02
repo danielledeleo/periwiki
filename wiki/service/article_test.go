@@ -16,7 +16,7 @@ func TestGetArticle(t *testing.T) {
 	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
 
 	// Create a test article
-	testutil.CreateTestArticle(t, app, "test-article", "Test Article", "# Hello\n\nThis is a test.", user)
+	testutil.CreateTestArticle(t, app, "test-article", "# Hello\n\nThis is a test.", user)
 
 	t.Run("existing article", func(t *testing.T) {
 		article, err := app.Articles.GetArticle("test-article")
@@ -26,9 +26,6 @@ func TestGetArticle(t *testing.T) {
 
 		if article.URL != "test-article" {
 			t.Errorf("expected URL 'test-article', got %q", article.URL)
-		}
-		if article.Title != "Test Article" {
-			t.Errorf("expected Title 'Test Article', got %q", article.Title)
 		}
 	})
 
@@ -47,7 +44,7 @@ func TestPostArticle(t *testing.T) {
 	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
 
 	t.Run("creates new article with rendered HTML", func(t *testing.T) {
-		article := wiki.NewArticle("new-article", "New Article", "# Heading\n\nParagraph text.")
+		article := wiki.NewArticle("new-article", "# Heading\n\nParagraph text.")
 		article.Creator = user
 		article.PreviousID = 0
 
@@ -78,7 +75,7 @@ func TestPostArticle(t *testing.T) {
 
 	t.Run("creates new revision for existing article", func(t *testing.T) {
 		// Create initial article
-		article := wiki.NewArticle("revision-test", "Revision Test", "Version 1")
+		article := wiki.NewArticle("revision-test", "Version 1")
 		article.Creator = user
 		article.PreviousID = 0
 
@@ -97,7 +94,7 @@ func TestPostArticle(t *testing.T) {
 		}
 
 		// Create new revision with a fresh article object and different content
-		article2 := wiki.NewArticle("revision-test", "Revision Test Updated", "Version 2 content")
+		article2 := wiki.NewArticle("revision-test", "Version 2 content")
 		article2.Creator = user
 		article2.PreviousID = v1.ID
 
@@ -128,7 +125,7 @@ func TestPostArticleNotModified(t *testing.T) {
 	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
 
 	// Create initial article
-	article := wiki.NewArticle("not-modified-test", "Test", "Same content")
+	article := wiki.NewArticle("not-modified-test", "Same content")
 	article.Creator = user
 	article.PreviousID = 0
 
@@ -167,7 +164,7 @@ func TestGetRandomArticleURL(t *testing.T) {
 
 		urls := []string{"article-a", "article-b", "article-c"}
 		for _, url := range urls {
-			testutil.CreateTestArticle(t, app, url, "Title", "Content", user)
+			testutil.CreateTestArticle(t, app, url, "Content", user)
 		}
 
 		url, err := app.Articles.GetRandomArticleURL()
@@ -195,7 +192,7 @@ func TestGetArticleByRevisionID(t *testing.T) {
 	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
 
 	// Create article with multiple revisions
-	article := wiki.NewArticle("rev-test", "Revision Test", "Version 1")
+	article := wiki.NewArticle("rev-test", "Version 1")
 	article.Creator = user
 	article.PreviousID = 0
 	err := app.Articles.PostArticle(article)
@@ -245,7 +242,7 @@ func TestGetRevisionHistory(t *testing.T) {
 	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
 
 	// Create article with multiple revisions
-	article := wiki.NewArticle("history-test", "History Test", "Version 1")
+	article := wiki.NewArticle("history-test", "Version 1")
 	article.Creator = user
 	article.PreviousID = 0
 	article.Comment = "Initial"
@@ -260,7 +257,7 @@ func TestGetRevisionHistory(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Create second revision with fresh article object and different content
-	article2 := wiki.NewArticle("history-test", "History Test Updated", "Version 2 - Updated content")
+	article2 := wiki.NewArticle("history-test", "Version 2 - Updated content")
 	article2.Creator = user
 	article2.PreviousID = v1.ID
 	article2.Comment = "Update"

@@ -10,9 +10,8 @@ type Article struct {
 	*Revision
 }
 
-func NewArticle(url, title, markdownBody string) *Article {
+func NewArticle(url, markdownBody string) *Article {
 	article := &Article{URL: url, Revision: &Revision{}}
-	article.Title = title
 	article.Markdown = markdownBody
 
 	return article
@@ -23,25 +22,20 @@ func (article *Article) String() string {
 }
 
 // DisplayTitle returns the article's title for display.
-// Priority: frontmatter display_title > stored Title field > inferred from URL.
+// Priority: frontmatter display_title > inferred from URL.
 func (a *Article) DisplayTitle() string {
 	fm, _ := ParseFrontmatter(a.Markdown)
 	if fm.DisplayTitle != "" {
 		return fm.DisplayTitle
 	}
-	if a.Title != "" {
-		return a.Title
-	}
 	return InferTitle(a.URL)
 }
 
-// ArticleSummary represents minimal article info for sitemaps.
 // ArticleSummary represents minimal article info for sitemaps.
 // Note: Does not include markdown for performance - use InferTitle for display.
 // For frontmatter-based titles, use full Article with DisplayTitle().
 type ArticleSummary struct {
 	URL          string    `db:"url"`
-	Title        string    `db:"title"`
 	LastModified time.Time `db:"last_modified"`
 }
 

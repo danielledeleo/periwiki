@@ -83,22 +83,22 @@ func TestArticleDisplayTitle(t *testing.T) {
 	}{
 		{
 			name:     "returns frontmatter display_title",
-			article:  NewArticle("test-url", "", "---\ndisplay_title: Test Article\n---\n# Content"),
+			article:  NewArticle("test-url", "---\ndisplay_title: Test Article\n---\n# Content"),
 			expected: "Test Article",
 		},
 		{
 			name:     "falls back to inferred title when no frontmatter",
-			article:  NewArticle("another-url", "", "# Content"),
+			article:  NewArticle("another-url", "# Content"),
 			expected: "Another-url",
 		},
 		{
 			name:     "returns title with special characters",
-			article:  NewArticle("special-url", "", "---\ndisplay_title: Article: A & B\n---\n# Content"),
+			article:  NewArticle("special-url", "---\ndisplay_title: Article: A & B\n---\n# Content"),
 			expected: "Article: A &amp; B",
 		},
 		{
 			name:     "falls back to inferred when frontmatter has no display_title",
-			article:  NewArticle("my_page", "", "---\nother_field: value\n---\n# Content"),
+			article:  NewArticle("my_page", "---\nother_field: value\n---\n# Content"),
 			expected: "My page",
 		},
 	}
@@ -168,7 +168,7 @@ func TestArticleDisplayTitleWithInference(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			article := NewArticle(tt.url, "", tt.markdown)
+			article := NewArticle(tt.url, tt.markdown)
 			if got := article.DisplayTitle(); got != tt.expected {
 				t.Errorf("Article.DisplayTitle() = %q, want %q", got, tt.expected)
 			}

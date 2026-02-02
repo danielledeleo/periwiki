@@ -23,7 +23,7 @@ func InitializeStatements(conn *sqlx.DB) (*PreparedStatements, error) {
 	stmts := &PreparedStatements{}
 	var err error
 
-	q := `SELECT url, Revision.id, title, markdown, html, hashval, created, previous_id, comment, User.id AS user_id, User.screenname
+	q := `SELECT url, Revision.id, markdown, html, hashval, created, previous_id, comment, User.id AS user_id, User.screenname
 			FROM Article
 			JOIN Revision ON Article.id = Revision.article_id
 			JOIN User ON Revision.user_id = User.id

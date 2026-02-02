@@ -167,9 +167,9 @@ func (a *App) HomeHandler(rw http.ResponseWriter, req *http.Request) {
 	data := make(map[string]interface{})
 
 	article := &wiki.Article{
+		URL: "Home",
 		Revision: &wiki.Revision{
-			Title: "Home",
-			HTML:  "Welcome to periwiki! Why don't you check out <a href='/wiki/Test'>Test</a>?",
+			HTML: "Welcome to periwiki! Why don't you check out <a href='/wiki/Test'>Test</a>?",
 		},
 	}
 	data["Page"] = article
@@ -198,7 +198,7 @@ func (a *App) ArticleHandler(rw http.ResponseWriter, req *http.Request) {
 	found := article != nil
 
 	if !found {
-		article = wiki.NewArticle(vars["article"], wiki.InferTitle(vars["article"]), "")
+		article = wiki.NewArticle(vars["article"], "")
 		article.Hash = "new"
 	}
 
@@ -387,7 +387,7 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 		}
 		article, err = a.Articles.GetArticleByRevisionID(articleURL, revisionID)
 		if err == wiki.ErrRevisionNotFound {
-			article = wiki.NewArticle(articleURL, wiki.InferTitle(articleURL), "")
+			article = wiki.NewArticle(articleURL, "")
 			article.Hash = "new"
 		} else if err != nil {
 			a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
@@ -397,7 +397,7 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 		// Edit current revision
 		article, err = a.Articles.GetArticle(articleURL)
 		if err == wiki.ErrGenericNotFound {
-			article = wiki.NewArticle(articleURL, wiki.InferTitle(articleURL), "")
+			article = wiki.NewArticle(articleURL, "")
 			article.Hash = "new"
 		} else if err != nil {
 			a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
@@ -472,7 +472,7 @@ func (a *App) handleDiff(rw http.ResponseWriter, req *http.Request, articleURL s
 			}
 		} else {
 			// No previous revision, diff against empty
-			oldArticle = wiki.NewArticle(articleURL, "", "")
+			oldArticle = wiki.NewArticle(articleURL, "")
 		}
 	}
 
@@ -611,7 +611,7 @@ func (a *App) ErrorHandler(responseCode int, rw http.ResponseWriter, req *http.R
 	err := a.RenderTemplate(rw, "error.html", "index.html",
 		map[string]interface{}{
 			"Page":    wiki.NewStaticPage(errorTitle),
-			"Article": &wiki.Article{Revision: &wiki.Revision{Title: errorTitle}},
+			"Article": &wiki.Article{URL: errorTitle, Revision: &wiki.Revision{}},
 			"Context": req.Context(),
 			"Error": map[string]interface{}{
 				"Code":       responseCode,

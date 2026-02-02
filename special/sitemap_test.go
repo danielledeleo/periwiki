@@ -42,8 +42,8 @@ func (m *mockSitemapTemplater) RenderTemplate(w io.Writer, name string, base str
 func TestSitemapXML(t *testing.T) {
 	t.Run("returns valid XML sitemap", func(t *testing.T) {
 		articles := []*wiki.ArticleSummary{
-			{URL: "Main_Page", Title: "Main Page", LastModified: time.Date(2026, 1, 20, 15, 30, 0, 0, time.UTC)},
-			{URL: "Test_Article", Title: "Test Article", LastModified: time.Date(2026, 1, 21, 10, 0, 0, 0, time.UTC)},
+			{URL: "Main_Page", LastModified: time.Date(2026, 1, 20, 15, 30, 0, 0, time.UTC)},
+			{URL: "Test_Article", LastModified: time.Date(2026, 1, 21, 10, 0, 0, 0, time.UTC)},
 		}
 		mock := &mockArticleLister{articles: articles}
 		handler := NewSitemapPage(mock, nil, "https://example.com")
@@ -109,7 +109,7 @@ func TestSitemapXML(t *testing.T) {
 
 	t.Run("strips trailing slash from baseURL", func(t *testing.T) {
 		articles := []*wiki.ArticleSummary{
-			{URL: "Test", Title: "Test", LastModified: time.Now()},
+			{URL: "Test", LastModified: time.Now()},
 		}
 		mock := &mockArticleLister{articles: articles}
 		handler := NewSitemapPage(mock, nil, "https://example.com/")
@@ -132,7 +132,7 @@ func TestSitemapXML(t *testing.T) {
 func TestSitemapHTML(t *testing.T) {
 	t.Run("renders HTML template", func(t *testing.T) {
 		articles := []*wiki.ArticleSummary{
-			{URL: "Main_Page", Title: "Main Page", LastModified: time.Now()},
+			{URL: "Main_Page", LastModified: time.Now()},
 		}
 		mock := &mockArticleLister{articles: articles}
 		templater := &mockSitemapTemplater{}

@@ -100,7 +100,6 @@ func TestInsertAndSelectArticle(t *testing.T) {
 	article := &wiki.Article{
 		URL: "test-article",
 		Revision: &wiki.Revision{
-			Title:      "Test Article",
 			Markdown:   "# Hello World\n\nThis is a test.",
 			HTML:       "<h1>Hello World</h1><p>This is a test.</p>",
 			Hash:       "testhash123",
@@ -126,9 +125,6 @@ func TestInsertAndSelectArticle(t *testing.T) {
 	if retrieved.URL != article.URL {
 		t.Errorf("expected URL %q, got %q", article.URL, retrieved.URL)
 	}
-	if retrieved.Title != article.Title {
-		t.Errorf("expected Title %q, got %q", article.Title, retrieved.Title)
-	}
 	if retrieved.Markdown != article.Markdown {
 		t.Errorf("expected Markdown %q, got %q", article.Markdown, retrieved.Markdown)
 	}
@@ -153,7 +149,6 @@ func TestInsertRevision(t *testing.T) {
 	article := &wiki.Article{
 		URL: "test-article",
 		Revision: &wiki.Revision{
-			Title:      "Test Article",
 			Markdown:   "Version 1",
 			HTML:       "<p>Version 1</p>",
 			Hash:       "hash1",
@@ -245,7 +240,6 @@ func TestSelectRandomArticleURL(t *testing.T) {
 		article := &wiki.Article{
 			URL: url,
 			Revision: &wiki.Revision{
-				Title:      "Article " + url,
 				Markdown:   "Content",
 				HTML:       "<p>Content</p>",
 				Hash:       "hash" + url,
@@ -295,23 +289,15 @@ func TestSelectAllArticles(t *testing.T) {
 	userID := createTestUser(t, db, "testuser", "test@example.com", "hashedpassword")
 
 	// Add some articles
-	articlesToAdd := []struct {
-		url   string
-		title string
-	}{
-		{"zebra", "Zebra Article"},
-		{"apple", "Apple Article"},
-		{"banana", "Banana Article"},
-	}
+	articlesToAdd := []string{"zebra", "apple", "banana"}
 
-	for _, a := range articlesToAdd {
+	for _, url := range articlesToAdd {
 		article := &wiki.Article{
-			URL: a.url,
+			URL: url,
 			Revision: &wiki.Revision{
-				Title:      a.title,
-				Markdown:   "Content for " + a.title,
-				HTML:       "<p>Content for " + a.title + "</p>",
-				Hash:       "hash-" + a.url,
+				Markdown:   "Content for " + url,
+				HTML:       "<p>Content for " + url + "</p>",
+				Hash:       "hash-" + url,
 				Creator:    &wiki.User{ID: int(userID)},
 				PreviousID: 0,
 			},
@@ -371,7 +357,6 @@ func TestSelectRevisionHistory(t *testing.T) {
 	article := &wiki.Article{
 		URL: "test-article",
 		Revision: &wiki.Revision{
-			Title:      "Test Article",
 			Markdown:   "Version 1",
 			HTML:       "<p>Version 1</p>",
 			Hash:       "hash1",
@@ -576,7 +561,6 @@ func TestRevisionAlreadyExists(t *testing.T) {
 	article := &wiki.Article{
 		URL: "test-article",
 		Revision: &wiki.Revision{
-			Title:      "Test Article",
 			Markdown:   "Version 1",
 			HTML:       "<p>Version 1</p>",
 			Hash:       "hash1",

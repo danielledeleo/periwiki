@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS User (
 CREATE TABLE IF NOT EXISTS Revision (
     id INTEGER NOT NULL,
     article_id INT NOT NULL,
-    title TEXT NOT NULL,
     hashval TEXT NOT NULL,
     markdown TEXT NOT NULL,
     html TEXT NOT NULL,

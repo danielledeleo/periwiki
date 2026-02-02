@@ -75,9 +75,9 @@ func TestArticleHandler_Existing(t *testing.T) {
 
 	// Create a test user and article
 	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
-	testutil.CreateTestArticle(t, testApp, "existing-article", "Existing Article", "This is the content.", user)
+	testutil.CreateTestArticle(t, testApp, "Existing_Article", "This is the content.", user)
 
-	req := httptest.NewRequest("GET", "/wiki/existing-article", nil)
+	req := httptest.NewRequest("GET", "/wiki/Existing_Article", nil)
 	rr := httptest.NewRecorder()
 
 	router.ServeHTTP(rr, req)
@@ -123,7 +123,7 @@ func TestArticleHistoryHandler(t *testing.T) {
 	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
 
 	// Create article with multiple revisions
-	article := wiki.NewArticle("history-article", "History Article", "Version 1")
+	article := wiki.NewArticle("history-article", "Version 1")
 	article.Creator = user
 	article.PreviousID = 0
 	article.Comment = "Initial version"
@@ -187,7 +187,7 @@ func TestRevisionHandler(t *testing.T) {
 	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
 
 	// Create article with multiple revisions
-	article := wiki.NewArticle("revision-article", "Revision Article", "Version 1 content")
+	article := wiki.NewArticle("revision-article", "Version 1 content")
 	article.Creator = user
 	article.PreviousID = 0
 	err := testApp.Articles.PostArticle(article)
@@ -250,7 +250,7 @@ func TestDiffHandler(t *testing.T) {
 	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
 
 	// Create article with multiple revisions
-	article := wiki.NewArticle("diff-article", "Diff Article", "Original content here")
+	article := wiki.NewArticle("diff-article", "Original content here")
 	article.Creator = user
 	article.PreviousID = 0
 	err := testApp.Articles.PostArticle(article)
@@ -372,7 +372,7 @@ func TestSpecialRandom(t *testing.T) {
 	defer cleanup()
 
 	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
-	testutil.CreateTestArticle(t, testApp, "random-article", "Random Article", "Content", user)
+	testutil.CreateTestArticle(t, testApp, "random-article", "Content", user)
 
 	req := httptest.NewRequest("GET", "/wiki/Special:Random", nil)
 	rr := httptest.NewRecorder()
@@ -465,7 +465,7 @@ func TestRevisionEditHandler(t *testing.T) {
 	defer cleanup()
 
 	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
-	testutil.CreateTestArticle(t, testApp, "edit-article", "Edit Article", "Content to edit", user)
+	testutil.CreateTestArticle(t, testApp, "edit-article", "Content to edit", user)
 
 	req := httptest.NewRequest("GET", "/wiki/edit-article?edit&revision=1", nil)
 	rr := httptest.NewRecorder()
@@ -612,7 +612,7 @@ func TestUserContextInHandlers(t *testing.T) {
 	defer cleanup()
 
 	user := testutil.CreateTestUser(t, testApp.DB, "contextuser", "context@example.com", "password123")
-	testutil.CreateTestArticle(t, testApp, "context-test", "Context Test", "Content", user)
+	testutil.CreateTestArticle(t, testApp, "context-test", "Content", user)
 
 	app := &App{
 		Templater:     testApp.Templater,

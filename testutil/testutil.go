@@ -249,10 +249,10 @@ func CreateTestUser(t *testing.T, db *TestDB, screenname, email, password string
 }
 
 // CreateTestArticle creates an article in the test database and returns it.
-func CreateTestArticle(t *testing.T, app *TestApp, url, title, markdown string, creator *wiki.User) *wiki.Article {
+func CreateTestArticle(t *testing.T, app *TestApp, url, markdown string, creator *wiki.User) *wiki.Article {
 	t.Helper()
 
-	article := wiki.NewArticle(url, title, markdown)
+	article := wiki.NewArticle(url, markdown)
 	article.Creator = creator
 	article.PreviousID = 0
 
@@ -276,7 +276,6 @@ func CreateTestArticle(t *testing.T, app *TestApp, url, title, markdown string, 
 type articleResult struct {
 	URL        string
 	ID         int
-	Title      string
 	Markdown   string
 	HTML       string
 	Hash       string    `db:"hashval"`
@@ -292,7 +291,6 @@ func (r *articleResult) toArticle() *wiki.Article {
 		URL: r.URL,
 		Revision: &wiki.Revision{
 			ID:         r.ID,
-			Title:      r.Title,
 			Markdown:   r.Markdown,
 			HTML:       r.HTML,
 			Hash:       r.Hash,
@@ -339,7 +337,7 @@ func (tdb *TestDB) SelectRevision(hash string) (*wiki.Revision, error) {
 
 func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 	rows, err := tdb.conn.Queryx(
-		`SELECT Revision.id, title, hashval, created, comment, previous_id, User.screenname, length(markdown)
+		`SELECT Revision.id, hashval, created, comment, previous_id, User.screenname, length(markdown)
 			FROM Article JOIN Revision ON Article.id = Revision.article_id
 					     JOIN User ON Revision.user_id = User.id
 			WHERE Article.url = ? ORDER BY created DESC`, url)
@@ -349,11 +347,11 @@ func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 	defer rows.Close()
 
 	result := struct {
-		Title, Hashval, Comment, Screenname string
-		ID                                  int
-		PreviousID                          int       `db:"previous_id"`
-		Length                              int       `db:"length(markdown)"`
-		Created                             time.Time `db:"created"`
+		Hashval, Comment, Screenname string
+		ID                           int
+		PreviousID                   int       `db:"previous_id"`
+		Length                       int       `db:"length(markdown)"`
+		Created                      time.Time `db:"created"`
 	}{}
 	results := make([]*wiki.Revision, 0)
 	for rows.Next() {
@@ -362,7 +360,6 @@ func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 		if err != nil {
 			return nil, err
 		}
-		rev.Title = result.Title
 		rev.Hash = result.Hashval
 		rev.ID = result.ID
 		rev.PreviousID = result.PreviousID
@@ -386,7 +383,7 @@ func (tdb *TestDB) SelectRandomArticleURL() (string, error) {
 
 func (tdb *TestDB) SelectAllArticles() ([]*wiki.ArticleSummary, error) {
 	rows, err := tdb.conn.Queryx(`
-		SELECT a.url, r.title, MAX(r.created) as last_modified
+		SELECT a.url, MAX(r.created) as last_modified
 		FROM Article a
 		JOIN Revision r ON a.id = r.article_id
 		GROUP BY a.id
@@ -399,8 +396,8 @@ func (tdb *TestDB) SelectAllArticles() ([]*wiki.ArticleSummary, error) {
 
 	var articles []*wiki.ArticleSummary
 	for rows.Next() {
-		var url, title, lastModStr string
-		if err := rows.Scan(&url, &title, &lastModStr); err != nil {
+		var url, lastModStr string
+		if err := rows.Scan(&url, &lastModStr); err != nil {
 			return nil, err
 		}
 		lastMod, err := time.Parse("2006-01-02 15:04:05.000", lastModStr)
@@ -409,7 +406,6 @@ func (tdb *TestDB) SelectAllArticles() ([]*wiki.ArticleSummary, error) {
 		}
 		articles = append(articles, &wiki.ArticleSummary{
 			URL:          url,
-			Title:        title,
 			LastModified: lastMod,
 		})
 	}
@@ -449,10 +445,9 @@ func (tdb *TestDB) InsertArticle(article *wiki.Article) error {
 			return err
 		}
 
-		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
-			VALUES (?, ?, ?, ?, ?, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
+		_, err = tx.Exec(`INSERT INTO Revision (id, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
+			VALUES (?, ?, ?, ?, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
 			article.PreviousID+1,
-			article.Title,
 			article.Hash,
 			article.Markdown,
 			article.HTML,
@@ -463,10 +458,9 @@ func (tdb *TestDB) InsertArticle(article *wiki.Article) error {
 		return err
 	} else if insertErr == nil && testArticle != nil {
 		// New revision to article
-		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
-			VALUES (?, ?, ?, ?, ?, (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
+		_, err = tx.Exec(`INSERT INTO Revision (id, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
+			VALUES (?, ?, ?, ?, (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
 			article.PreviousID+1,
-			article.Title,
 			article.Hash,
 			article.Markdown,
 			article.HTML,
@@ -508,10 +502,9 @@ func (tdb *TestDB) InsertArticleQueued(article *wiki.Article) (revisionID int64,
 			return 0, err
 		}
 
-		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
-			VALUES (?, ?, ?, ?, '', last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
+		_, err = tx.Exec(`INSERT INTO Revision (id, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
+			VALUES (?, ?, ?, '', last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
 			newRevisionID,
-			article.Title,
 			article.Hash,
 			article.Markdown,
 			article.Creator.ID,
@@ -523,10 +516,9 @@ func (tdb *TestDB) InsertArticleQueued(article *wiki.Article) (revisionID int64,
 		}
 	} else if insertErr == nil && testArticle != nil {
 		// New revision to article
-		_, err = tx.Exec(`INSERT INTO Revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
-			VALUES (?, ?, ?, ?, '', (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
+		_, err = tx.Exec(`INSERT INTO Revision (id, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
+			VALUES (?, ?, ?, '', (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
 			newRevisionID,
-			article.Title,
 			article.Hash,
 			article.Markdown,
 			article.URL,

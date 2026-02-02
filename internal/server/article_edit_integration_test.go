@@ -154,7 +154,7 @@ func TestEditExistingArticle(t *testing.T) {
 	createdUser, _ := testApp.Users.GetUserByScreenName("edituser")
 
 	// Create initial article
-	testutil.CreateTestArticle(t, testApp, "edit-test", "Edit Test", "Original content", createdUser)
+	testutil.CreateTestArticle(t, testApp, "edit-test", "Original content", createdUser)
 
 	client := loginUser(t, server, "edituser", password)
 
@@ -210,7 +210,7 @@ func TestPreviewArticle(t *testing.T) {
 	}
 
 	createdUser, _ := testApp.Users.GetUserByScreenName("previewuser")
-	testutil.CreateTestArticle(t, testApp, "preview-test", "Preview Test", "Original", createdUser)
+	testutil.CreateTestArticle(t, testApp, "preview-test", "Original", createdUser)
 
 	client := loginUser(t, server, "previewuser", password)
 
@@ -265,7 +265,7 @@ func TestEditRequiresChange(t *testing.T) {
 	}
 
 	createdUser, _ := testApp.Users.GetUserByScreenName("nochangeuser")
-	testutil.CreateTestArticle(t, testApp, "nochange-test", "No Change", "Same content", createdUser)
+	testutil.CreateTestArticle(t, testApp, "nochange-test", "Same content", createdUser)
 
 	client := loginUser(t, server, "nochangeuser", password)
 
@@ -433,10 +433,10 @@ func TestEditHandlerShowsContent(t *testing.T) {
 
 	// Create test user and article
 	user := testutil.CreateTestUser(t, testApp.DB, "contentuser", "content@example.com", "contentpassword")
-	testutil.CreateTestArticle(t, testApp, "content-test", "Content Test", "This is the article content to edit.", user)
+	testutil.CreateTestArticle(t, testApp, "Content_Test", "This is the article content to edit.", user)
 
 	// Request the edit page
-	resp, err := http.Get(server.URL + "/wiki/content-test?edit&revision=1")
+	resp, err := http.Get(server.URL + "/wiki/Content_Test?edit&revision=1")
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -515,7 +515,7 @@ func TestRevisionConflict(t *testing.T) {
 	testApp.Users.PostUser(user2)
 
 	createdUser1, _ := testApp.Users.GetUserByScreenName("conflictuser1")
-	testutil.CreateTestArticle(t, testApp, "conflict-test", "Conflict Test", "Original", createdUser1)
+	testutil.CreateTestArticle(t, testApp, "conflict-test", "Original", createdUser1)
 
 	client1 := loginUser(t, server, "conflictuser1", password)
 	client2 := loginUser(t, server, "conflictuser2", password)
@@ -570,7 +570,7 @@ func TestEditWithoutPreviousID(t *testing.T) {
 	testApp.Users.PostUser(user)
 
 	createdUser, _ := testApp.Users.GetUserByScreenName("noprevuser")
-	testutil.CreateTestArticle(t, testApp, "noprev-test", "No Previous Test", "Original content", createdUser)
+	testutil.CreateTestArticle(t, testApp, "noprev-test", "Original content", createdUser)
 
 	client := loginUser(t, server, "noprevuser", password)
 
@@ -611,7 +611,7 @@ func TestEditFormPreservesContentOnError(t *testing.T) {
 	testApp.Users.PostUser(user)
 
 	createdUser, _ := testApp.Users.GetUserByScreenName("preserveuser")
-	testutil.CreateTestArticle(t, testApp, "preserve-test", "Preserve Test", "Original content", createdUser)
+	testutil.CreateTestArticle(t, testApp, "preserve-test", "Original content", createdUser)
 
 	client := loginUser(t, server, "preserveuser", password)
 
@@ -843,7 +843,7 @@ func TestRerenderCurrentRevision(t *testing.T) {
 		t.Fatalf("failed to create user: %v", err)
 	}
 	createdUser, _ := testApp.Users.GetUserByScreenName("rerenderuser2")
-	testutil.CreateTestArticle(t, testApp, "rerender-current", "Rerender Current", "Test **bold** content", createdUser)
+	testutil.CreateTestArticle(t, testApp, "rerender-current", "Test **bold** content", createdUser)
 
 	client := loginUser(t, server, "rerenderuser2", password)
 
@@ -904,7 +904,7 @@ func TestRerenderSpecificRevision(t *testing.T) {
 	createdUser, _ := testApp.Users.GetUserByScreenName("rerenderuser3")
 
 	// Create article with revision 1
-	testutil.CreateTestArticle(t, testApp, "rerender-revision", "Rerender Rev", "First *italic* content", createdUser)
+	testutil.CreateTestArticle(t, testApp, "rerender-revision", "First *italic* content", createdUser)
 
 	client := loginUser(t, server, "rerenderuser3", password)
 
@@ -965,7 +965,7 @@ func TestRerenderInvalidRevision(t *testing.T) {
 		t.Fatalf("failed to create user: %v", err)
 	}
 	createdUser, _ := testApp.Users.GetUserByScreenName("rerenderuser4")
-	testutil.CreateTestArticle(t, testApp, "rerender-invalid", "Rerender Invalid", "Content", createdUser)
+	testutil.CreateTestArticle(t, testApp, "rerender-invalid", "Content", createdUser)
 
 	client := loginUser(t, server, "rerenderuser4", password)
 
