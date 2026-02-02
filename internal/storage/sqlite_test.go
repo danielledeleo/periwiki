@@ -333,15 +333,15 @@ func TestSelectAllArticles(t *testing.T) {
 		t.Fatalf("expected 3 articles, got %d", len(articles))
 	}
 
-	// Verify ordering (by title ASC)
-	if articles[0].Title != "Apple Article" {
-		t.Errorf("expected first article 'Apple Article', got %q", articles[0].Title)
+	// Verify ordering (by URL ASC)
+	if articles[0].URL != "apple" {
+		t.Errorf("expected first article URL 'apple', got %q", articles[0].URL)
 	}
-	if articles[1].Title != "Banana Article" {
-		t.Errorf("expected second article 'Banana Article', got %q", articles[1].Title)
+	if articles[1].URL != "banana" {
+		t.Errorf("expected second article URL 'banana', got %q", articles[1].URL)
 	}
-	if articles[2].Title != "Zebra Article" {
-		t.Errorf("expected third article 'Zebra Article', got %q", articles[2].Title)
+	if articles[2].URL != "zebra" {
+		t.Errorf("expected third article URL 'zebra', got %q", articles[2].URL)
 	}
 
 	// Verify URLs match

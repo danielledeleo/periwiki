@@ -88,7 +88,8 @@ func (s *articleService) PostArticle(article *wiki.Article) error {
 
 // PostArticleWithContext creates or updates an article with context for cancellation.
 func (s *articleService) PostArticleWithContext(ctx context.Context, article *wiki.Article) error {
-	x := sha512.Sum384([]byte(article.Title + article.Markdown))
+	// Hash based on markdown only - title is deprecated
+	x := sha512.Sum384([]byte(article.Markdown))
 	article.Hash = base64.URLEncoding.EncodeToString(x[:])
 
 	sourceRevision, err := s.GetArticleByRevisionID(article.URL, article.PreviousID)
@@ -101,8 +102,6 @@ func (s *articleService) PostArticleWithContext(ctx context.Context, article *wi
 	}
 
 	strip := bluemonday.StrictPolicy()
-
-	article.Title = strip.Sanitize(article.Title)
 	article.Comment = strip.Sanitize(article.Comment)
 
 	// If no queue is configured, use synchronous rendering (useful for tests)

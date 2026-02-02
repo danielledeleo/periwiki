@@ -10,7 +10,6 @@
     <article>
         <form action="{{articleURL .URL}}" method="POST">
         <input type="hidden" name="previous_id" value="{{.ID}}" />
-        <input name="title" id="title-edit" type="text" value="{{.Title}}" />
         <div class="pw-article-content">
             <textarea name="body" id="body-edit">{{.Markdown}}</textarea>
             <input type="text" name="comment" placeholder="Describe your changes..." {{ if $.Other.Preview }}value="{{.Comment}}"{{end}}/>
@@ -23,7 +22,7 @@
     {{ if .Other.Preview }}
     <article class="pw-preview">
         <div class="pw-callout pw-error">This is a preview. Nothing has been saved yet.</div>
-        <h1>{{.Article.Title}}</h1>
+        <h1>{{.Article.DisplayTitle}}</h1>
         <div class="pw-article-content">
             {{.Article.HTML}}
         </div>

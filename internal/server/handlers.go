@@ -205,7 +205,6 @@ func (a *App) ArticleHandler(rw http.ResponseWriter, req *http.Request) {
 	if req.Method == "POST" {
 		article.Revision = &wiki.Revision{}
 
-		article.Title = req.PostFormValue("title")
 		article.Markdown = req.PostFormValue("body")
 		article.Creator = user
 		a.articlePostHandler(article, rw, req)
@@ -525,7 +524,6 @@ func (a *App) handleArticlePost(rw http.ResponseWriter, req *http.Request, artic
 	article.URL = articleURL
 	article.Revision = &wiki.Revision{}
 
-	article.Title = req.PostFormValue("title")
 	article.Markdown = req.PostFormValue("body")
 	article.Comment = req.PostFormValue("comment")
 

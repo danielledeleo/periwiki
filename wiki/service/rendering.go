@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/danielledeleo/periwiki/render"
+	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -30,7 +31,10 @@ func NewRenderingService(renderer *render.HTMLRenderer, sanitizer *bluemonday.Po
 
 // Render converts markdown to sanitized HTML.
 func (s *renderingService) Render(markdown string) (string, error) {
-	unsafe, err := s.renderer.Render(markdown)
+	// Strip frontmatter before rendering
+	_, content := wiki.ParseFrontmatter(markdown)
+
+	unsafe, err := s.renderer.Render(content)
 	if err != nil {
 		return "", err
 	}

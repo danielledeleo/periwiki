@@ -1,11 +1,11 @@
 In progress
 
 Soon(ish)
-- [MED] Backlinks feature (will help trigger redlink re-renders)
 - [MED] Implement frontmatter schema (see docs/plans/frontmatter-design.md)
-  - ✅ Phase 0: Page interface and title inference complete
-  - ⏳ Phase 2: Frontmatter parser (NestedText-based, isolated package)
+  - ✅ Phase 1: Page interface and title inference
+  - ⏳ Phase 2: Frontmatter parser (NestedText-based)
   - ⏳ Phase 3: Integrate frontmatter into Article.DisplayTitle()
+- [MED] Backlinks feature (will help trigger redlink re-renders)
 - [MED] When editing from an old revision (restoring, essentially), allow it to publish instead of 409.
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - [MED] Article content injection fuzzing (security, testing)

@@ -82,19 +82,24 @@ func TestArticleDisplayTitle(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "returns revision title",
-			article:  NewArticle("test-url", "Test Article", "# Content"),
+			name:     "returns frontmatter display_title",
+			article:  NewArticle("test-url", "", "---\ndisplay_title: Test Article\n---\n# Content"),
 			expected: "Test Article",
 		},
 		{
-			name:     "falls back to inferred title when revision title is empty",
+			name:     "falls back to inferred title when no frontmatter",
 			article:  NewArticle("another-url", "", "# Content"),
 			expected: "Another-url",
 		},
 		{
 			name:     "returns title with special characters",
-			article:  NewArticle("special-url", "Article: A & B", "# Content"),
-			expected: "Article: A & B",
+			article:  NewArticle("special-url", "", "---\ndisplay_title: Article: A & B\n---\n# Content"),
+			expected: "Article: A &amp; B",
+		},
+		{
+			name:     "falls back to inferred when frontmatter has no display_title",
+			article:  NewArticle("my_page", "", "---\nother_field: value\n---\n# Content"),
+			expected: "My page",
 		},
 	}
 
@@ -114,44 +119,56 @@ func TestArticleDisplayTitleWithInference(t *testing.T) {
 	tests := []struct {
 		name     string
 		url      string
-		title    string
+		markdown string
 		expected string
 	}{
 		{
-			name:     "title set takes precedence",
+			name:     "frontmatter display_title takes precedence",
 			url:      "test_article",
-			title:    "Custom Title",
+			markdown: "---\ndisplay_title: Custom Title\n---\n# Content",
 			expected: "Custom Title",
 		},
 		{
-			name:     "empty title falls back to inferred title",
+			name:     "empty frontmatter falls back to inferred title",
 			url:      "test_article",
-			title:    "",
+			markdown: "---\n---\n# Content",
 			expected: "Test article",
 		},
 		{
-			name:     "infers title from URL with underscores",
+			name:     "explicitly empty display_title falls back to inferred title",
+			url:      "test_article",
+			markdown: "---\ndisplay_title:\n---\n# Content",
+			expected: "Test article",
+		},
+		{
+			name:     "no frontmatter infers title from URL with underscores",
 			url:      "My_Page",
-			title:    "",
+			markdown: "# Content",
 			expected: "My Page",
 		},
 		{
-			name:     "title takes precedence over URL",
+			name:     "frontmatter title takes precedence over URL",
 			url:      "some_url",
-			title:    "Explicit Title",
+			markdown: "---\ndisplay_title: Explicit Title\n---\n# Content",
 			expected: "Explicit Title",
 		},
 		{
-			name:     "empty URL with empty title returns empty",
+			name:     "empty URL with no frontmatter returns empty",
 			url:      "",
-			title:    "",
+			markdown: "# Content",
 			expected: "",
+		},
+		{
+			name:     "wikilink in display_title preserved",
+			url:      "test",
+			markdown: "---\ndisplay_title: See [[Related]]\n---\n# Content",
+			expected: "See [[Related]]",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			article := NewArticle(tt.url, tt.title, "# Content")
+			article := NewArticle(tt.url, "", tt.markdown)
 			if got := article.DisplayTitle(); got != tt.expected {
 				t.Errorf("Article.DisplayTitle() = %q, want %q", got, tt.expected)
 			}

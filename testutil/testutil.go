@@ -390,7 +390,7 @@ func (tdb *TestDB) SelectAllArticles() ([]*wiki.ArticleSummary, error) {
 		FROM Article a
 		JOIN Revision r ON a.id = r.article_id
 		GROUP BY a.id
-		ORDER BY r.title ASC
+		ORDER BY a.url ASC
 	`)
 	if err != nil {
 		return nil, err

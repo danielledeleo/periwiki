@@ -128,8 +128,9 @@ func TestCreateNewArticle(t *testing.T) {
 		t.Fatalf("article not found after creation: %v", err)
 	}
 
-	if article.Title != "New Test Article" {
-		t.Errorf("expected title 'New Test Article', got %q", article.Title)
+	// Title is now derived from URL or frontmatter, not form field
+	if article.DisplayTitle() != "New-test-article" {
+		t.Errorf("expected display title 'New-test-article', got %q", article.DisplayTitle())
 	}
 }
 
@@ -268,9 +269,8 @@ func TestEditRequiresChange(t *testing.T) {
 
 	client := loginUser(t, server, "nochangeuser", password)
 
-	// Try to post identical content
+	// Try to post identical content (title is deprecated, not sent)
 	formData := url.Values{
-		"title":       {"No Change"},
 		"body":        {"Same content"},
 		"previous_id": {"1"},
 	}
@@ -780,8 +780,9 @@ func TestAuthenticatedUserCanEditWhenAnonDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("article not found: %v", err)
 	}
-	if article.Title != "Auth Test Article" {
-		t.Errorf("expected title 'Auth Test Article', got %q", article.Title)
+	// Title is now derived from URL or frontmatter, not form field
+	if article.DisplayTitle() != "Auth-test-article" {
+		t.Errorf("expected display title 'Auth-test-article', got %q", article.DisplayTitle())
 	}
 }
 
@@ -820,8 +821,9 @@ func TestAnonymousCanEditWhenEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("article not found: %v", err)
 	}
-	if article.Title != "Anonymous Article" {
-		t.Errorf("expected title 'Anonymous Article', got %q", article.Title)
+	// Title is now derived from URL or frontmatter, not form field
+	if article.DisplayTitle() != "Anon-allowed-test" {
+		t.Errorf("expected display title 'Anon-allowed-test', got %q", article.DisplayTitle())
 	}
 }
 

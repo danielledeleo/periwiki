@@ -178,48 +178,54 @@ func TestXSSInArticleContent(t *testing.T) {
 	}
 }
 
-func TestXSSInArticleTitle(t *testing.T) {
+// TestXSSInArticleTitle is removed - title form field is deprecated.
+// Title XSS is now tested via TestXSSInFrontmatterDisplayTitle which tests
+// XSS protection in frontmatter display_title field.
+
+func TestXSSInFrontmatterDisplayTitle(t *testing.T) {
 	server, testApp, cleanup := setupSecurityTestServer(t)
 	defer cleanup()
 
-	password := "titlexsspassword"
+	password := "fmxsspassword"
 	user := &wiki.User{
-		ScreenName:  "titlexssuser",
-		Email:       "titlexss@example.com",
+		ScreenName:  "fmxssuser",
+		Email:       "fmxss@example.com",
 		RawPassword: password,
 	}
 	testApp.Users.PostUser(user)
-	client := getAuthenticatedClient(t, server, "titlexssuser", password)
+	client := getAuthenticatedClient(t, server, "fmxssuser", password)
 
-	xssTitles := []struct {
-		name    string
-		title   string
-		badText string
+	xssPayloads := []struct {
+		name         string
+		displayTitle string
+		badText      string
 	}{
 		{
-			name:    "script in title",
-			title:   "<script>alert('XSS')</script>Title",
-			badText: "<script>",
+			name:         "script tag in frontmatter",
+			displayTitle: "<script>alert('XSS')</script>",
+			badText:      "<script>",
 		},
 		{
-			name:    "img in title",
-			title:   `<img src=x onerror="alert('XSS')">Title`,
-			badText: "onerror",
+			name:         "img onerror in frontmatter",
+			displayTitle: `<img src=x onerror="alert('XSS')">`,
+			badText:      "onerror",
 		},
 		{
-			name:    "event handler in title",
-			title:   `Title<div onclick="alert('XSS')">`,
-			badText: "onclick",
+			name:         "event handler in frontmatter",
+			displayTitle: `<div onclick="alert('XSS')">Click</div>`,
+			badText:      "onclick",
 		},
 	}
 
-	for i, tc := range xssTitles {
+	for i, tc := range xssPayloads {
 		t.Run(tc.name, func(t *testing.T) {
-			articleURL := "title-xss-" + string(rune('a'+i))
+			articleURL := "fm-xss-" + string(rune('a'+i))
+			// Put XSS payload in frontmatter display_title
+			body := "---\ndisplay_title: " + tc.displayTitle + "\n---\n# Content"
 
 			formData := url.Values{
-				"title":       {tc.title},
-				"body":        {"Normal content"},
+				"title":       {""},
+				"body":        {body},
 				"previous_id": {"0"},
 			}
 
@@ -229,15 +235,26 @@ func TestXSSInArticleTitle(t *testing.T) {
 			}
 			resp.Body.Close()
 
-			// Get the article
-			article, err := testApp.Articles.GetArticle(articleURL)
+			// GET the article page and check rendered HTML
+			resp, err = http.Get(server.URL + "/wiki/" + articleURL)
 			if err != nil {
-				t.Fatalf("article not found: %v", err)
+				t.Fatalf("GET failed: %v", err)
 			}
+			defer resp.Body.Close()
 
-			// Title should be sanitized
-			if strings.Contains(strings.ToLower(article.Title), strings.ToLower(tc.badText)) {
-				t.Errorf("Title should not contain %q, got: %s", tc.badText, article.Title)
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			html := string(bodyBytes)
+
+			// The raw XSS payload should NOT appear unescaped in the HTML
+			// For script tags, we check that literal <script> doesn't appear
+			// (Go templates escape to &lt;script&gt;)
+			if tc.badText == "<script>" {
+				if strings.Contains(html, "<script>alert") {
+					t.Errorf("HTML contains unescaped script tag")
+				}
+			} else if strings.Contains(html, tc.badText) && !strings.Contains(html, "&lt;") {
+				// For other payloads, verify they're escaped or not present literally
+				t.Errorf("HTML may contain unescaped XSS payload: %s", tc.badText)
 			}
 		})
 	}

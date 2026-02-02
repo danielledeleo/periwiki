@@ -23,8 +23,12 @@ func (article *Article) String() string {
 }
 
 // DisplayTitle returns the article's title for display.
-// If the title is empty, it falls back to inferring a title from the URL.
+// Priority: frontmatter display_title > stored Title field > inferred from URL.
 func (a *Article) DisplayTitle() string {
+	fm, _ := ParseFrontmatter(a.Markdown)
+	if fm.DisplayTitle != "" {
+		return fm.DisplayTitle
+	}
 	if a.Title != "" {
 		return a.Title
 	}
@@ -32,8 +36,17 @@ func (a *Article) DisplayTitle() string {
 }
 
 // ArticleSummary represents minimal article info for sitemaps.
+// ArticleSummary represents minimal article info for sitemaps.
+// Note: Does not include markdown for performance - use InferTitle for display.
+// For frontmatter-based titles, use full Article with DisplayTitle().
 type ArticleSummary struct {
 	URL          string    `db:"url"`
 	Title        string    `db:"title"`
 	LastModified time.Time `db:"last_modified"`
+}
+
+// DisplayTitle returns the display title for the article summary.
+// Uses URL inference only - ArticleSummary doesn't fetch markdown for performance.
+func (s *ArticleSummary) DisplayTitle() string {
+	return InferTitle(s.URL)
 }
