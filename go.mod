@@ -18,7 +18,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/viper v1.21.0
-	github.com/yuin/goldmark v1.7.4
+	github.com/yuin/goldmark v1.7.16
 	golang.org/x/crypto v0.47.0
 	golang.org/x/net v0.49.0
 	golang.org/x/text v0.33.0
