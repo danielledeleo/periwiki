@@ -340,7 +340,7 @@ func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 		`SELECT Revision.id, hashval, created, comment, previous_id, User.screenname, length(markdown)
 			FROM Article JOIN Revision ON Article.id = Revision.article_id
 					     JOIN User ON Revision.user_id = User.id
-			WHERE Article.url = ? ORDER BY created DESC`, url)
+			WHERE Article.url = ? ORDER BY Revision.id DESC`, url)
 	if err != nil {
 		return nil, err
 	}

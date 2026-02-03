@@ -111,7 +111,12 @@ func (s *articleService) PostArticleWithContext(ctx context.Context, article *wi
 			return err
 		}
 		article.HTML = html
-		return s.repo.InsertArticle(article)
+		if err := s.repo.InsertArticle(article); err != nil {
+			return err
+		}
+		// Update article.ID to match the queued path behavior
+		article.ID = article.PreviousID + 1
+		return nil
 	}
 
 	// Insert revision with render_status='queued' and empty HTML

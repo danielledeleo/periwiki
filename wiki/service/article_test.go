@@ -2,7 +2,6 @@ package service_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/danielledeleo/periwiki/testutil"
 	"github.com/danielledeleo/periwiki/wiki"
@@ -84,23 +83,23 @@ func TestPostArticle(t *testing.T) {
 			t.Fatalf("PostArticle (v1) failed: %v", err)
 		}
 
-		// Small delay to ensure unique timestamps
-		time.Sleep(10 * time.Millisecond)
-
-		// Get the article to find its revision ID
-		v1, err := app.Articles.GetArticle("revision-test")
-		if err != nil {
-			t.Fatalf("GetArticle failed: %v", err)
+		// PostArticle should update article.ID - no need to re-fetch
+		if article.ID != 1 {
+			t.Fatalf("expected article.ID = 1 after PostArticle, got %d", article.ID)
 		}
 
-		// Create new revision with a fresh article object and different content
+		// Create new revision using the updated ID directly
 		article2 := wiki.NewArticle("revision-test", "Version 2 content")
 		article2.Creator = user
-		article2.PreviousID = v1.ID
+		article2.PreviousID = article.ID
 
 		err = app.Articles.PostArticle(article2)
 		if err != nil {
 			t.Fatalf("PostArticle (v2) failed: %v", err)
+		}
+
+		if article2.ID != 2 {
+			t.Fatalf("expected article2.ID = 2 after PostArticle, got %d", article2.ID)
 		}
 
 		// Verify latest is v2
@@ -114,6 +113,54 @@ func TestPostArticle(t *testing.T) {
 		}
 		if latest.ID != 2 {
 			t.Errorf("expected revision ID 2, got %d", latest.ID)
+		}
+	})
+
+	t.Run("chains multiple revisions without re-fetching", func(t *testing.T) {
+		// This test verifies that PostArticle correctly updates article.ID,
+		// allowing revision chaining without intermediate GetArticle calls.
+		article := wiki.NewArticle("chain-test", "Version 1")
+		article.Creator = user
+		article.PreviousID = 0
+
+		if err := app.Articles.PostArticle(article); err != nil {
+			t.Fatalf("revision 1: %v", err)
+		}
+		if article.ID != 1 {
+			t.Fatalf("after rev 1: expected ID=1, got %d", article.ID)
+		}
+
+		// Chain revisions using only the updated article.ID
+		for i := 2; i <= 5; i++ {
+			next := wiki.NewArticle("chain-test", "Version "+string(rune('0'+i)))
+			next.Creator = user
+			next.PreviousID = article.ID
+
+			if err := app.Articles.PostArticle(next); err != nil {
+				t.Fatalf("revision %d: %v", i, err)
+			}
+			if next.ID != i {
+				t.Fatalf("after rev %d: expected ID=%d, got %d", i, i, next.ID)
+			}
+
+			article = next // carry forward for next iteration
+		}
+
+		// Verify final state
+		latest, err := app.Articles.GetArticle("chain-test")
+		if err != nil {
+			t.Fatalf("GetArticle: %v", err)
+		}
+		if latest.ID != 5 {
+			t.Errorf("expected latest revision ID=5, got %d", latest.ID)
+		}
+
+		history, err := app.Articles.GetRevisionHistory("chain-test")
+		if err != nil {
+			t.Fatalf("GetRevisionHistory: %v", err)
+		}
+		if len(history) != 5 {
+			t.Errorf("expected 5 revisions in history, got %d", len(history))
 		}
 	})
 }
@@ -251,15 +298,10 @@ func TestGetRevisionHistory(t *testing.T) {
 		t.Fatalf("PostArticle failed: %v", err)
 	}
 
-	v1, _ := app.Articles.GetArticle("history-test")
-
-	// Small delay to ensure unique timestamps
-	time.Sleep(10 * time.Millisecond)
-
-	// Create second revision with fresh article object and different content
+	// PostArticle updates article.ID, so we can chain directly
 	article2 := wiki.NewArticle("history-test", "Version 2 - Updated content")
 	article2.Creator = user
-	article2.PreviousID = v1.ID
+	article2.PreviousID = article.ID
 	article2.Comment = "Update"
 	err = app.Articles.PostArticle(article2)
 	if err != nil {

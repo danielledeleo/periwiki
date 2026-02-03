@@ -29,7 +29,7 @@ func InitializeStatements(conn *sqlx.DB) (*PreparedStatements, error) {
 			JOIN User ON Revision.user_id = User.id
 			WHERE Article.url = ?`
 
-	stmts.SelectArticleByLatestRevisionStmt, err = conn.Preparex(q + ` ORDER BY created DESC LIMIT 1`)
+	stmts.SelectArticleByLatestRevisionStmt, err = conn.Preparex(q + ` ORDER BY Revision.id DESC LIMIT 1`)
 	if err != nil {
 		return nil, err
 	}
