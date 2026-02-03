@@ -21,7 +21,7 @@ import (
 // Templater ecapsulates the map to prevent direct access. See RenderTemplate
 type Templater struct {
 	templates map[string]*template.Template
-	funcs     map[string]interface{}
+	funcs     map[string]any
 }
 
 // HTMLItem is used to inject attributes and text into HTML templates.
@@ -32,16 +32,19 @@ type HTMLItem struct {
 
 // Attributes returns a formatted string of attributes (set by AddAttribute)
 func (item HTMLItem) Attributes() string {
-	result := ""
+	var result strings.Builder
 	for key, val := range item.attr {
-		attrs := ""
-		for _, attr := range val {
-			attrs += attr + " "
+		result.WriteString(key)
+		result.WriteString(`="`)
+		for i, attr := range val {
+			if i > 0 {
+				result.WriteByte(' ')
+			}
+			result.WriteString(attr)
 		}
-		attrs = attrs[:len(attrs)-1]
-		result += fmt.Sprintf(`%s="%s" `, key, attrs)
+		result.WriteString(`" `)
 	}
-	return result
+	return result.String()
 }
 
 // AddAttribute creates a key/value pair to represent and format HTML attributes into a string
@@ -131,7 +134,7 @@ func (t *Templater) Load(baseGlob string, mainGlobs ...string) error {
 }
 
 // RenderTemplate makes sure templates exist and renders them. Don't mix up name and base!
-func (t *Templater) RenderTemplate(w io.Writer, name string, base string, data map[string]interface{}) error {
+func (t *Templater) RenderTemplate(w io.Writer, name string, base string, data map[string]any) error {
 	// Ensure the template exists in the map.
 	tmpl, ok := t.templates[name]
 	if !ok {
@@ -155,7 +158,7 @@ func (t *Templater) RenderTemplate(w io.Writer, name string, base string, data m
 
 // ensureTitle checks if data["Article"] has a display title. If not, it derives
 // a title from the template name and logs a debug message.
-func (t *Templater) ensureTitle(data map[string]interface{}, templateName string) {
+func (t *Templater) ensureTitle(data map[string]any, templateName string) {
 	// Check if Article exists and has a display title
 	if article, ok := data["Article"]; ok {
 		switch a := article.(type) {
@@ -163,7 +166,7 @@ func (t *Templater) ensureTitle(data map[string]interface{}, templateName string
 			if a["Title"] != "" {
 				return
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			if title, ok := a["Title"].(string); ok && title != "" {
 				return
 			}
@@ -192,7 +195,7 @@ func (t *Templater) ensureTitle(data map[string]interface{}, templateName string
 		data["Article"] = map[string]string{"Title": title}
 	} else if a, ok := data["Article"].(map[string]string); ok {
 		a["Title"] = title
-	} else if a, ok := data["Article"].(map[string]interface{}); ok {
+	} else if a, ok := data["Article"].(map[string]any); ok {
 		a["Title"] = title
 	}
 }

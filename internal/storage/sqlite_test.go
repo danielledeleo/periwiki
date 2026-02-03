@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
@@ -254,20 +255,13 @@ func TestSelectRandomArticleURL(t *testing.T) {
 	}
 
 	// Test random selection returns valid URL
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		url, err := db.SelectRandomArticleURL()
 		if err != nil {
 			t.Fatalf("SelectRandomArticleURL failed: %v", err)
 		}
 
-		found := false
-		for _, valid := range urls {
-			if url == valid {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !slices.Contains(urls, url) {
 			t.Errorf("SelectRandomArticleURL returned invalid URL: %q", url)
 		}
 	}

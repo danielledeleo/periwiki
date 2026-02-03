@@ -2,6 +2,7 @@ package wiki
 
 import (
 	"encoding/json"
+	"maps"
 	"regexp"
 
 	"github.com/danielledeleo/nestedtext"
@@ -14,11 +15,6 @@ var strictPolicy = bluemonday.StrictPolicy()
 // frontmatterRegex matches YAML-style fences at document start.
 // Requires newline or end-of-string after closing fence.
 var frontmatterRegex = regexp.MustCompile(`(?s)\A---\r?\n(.*?)(?:\r?\n)?---(?:\r?\n|\z)`)
-
-// knownFields maps JSON field names to their NestedText field names.
-var knownFields = map[string]string{
-	"display_title": "display_title",
-}
 
 // Frontmatter holds parsed article metadata.
 // Known fields are typed; unknown fields go in Extra.
@@ -42,9 +38,7 @@ func (fm Frontmatter) MarshalJSON() ([]byte, error) {
 	m := make(map[string]string)
 
 	// Add extra fields first (so known fields take precedence)
-	for k, v := range fm.Extra {
-		m[k] = v
-	}
+	maps.Copy(m, fm.Extra)
 
 	// Add known fields
 	if fm.DisplayTitle != "" {
