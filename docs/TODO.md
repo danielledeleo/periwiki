@@ -2,7 +2,7 @@ Soon(ish)
 - [MED] Backlinks feature (will help trigger redlink re-renders)
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - [MED] Article content injection fuzzing (security, testing)
-- Theme template file watcher (force re-render)
+- Stale content re-rendering
 - Page alias and redirect system (design TBD)
 - Article visibility settings
   - draft
@@ -74,7 +74,7 @@ Depends on user-defined templates (see docs/plans/user-templates-design.md)
   - Side cards
 - Rich customizable home page (featured articles, other custom widgets)
 
-Dependency Maintenance (January 2025)
+Dependency Maintenance (January 2026)
 - [MEDIUM] Evaluate SQLBoiler alternatives (volatiletech/sqlboiler)
   - Maintainers recommend Bob (https://bob.stephenafamo.com) or sqlc as alternatives
   - Consider Bun, others found here (https://awesome-go.com/#orm)

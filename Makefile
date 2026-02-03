@@ -1,6 +1,10 @@
 all: periwiki
 
-gosources := $(wildcard *.go) $(wildcard **/*.go) go.sum go.mod
+find_go = find . -name '*.go' -not -path './model/*'
+find_templates = find templates -name '*.html'
+
+gosources := $(shell $(find_go)) go.sum go.mod
+templates := $(shell $(find_templates))
 
 .bin:
 	mkdir -p .bin
@@ -17,11 +21,15 @@ internal/storage/skeleton.db: internal/storage/schema.sql
 model: internal/storage/skeleton.db sqlboiler.toml .bin/sqlboiler .bin/sqlboiler-sqlite3
 	PATH="$(shell pwd)/.bin:$(PATH)" go generate
 
-periwiki: model $(gosources)
+periwiki: model $(gosources) $(templates)
 	go build -o periwiki ./cmd/periwiki
 
 run: periwiki
 	./periwiki
+
+watch:
+	@command -v entr >/dev/null 2>&1 || { echo "entr not found — see https://eradman.com/entrproject/"; exit 1; }
+	{ $(find_go); $(find_templates); echo ./Makefile; } | entr -r make run
 
 test: model
 	go test ./...
@@ -47,4 +55,19 @@ clean:
 	rm -rf model
 	rm -f coverage.out coverage.html
 
-.PHONY: all run test test-verbose test-coverage test-coverage-html test-race clean
+help:
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "  all                Build the periwiki binary (default)"
+	@echo "  run                Build and run the server"
+	@echo "  watch              Rebuild and restart on file changes (requires entr)"
+	@echo "  model              Regenerate SQLBoiler models from schema"
+	@echo "  test               Run tests"
+	@echo "  test-verbose       Run tests with verbose output"
+	@echo "  test-coverage      Run tests with coverage summary"
+	@echo "  test-coverage-html Run tests and generate HTML coverage report"
+	@echo "  test-race          Run tests with race detector"
+	@echo "  clean              Remove build artifacts and generated files"
+	@echo "  help               Show this help"
+
+.PHONY: all run watch test test-verbose test-coverage test-coverage-html test-race clean help
