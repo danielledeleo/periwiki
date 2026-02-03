@@ -41,7 +41,7 @@ Periwiki<sup>1</sup> is a [portmanteau](https://en.wikipedia.org/wiki/Portmantea
 
 ## License
 
-[Mozilla Public License](LICENSE). Share what you do with it!
+[GNU Affero General Public License v3.0](LICENSE)
 
 ---
 
