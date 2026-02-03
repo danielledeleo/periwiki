@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/gorilla/mux"
@@ -640,16 +641,24 @@ func (a *App) ErrorHandler(responseCode int, rw http.ResponseWriter, req *http.R
 	}
 }
 
-func (a *App) SpecialPageHandler(rw http.ResponseWriter, req *http.Request) {
+// NamespaceHandler routes requests for namespaced URLs (anything with a colon).
+// Currently only the "Special" namespace is handled; all other namespaces return 404.
+func (a *App) NamespaceHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	pageName := vars["page"]
+	namespace := vars["namespace"]
+	page := vars["page"]
 
-	handler, ok := a.SpecialPages.Get(pageName)
-	if !ok {
-		a.ErrorHandler(http.StatusNotFound, rw, req,
-			fmt.Errorf("special page '%s' does not exist", pageName))
+	if strings.EqualFold(namespace, "special") {
+		handler, ok := a.SpecialPages.Get(page)
+		if !ok {
+			a.ErrorHandler(http.StatusNotFound, rw, req,
+				fmt.Errorf("special page '%s' does not exist", page))
+			return
+		}
+		handler.Handle(rw, req)
 		return
 	}
 
-	handler.Handle(rw, req)
+	a.ErrorHandler(http.StatusNotFound, rw, req,
+		fmt.Errorf("namespace '%s' is not recognized", namespace))
 }

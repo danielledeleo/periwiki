@@ -25,10 +25,16 @@ func (m *mockRandomGetter) GetRandomArticleURL() (string, error) {
 func setupTestRouter(specialPages *special.Registry) *mux.Router {
 	router := mux.NewRouter()
 
-	// Special pages route (must come before article route)
-	router.HandleFunc("/wiki/Special:{page}", func(rw http.ResponseWriter, req *http.Request) {
+	// Namespace route (must come before article route) - catches all Foo:Bar URLs
+	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", func(rw http.ResponseWriter, req *http.Request) {
 		vars := mux.Vars(req)
+		namespace := vars["namespace"]
 		pageName := vars["page"]
+
+		if !strings.EqualFold(namespace, "special") {
+			rw.WriteHeader(http.StatusNotFound)
+			return
+		}
 
 		handler, ok := specialPages.Get(pageName)
 		if !ok {

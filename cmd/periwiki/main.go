@@ -26,7 +26,7 @@ func main() {
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
 	router.HandleFunc("/", app.HomeHandler).Methods("GET")
 
-	router.HandleFunc("/wiki/Special:{page}", app.SpecialPageHandler).Methods("GET", "POST")
+	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", app.NamespaceHandler).Methods("GET", "POST")
 
 	router.HandleFunc("/wiki/{article}", app.ArticleDispatcher).Methods("GET", "POST")
 

@@ -35,7 +35,7 @@ func setupHandlerTestRouter(t *testing.T) (*mux.Router, *testutil.TestApp, func(
 	router.Use(app.SessionMiddleware)
 
 	router.HandleFunc("/", app.HomeHandler).Methods("GET")
-	router.HandleFunc("/wiki/Special:{page}", app.SpecialPageHandler).Methods("GET")
+	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", app.NamespaceHandler).Methods("GET")
 	router.HandleFunc("/wiki/{article}", app.ArticleDispatcher).Methods("GET", "POST")
 
 	router.HandleFunc("/user/register", app.RegisterHandler).Methods("GET")
@@ -582,7 +582,7 @@ func TestSpecialPageRegistry(t *testing.T) {
 
 	router := mux.NewRouter()
 	router.Use(app.SessionMiddleware)
-	router.HandleFunc("/wiki/Special:{page}", app.SpecialPageHandler).Methods("GET")
+	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", app.NamespaceHandler).Methods("GET")
 
 	req := httptest.NewRequest("GET", "/wiki/Special:Custom", nil)
 	rr := httptest.NewRecorder()
