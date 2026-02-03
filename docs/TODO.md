@@ -1,8 +1,5 @@
-In progress
-
 Soon(ish)
 - [MED] Backlinks feature (will help trigger redlink re-renders)
-- [MED] When editing from an old revision (restoring, essentially), allow it to publish instead of 409.
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - [MED] Article content injection fuzzing (security, testing)
 - Theme template file watcher (force re-render)
@@ -11,7 +8,7 @@ Soon(ish)
   - draft
   - private
   - internal-only
-- Home page as a stanard article
+- Home page as a standard article
 - Improve editing request flow
   - unmodified content submissions should still re-render
   - submission errors should appear above editor window, not a new page (unmodified, conflicts)
@@ -31,6 +28,7 @@ Soon(ish)
 - User settings
 - Password recovery, 2FA, Login providers
 - Backup/data export mechanism
+- Tagging system (frontmatter-based, with tag pages)
 - 404 page with "Did you mean /wiki/notfound?" link (?)
 - Two column References section layout like wikipedia
 - Add extension for custom superscripts/subscripts, [citation needed]-style, not bound to a footnote
@@ -47,6 +45,7 @@ Configuration and Runtime
 - CLI flags to override config file path, database file, host, log level, etc.
 
 Down the line
+- SSG mode (full static builds)
 - Custom goldmark table ParagraphTransformer that tracks [[/]] bracket depth, allowing unescaped pipes in wikilinks inside tables (currently requires \| escape)
 - Moderation tools?
 - Admin panel
@@ -74,7 +73,6 @@ Depends on user-defined templates (see docs/plans/user-templates-design.md)
   - Images (thumbnails and large view)
   - Side cards
 - Rich customizable home page (featured articles, other custom widgets)
-- Tagging system (frontmatter-based, with tag pages)
 
 Dependency Maintenance (January 2025)
 - [MEDIUM] Evaluate SQLBoiler alternatives (volatiletech/sqlboiler)

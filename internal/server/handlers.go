@@ -293,11 +293,20 @@ func (a *App) handleView(rw http.ResponseWriter, req *http.Request, articleURL s
 			a.ErrorHandler(http.StatusNotFound, rw, req, err)
 			return
 		}
-		err = a.RenderTemplate(rw, "article.html", "index.html", map[string]interface{}{
+
+		// Check if this is an old revision by comparing with current
+		templateData := map[string]interface{}{
 			"Page":    article,
 			"Article": article,
 			"Context": req.Context(),
-		})
+		}
+		if current, err := a.Articles.GetArticle(articleURL); err == nil && current.ID != article.ID {
+			templateData["IsOldRevision"] = true
+			templateData["CurrentRevisionID"] = current.ID
+			templateData["CurrentRevisionCreated"] = current.Created
+		}
+
+		err = a.RenderTemplate(rw, "article.html", "index.html", templateData)
 		check(err)
 		return
 	}
@@ -378,6 +387,9 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 	var article *wiki.Article
 	var err error
 
+	other := make(map[string]interface{})
+	other["Preview"] = false
+
 	// Check if editing a specific revision (for restore)
 	if revisionStr := params.Get("revision"); revisionStr != "" {
 		revisionID, err := strconv.Atoi(revisionStr)
@@ -393,6 +405,13 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 			a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
 			return
 		}
+
+		// Fetch current revision for conflict detection
+		if current, currentErr := a.Articles.GetArticle(articleURL); currentErr == nil && current.ID != article.ID {
+			other["IsRestoring"] = true
+			other["SourceRevisionID"] = article.ID
+			other["CurrentRevisionID"] = current.ID
+		}
 	} else {
 		// Edit current revision
 		article, err = a.Articles.GetArticle(articleURL)
@@ -404,9 +423,6 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 			return
 		}
 	}
-
-	other := make(map[string]interface{})
-	other["Preview"] = false
 
 	err = a.RenderTemplate(rw, "article_edit.html", "index.html", map[string]interface{}{
 		"Page":    article,

@@ -1,6 +1,12 @@
 {{define "content"}}
 <div id="article-area">
     {{ with .Article }}
+    {{if $.Other.IsRestoring}}
+    <div class="pw-callout pw-info">
+        You are restoring an old revision of this article (revision {{$.Other.SourceRevisionID}}).
+        Saving will create a new revision with this content.
+    </div>
+    {{end}}
     <ul class="pw-tabs">
         <li><a href="{{articleURL .URL}}">Article</a></li>
         <li class="pw-active"><a href="{{editURL .URL .ID}}">Edit</a></li>
@@ -9,7 +15,11 @@
 
     <article>
         <form action="{{articleURL .URL}}" method="POST">
+        {{if $.Other.CurrentRevisionID}}
+        <input type="hidden" name="previous_id" value="{{$.Other.CurrentRevisionID}}" />
+        {{else}}
         <input type="hidden" name="previous_id" value="{{.ID}}" />
+        {{end}}
         <div class="pw-article-content">
             <textarea name="body" id="body-edit">{{.Markdown}}</textarea>
             <input type="text" name="comment" placeholder="Describe your changes..." {{ if $.Other.Preview }}value="{{.Comment}}"{{end}}/>

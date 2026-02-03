@@ -1,6 +1,12 @@
 {{define "content"}}
 <div id="article-area">
     {{with .Article }}
+    {{if $.IsOldRevision}}
+    <div class="pw-callout pw-info">
+        You are viewing an old revision of this article from {{.Created.Format "January 2, 2006 at 3:04 pm"}}.
+        <a href="{{articleURL .URL}}">View current version</a>
+    </div>
+    {{end}}
     <ul class="pw-tabs">
         <li class="pw-active"><a href="{{articleURL .URL}}">Article</a></li>
         <li><a href="{{editURL .URL .ID}}">Edit</a></li>
