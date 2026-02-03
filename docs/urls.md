@@ -27,7 +27,11 @@ Edit forms POST to `/wiki/{article}` with form data including:
 - `previous_id` — Revision ID being edited from
 - `action` — "submit" or "preview"
 
-## Special pages
+## Namespaced URLs
+
+All URLs containing a colon (`Foo:Bar`) are routed to `NamespaceHandler`. Only recognized namespaces are served; unrecognized namespaces return 404. This reserves the colon as a system-controlled namespace delimiter.
+
+### Special pages
 
 | URL | Description |
 |-----|-------------|
@@ -35,6 +39,8 @@ Edit forms POST to `/wiki/{article}` with form data including:
 | `/wiki/Special:RerenderAll` | Rerender all articles (auth required) |
 | `/wiki/Special:Sitemap` | HTML sitemap |
 | `/wiki/Special:Sitemap.xml` | XML sitemap |
+
+The `Special` namespace is case-insensitive (`special:Random` also works).
 
 ## Authentication
 
@@ -65,6 +71,7 @@ WikiLinks resolve to `/wiki/` URLs:
 Spaces become underscores. Leading/trailing whitespace is trimmed.
 
 **Key files:**
-- `server.go` — route definitions and `articleDispatcher`
+- `cmd/periwiki/main.go` — route definitions
+- `internal/server/handlers.go` — `ArticleDispatcher`, `NamespaceHandler`, and all article handlers
 - `templater/urlhelper.go` — URL generation helpers for templates
 - `extensions/wikilink_underscore.go` — WikiLink URL resolution

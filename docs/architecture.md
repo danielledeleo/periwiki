@@ -14,12 +14,12 @@ HTTP Request
          │
          ▼
 ┌──────────────────┐
-│  Middleware      │  session_middleware.go — injects User into context
+│  Middleware      │  internal/server/middleware.go — injects User into context
 └────────┬─────────┘
          │
          ▼
 ┌──────────────────┐
-│  Handler         │  server.go — access user via req.Context().Value(wiki.UserKey)
+│  Handler         │  internal/server/handlers.go — access user via req.Context().Value(wiki.UserKey)
 └────────┬─────────┘
          │
          ▼
@@ -40,36 +40,43 @@ HTTP Request
 
 ## Dependency injection
 
-All services are interfaces. The `app` struct in `server.go` holds service references:
+All services are interfaces. The `App` struct in `internal/server/app.go` holds service references:
 
 ```go
-type app struct {
+type App struct {
     *templater.Templater          // embedded for RenderTemplate()
-    articles     service.ArticleService
-    users        service.UserService
-    sessions     service.SessionService
-    // ...
+    Articles      service.ArticleService
+    Users         service.UserService
+    Sessions      service.SessionService
+    Rendering     service.RenderingService
+    Preferences   service.PreferenceService
+    SpecialPages  *special.Registry
+    Config        *wiki.Config
+    RuntimeConfig *wiki.RuntimeConfig
 }
 ```
 
-Services are initialized in `setup.go` via constructor functions:
+Services are initialized in `internal/server/setup.go` via constructor functions:
 
 ```go
 renderingService := service.NewRenderingService(renderer, sanitizer)
 articleService := service.NewArticleService(database, renderingService)
 ```
 
-Handlers access services through the receiver: `a.articles.GetArticle(url)`
+Handlers access services through the receiver: `a.Articles.GetArticle(url)`
 
 ## Directory structure
 
 | Directory | Purpose |
 |-----------|---------|
-| `/` (root) | Entry point, handlers, middleware, config |
-| `wiki/` | Domain types (`Article`, `User`, `Revision`) |
+| `cmd/periwiki/` | Entry point (`main.go` — route definitions) |
+| `internal/server/` | HTTP handlers, middleware, app setup |
+| `internal/storage/` | SQLite repository implementations |
+| `internal/renderqueue/` | Async render queue (worker pool, priority heap) |
+| `internal/config/` | File-based configuration |
+| `wiki/` | Domain types (`Article`, `User`, `Revision`, `Frontmatter`) |
 | `wiki/service/` | Service interfaces and implementations |
 | `wiki/repository/` | Repository interfaces (no implementations) |
-| `internal/storage/` | SQLite repository implementations |
 | `render/` | Goldmark markdown rendering |
 | `extensions/` | Markdown extensions (WikiLinks, footnotes) |
 | `special/` | Special page handlers |
@@ -81,12 +88,15 @@ Handlers access services through the receiver: `a.articles.GetArticle(url)`
 
 | File | Purpose |
 |------|---------|
-| `server.go` | `main()`, routes, handlers, `app` struct |
-| `setup.go` | `Setup()` — creates all services and wires dependencies |
-| `config.go` | `SetupConfig()` — loads `config.yaml` |
-| `session_middleware.go` | Injects user into request context |
+| `cmd/periwiki/main.go` | `main()`, route definitions |
+| `internal/server/app.go` | `App` struct (holds all service references) |
+| `internal/server/handlers.go` | `ArticleDispatcher`, `NamespaceHandler`, all HTTP handlers |
+| `internal/server/setup.go` | `Setup()` — creates all services and wires dependencies |
+| `internal/server/middleware.go` | Session middleware — injects user into request context |
+| `internal/config/config.go` | `SetupConfig()` — loads `config.yaml` |
 | `wiki/context.go` | Defines `UserKey` for context access |
 | `wiki/errors.go` | Sentinel errors (`ErrGenericNotFound`, etc.) |
+| `wiki/frontmatter.go` | NestedText frontmatter parsing |
 
 ## Error handling
 
