@@ -42,6 +42,7 @@ test-race: model
 
 clean:
 	rm -rf .bin
+	rm -f periwiki
 	rm -rf internal/storage/skeleton.db
 	rm -rf model
 	rm -f coverage.out coverage.html

@@ -2,6 +2,36 @@
 
 Periwiki articles are written in [CommonMark](https://commonmark.org/) Markdown, extended with WikiLink syntax for connecting articles.
 
+## Frontmatter
+
+Articles can include optional frontmatter at the very beginning, enclosed in `---` fences. Frontmatter uses [NestedText](https://nestedtext.org/) format (similar to YAML, but all values are strings—no surprises with wikilinks).
+
+```markdown
+---
+display_title: The Common Periwinkle
+---
+
+The rest of the article content goes here...
+```
+
+### Supported fields
+
+| Field | Purpose |
+|-------|---------|
+| `display_title` | Override the article's display title (URL remains unchanged) |
+
+Additional fields are preserved for future use.
+
+### Why NestedText?
+
+YAML has a footgun: `[[wikilinks]]` are silently parsed as nested arrays. NestedText treats all values as strings, so wikilinks work naturally:
+
+```
+---
+see_also: [[Related Article]]
+---
+```
+
 ## WikiLinks
 
 WikiLinks use double-bracket syntax to link between articles:
