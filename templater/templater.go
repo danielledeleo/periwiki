@@ -69,7 +69,7 @@ type ExtensionTemplates map[string]*template.Template
 // Returns error if any required template file is missing.
 func (t *Templater) LoadExtensionTemplates(templatesDir, name string, required []string) (ExtensionTemplates, error) {
 	templates := make(ExtensionTemplates)
-	dir := filepath.Join(templatesDir, "extensions", name)
+	dir := filepath.Join(templatesDir, "_render", name)
 
 	for _, tmplName := range required {
 		path := filepath.Join(dir, tmplName+".html")

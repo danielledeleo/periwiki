@@ -322,3 +322,158 @@ func TestGetRevisionHistory(t *testing.T) {
 		t.Errorf("expected newest revision first (ID 2), got %d", history[0].ID)
 	}
 }
+
+func TestLazyRerendering(t *testing.T) {
+	app, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
+
+	// Create an article with two revisions.
+	article := wiki.NewArticle("lazy-test", "Version 1")
+	article.Creator = user
+	article.PreviousID = 0
+	if err := app.Articles.PostArticle(article); err != nil {
+		t.Fatalf("PostArticle (v1) failed: %v", err)
+	}
+
+	article2 := wiki.NewArticle("lazy-test", "Version 2 content")
+	article2.Creator = user
+	article2.PreviousID = article.ID
+	if err := app.Articles.PostArticle(article2); err != nil {
+		t.Fatalf("PostArticle (v2) failed: %v", err)
+	}
+
+	// Sanity check: both revisions start with HTML.
+	v1, err := app.Articles.GetArticleByRevisionID("lazy-test", 1)
+	if err != nil {
+		t.Fatalf("GetArticleByRevisionID(1) failed: %v", err)
+	}
+	if v1.HTML == "" {
+		t.Fatal("v1 should have HTML before invalidation")
+	}
+	originalV1HTML := v1.HTML
+
+	v2, err := app.Articles.GetArticle("lazy-test")
+	if err != nil {
+		t.Fatalf("GetArticle failed: %v", err)
+	}
+	if v2.HTML == "" {
+		t.Fatal("v2 (head) should have HTML before invalidation")
+	}
+	originalV2HTML := v2.HTML
+
+	t.Run("InvalidateNonHeadRevisionHTML nullifies only old revisions", func(t *testing.T) {
+		affected, err := app.DB.InvalidateNonHeadRevisionHTML()
+		if err != nil {
+			t.Fatalf("InvalidateNonHeadRevisionHTML failed: %v", err)
+		}
+		if affected != 1 {
+			t.Errorf("expected 1 affected row, got %d", affected)
+		}
+
+		// Head revision (v2) should still have HTML.
+		var headHTML string
+		err = app.DB.Conn().Get(&headHTML,
+			`SELECT COALESCE(html, '') FROM Revision
+			 WHERE id = 2 AND article_id = (SELECT id FROM Article WHERE url = 'lazy-test')`)
+		if err != nil {
+			t.Fatalf("querying head HTML: %v", err)
+		}
+		if headHTML == "" {
+			t.Error("head revision HTML should not be nullified")
+		}
+
+		// Old revision (v1) should have NULL HTML.
+		var oldHTML *string
+		err = app.DB.Conn().Get(&oldHTML,
+			`SELECT html FROM Revision
+			 WHERE id = 1 AND article_id = (SELECT id FROM Article WHERE url = 'lazy-test')`)
+		if err != nil {
+			t.Fatalf("querying old HTML: %v", err)
+		}
+		if oldHTML != nil {
+			t.Error("old revision HTML should be NULL after invalidation")
+		}
+	})
+
+	t.Run("fetching invalidated revision triggers lazy re-render", func(t *testing.T) {
+		v1Again, err := app.Articles.GetArticleByRevisionID("lazy-test", 1)
+		if err != nil {
+			t.Fatalf("GetArticleByRevisionID(1) after invalidation: %v", err)
+		}
+		if v1Again.HTML == "" {
+			t.Fatal("lazy re-render should have produced HTML")
+		}
+		// The re-rendered HTML should be equivalent (same markdown, same templates).
+		if v1Again.HTML != originalV1HTML {
+			t.Errorf("lazy-rendered HTML differs from original:\n  got:  %q\n  want: %q", v1Again.HTML, originalV1HTML)
+		}
+
+		// Verify the HTML was persisted back to the database.
+		var persistedHTML string
+		err = app.DB.Conn().Get(&persistedHTML,
+			`SELECT COALESCE(html, '') FROM Revision
+			 WHERE id = 1 AND article_id = (SELECT id FROM Article WHERE url = 'lazy-test')`)
+		if err != nil {
+			t.Fatalf("querying persisted HTML: %v", err)
+		}
+		if persistedHTML == "" {
+			t.Error("lazy-rendered HTML should be persisted to the database")
+		}
+	})
+
+	t.Run("head revision is not affected by ensureHTML", func(t *testing.T) {
+		head, err := app.Articles.GetArticle("lazy-test")
+		if err != nil {
+			t.Fatalf("GetArticle after invalidation: %v", err)
+		}
+		if head.HTML != originalV2HTML {
+			t.Errorf("head HTML should be unchanged:\n  got:  %q\n  want: %q", head.HTML, originalV2HTML)
+		}
+	})
+}
+
+func TestLazyRerenderingMultipleArticles(t *testing.T) {
+	app, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
+
+	// Create two articles, each with two revisions.
+	for _, url := range []string{"article-a", "article-b"} {
+		a := wiki.NewArticle(url, "First version of "+url)
+		a.Creator = user
+		a.PreviousID = 0
+		if err := app.Articles.PostArticle(a); err != nil {
+			t.Fatalf("PostArticle(%s, v1): %v", url, err)
+		}
+
+		b := wiki.NewArticle(url, "Second version of "+url)
+		b.Creator = user
+		b.PreviousID = a.ID
+		if err := app.Articles.PostArticle(b); err != nil {
+			t.Fatalf("PostArticle(%s, v2): %v", url, err)
+		}
+	}
+
+	affected, err := app.DB.InvalidateNonHeadRevisionHTML()
+	if err != nil {
+		t.Fatalf("InvalidateNonHeadRevisionHTML: %v", err)
+	}
+	if affected != 2 {
+		t.Errorf("expected 2 affected rows (one per article), got %d", affected)
+	}
+
+	// Both old revisions should lazily re-render on access.
+	for _, url := range []string{"article-a", "article-b"} {
+		v1, err := app.Articles.GetArticleByRevisionID(url, 1)
+		if err != nil {
+			t.Errorf("GetArticleByRevisionID(%s, 1): %v", url, err)
+			continue
+		}
+		if v1.HTML == "" {
+			t.Errorf("%s: old revision should have been lazily re-rendered", url)
+		}
+	}
+}

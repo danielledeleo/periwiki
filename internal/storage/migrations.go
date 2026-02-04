@@ -51,7 +51,7 @@ func RunMigrations(db *sqlx.DB) error {
 				article_id INT NOT NULL,
 				hashval TEXT NOT NULL,
 				markdown TEXT NOT NULL,
-				html TEXT NOT NULL,
+				html TEXT,
 				user_id INTEGER NOT NULL,
 				created TIMESTAMP NOT NULL,
 				previous_id INT NOT NULL,
@@ -81,6 +81,41 @@ func RunMigrations(db *sqlx.DB) error {
 	}
 	if fmColExists == 0 {
 		_, err = db.Exec(`ALTER TABLE Article ADD COLUMN frontmatter BLOB`)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Migration: Make html column nullable in Revision table.
+	// This allows old revisions to have their HTML cleared (set to NULL) when the
+	// render pipeline changes, reclaiming storage. They re-render lazily on access.
+	var htmlNotNull int
+	err = db.Get(&htmlNotNull, `SELECT "notnull" FROM pragma_table_info('Revision') WHERE name = 'html'`)
+	if err != nil {
+		return err
+	}
+	if htmlNotNull == 1 {
+		_, err = db.Exec(`
+			CREATE TABLE Revision_new (
+				id INTEGER NOT NULL,
+				article_id INT NOT NULL,
+				hashval TEXT NOT NULL,
+				markdown TEXT NOT NULL,
+				html TEXT,
+				user_id INTEGER NOT NULL,
+				created TIMESTAMP NOT NULL,
+				previous_id INT NOT NULL,
+				comment TEXT,
+				render_status TEXT NOT NULL DEFAULT 'rendered',
+				PRIMARY KEY (id, article_id),
+				FOREIGN KEY(article_id) REFERENCES Article(id),
+				FOREIGN KEY(user_id) REFERENCES User(id)
+			);
+			INSERT INTO Revision_new (id, article_id, hashval, markdown, html, user_id, created, previous_id, comment, render_status)
+			SELECT id, article_id, hashval, markdown, html, user_id, created, previous_id, comment, render_status FROM Revision;
+			DROP TABLE Revision;
+			ALTER TABLE Revision_new RENAME TO Revision;
+		`)
 		if err != nil {
 			return err
 		}

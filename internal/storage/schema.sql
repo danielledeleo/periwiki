@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS Revision (
     article_id INT NOT NULL,
     hashval TEXT NOT NULL,
     markdown TEXT NOT NULL,
-    html TEXT NOT NULL,
+    html TEXT,
     user_id INTEGER NOT NULL,
     created TIMESTAMP NOT NULL,
     previous_id INT NOT NULL,

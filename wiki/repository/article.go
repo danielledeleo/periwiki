@@ -33,4 +33,8 @@ type ArticleRepository interface {
 
 	// SelectAllArticles retrieves all articles with their last modified time.
 	SelectAllArticles() ([]*wiki.ArticleSummary, error)
+
+	// InvalidateNonHeadRevisionHTML sets html to NULL for all non-head revisions.
+	// This is used when the render pipeline changes and cached HTML is stale.
+	InvalidateNonHeadRevisionHTML() (int64, error)
 }

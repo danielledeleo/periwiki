@@ -80,7 +80,7 @@ func (db *sqliteDb) SelectRevision(hash string) (*wiki.Revision, error) {
 		PreviousID int            `db:"previous_id"`
 		Created    time.Time
 	}{}
-	err := db.conn.Get(x, "SELECT id, markdown, html, hashval, created, previous_id FROM Revision WHERE hashval = ?", hash)
+	err := db.conn.Get(x, "SELECT id, markdown, COALESCE(html, '') AS html, hashval, created, previous_id FROM Revision WHERE hashval = ?", hash)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +274,7 @@ func (db *sqliteDb) InsertArticleQueued(article *wiki.Article) (revisionID int64
 		}
 
 		_, err = tx.Exec(`INSERT INTO Revision (id, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
-			VALUES (?, ?, ?, '', last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
+			VALUES (?, ?, ?, NULL, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
 			newRevisionID,
 			article.Hash,
 			article.Markdown,
@@ -289,7 +289,7 @@ func (db *sqliteDb) InsertArticleQueued(article *wiki.Article) (revisionID int64
 	} else if insertErr == nil && testArticle != nil { // New revision to article
 
 		_, err = tx.Exec(`INSERT INTO Revision (id, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
-			VALUES (?, ?, ?, '', (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
+			VALUES (?, ?, ?, NULL, (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
 			newRevisionID,
 			article.Hash,
 			article.Markdown,
@@ -341,4 +341,16 @@ func (db *sqliteDb) UpdateRevisionHTML(url string, revisionID int, html string, 
 	}
 
 	return nil
+}
+
+func (db *sqliteDb) InvalidateNonHeadRevisionHTML() (int64, error) {
+	result, err := db.conn.Exec(`
+		UPDATE Revision SET html = NULL
+		WHERE (article_id, id) NOT IN (
+			SELECT article_id, MAX(id) FROM Revision GROUP BY article_id
+		) AND html IS NOT NULL`)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

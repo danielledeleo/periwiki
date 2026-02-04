@@ -331,7 +331,7 @@ func (tdb *TestDB) SelectArticleByRevisionID(url string, id int) (*wiki.Article,
 
 func (tdb *TestDB) SelectRevision(hash string) (*wiki.Revision, error) {
 	r := &wiki.Revision{}
-	err := tdb.conn.Get(r, "SELECT id, title, markdown, html, hashval, created, previous_id FROM Revision WHERE hashval = ?", hash)
+	err := tdb.conn.Get(r, "SELECT id, markdown, COALESCE(html, '') AS html, hashval, created, previous_id FROM Revision WHERE hashval = ?", hash)
 	return r, err
 }
 
@@ -503,7 +503,7 @@ func (tdb *TestDB) InsertArticleQueued(article *wiki.Article) (revisionID int64,
 		}
 
 		_, err = tx.Exec(`INSERT INTO Revision (id, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
-			VALUES (?, ?, ?, '', last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
+			VALUES (?, ?, ?, NULL, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
 			newRevisionID,
 			article.Hash,
 			article.Markdown,
@@ -517,7 +517,7 @@ func (tdb *TestDB) InsertArticleQueued(article *wiki.Article) (revisionID int64,
 	} else if insertErr == nil && testArticle != nil {
 		// New revision to article
 		_, err = tx.Exec(`INSERT INTO Revision (id, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
-			VALUES (?, ?, ?, '', (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
+			VALUES (?, ?, ?, NULL, (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
 			newRevisionID,
 			article.Hash,
 			article.Markdown,
@@ -558,6 +558,18 @@ func (tdb *TestDB) UpdateRevisionHTML(url string, revisionID int, html string, r
 	}
 
 	return nil
+}
+
+func (tdb *TestDB) InvalidateNonHeadRevisionHTML() (int64, error) {
+	result, err := tdb.conn.Exec(`
+		UPDATE Revision SET html = NULL
+		WHERE (article_id, id) NOT IN (
+			SELECT article_id, MAX(id) FROM Revision GROUP BY article_id
+		) AND html IS NOT NULL`)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 func (tdb *TestDB) InsertUser(user *wiki.User) error {

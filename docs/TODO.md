@@ -2,7 +2,7 @@ Soon(ish)
 - [MED] Backlinks feature (will help trigger redlink re-renders)
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - [MED] Article content injection fuzzing (security, testing)
-- Stale content re-rendering
+- ~~Stale content re-rendering~~ (see docs/plans/2026-02-03-stale-content-detection-design.md)
 - Page alias and redirect system (design TBD)
 - Article visibility settings
   - draft

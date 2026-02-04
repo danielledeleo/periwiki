@@ -5,6 +5,8 @@ import (
 	"crypto/sha512"
 	"database/sql"
 	"encoding/base64"
+	"fmt"
+	"log/slog"
 
 	"github.com/danielledeleo/periwiki/internal/renderqueue"
 	"github.com/danielledeleo/periwiki/wiki"
@@ -77,7 +79,11 @@ func (s *articleService) GetArticle(url string) (*wiki.Article, error) {
 		return nil, err
 	}
 
-	return article, err
+	if err := s.ensureHTML(article); err != nil {
+		return nil, err
+	}
+
+	return article, nil
 }
 
 // PostArticle creates or updates an article.
@@ -170,22 +176,57 @@ func (s *articleService) Preview(markdown string) (string, error) {
 
 // GetArticleByRevisionID retrieves an article by URL and revision ID.
 func (s *articleService) GetArticleByRevisionID(url string, id int) (*wiki.Article, error) {
-	revision, err := s.repo.SelectArticleByRevisionID(url, id)
+	article, err := s.repo.SelectArticleByRevisionID(url, id)
 	if err == sql.ErrNoRows {
 		return nil, wiki.ErrRevisionNotFound
+	} else if err != nil {
+		return nil, err
 	}
 
-	return revision, err
+	if err := s.ensureHTML(article); err != nil {
+		return nil, err
+	}
+
+	return article, nil
 }
 
 // GetArticleByRevisionHash retrieves an article by URL and revision hash.
 func (s *articleService) GetArticleByRevisionHash(url string, hash string) (*wiki.Article, error) {
-	revision, err := s.repo.SelectArticleByRevisionHash(url, hash)
+	article, err := s.repo.SelectArticleByRevisionHash(url, hash)
 	if err == sql.ErrNoRows {
 		return nil, wiki.ErrRevisionNotFound
+	} else if err != nil {
+		return nil, err
 	}
 
-	return revision, err
+	if err := s.ensureHTML(article); err != nil {
+		return nil, err
+	}
+
+	return article, nil
+}
+
+// ensureHTML lazily renders and persists HTML for a revision that has none.
+// This handles old revisions whose cached HTML was invalidated after a
+// render pipeline change.
+func (s *articleService) ensureHTML(article *wiki.Article) error {
+	if article.HTML != "" {
+		return nil
+	}
+
+	html, err := s.rendering.Render(article.Markdown)
+	if err != nil {
+		return fmt.Errorf("lazy render failed: %w", err)
+	}
+
+	article.HTML = html
+
+	if err := s.repo.UpdateRevisionHTML(article.URL, article.ID, html, "rendered"); err != nil {
+		slog.Warn("failed to persist lazy-rendered HTML", "url", article.URL, "revision", article.ID, "error", err)
+		// Non-fatal: we have the HTML in memory to serve this request
+	}
+
+	return nil
 }
 
 // GetRevisionHistory retrieves all revisions for an article.

@@ -1,12 +1,15 @@
 package server
 
 import (
+	"context"
+	"database/sql"
 	"log/slog"
 	"os"
 	"regexp"
 	"runtime"
 
 	"github.com/danielledeleo/periwiki/extensions"
+	"github.com/danielledeleo/periwiki/wiki/repository"
 	"github.com/danielledeleo/periwiki/internal/config"
 	"github.com/danielledeleo/periwiki/internal/renderqueue"
 	"github.com/danielledeleo/periwiki/internal/storage"
@@ -122,6 +125,9 @@ func Setup() (*App, *renderqueue.Queue) {
 	// Create article service
 	articleService := service.NewArticleService(database, renderingService, renderQueue)
 
+	// Check for stale render templates and invalidate cached HTML if needed
+	checkRenderTemplateStaleness(db.DB, database, articleService)
+
 	// Create preference service
 	preferenceService := service.NewPreferenceService(database)
 
@@ -144,4 +150,82 @@ func Setup() (*App, *renderqueue.Queue) {
 		Config:        modelConf,
 		RuntimeConfig: runtimeConfig,
 	}, renderQueue
+}
+
+// checkRenderTemplateStaleness computes a hash of all render-time templates
+// (templates/_render/) and compares it against the stored hash in the Setting
+// table. If the templates have changed, it invalidates cached HTML for old
+// revisions and queues head revisions for re-rendering.
+func checkRenderTemplateStaleness(db *sql.DB, repo repository.ArticleRepository, articles service.ArticleService) {
+	currentHash, err := render.HashRenderTemplates("templates/_render")
+	if err != nil {
+		slog.Error("failed to hash render templates", "error", err)
+		return
+	}
+
+	storedHash, err := getOrCreateSetting(db, wiki.SettingRenderTemplateHash, func() string {
+		return currentHash
+	})
+	if err != nil {
+		slog.Error("failed to read render template hash setting", "error", err)
+		return
+	}
+
+	if storedHash == currentHash {
+		slog.Debug("render templates unchanged", "hash", currentHash[:12])
+		return
+	}
+
+	slog.Info("render templates changed, invalidating cached HTML",
+		"old_hash", storedHash[:12], "new_hash", currentHash[:12])
+
+	// Null out HTML for all non-head revisions
+	invalidated, err := repo.InvalidateNonHeadRevisionHTML()
+	if err != nil {
+		slog.Error("failed to invalidate old revision HTML", "error", err)
+		return
+	}
+	slog.Info("invalidated old revision HTML", "count", invalidated)
+
+	// Queue re-render of all head revisions
+	allArticles, err := articles.GetAllArticles()
+	if err != nil {
+		slog.Error("failed to get articles for re-render", "error", err)
+		return
+	}
+
+	var queued int
+	for _, article := range allArticles {
+		_, err := articles.QueueRerenderRevision(context.Background(), article.URL, 0)
+		if err != nil {
+			slog.Error("failed to queue head revision re-render", "url", article.URL, "error", err)
+			continue
+		}
+		queued++
+	}
+	slog.Info("queued head revision re-renders", "count", queued)
+
+	// Update the stored hash
+	if err := wiki.UpdateSetting(db, wiki.SettingRenderTemplateHash, currentHash); err != nil {
+		slog.Error("failed to update render template hash setting", "error", err)
+	}
+}
+
+// getOrCreateSetting retrieves a setting or creates it with a default.
+// This is a local wrapper matching the pattern in wiki/runtime_config.go.
+func getOrCreateSetting(db *sql.DB, key string, defaultFn func() string) (string, error) {
+	var value string
+	err := db.QueryRow("SELECT value FROM Setting WHERE key = ?", key).Scan(&value)
+	if err == sql.ErrNoRows {
+		value = defaultFn()
+		_, err = db.Exec("INSERT INTO Setting (key, value) VALUES (?, ?)", key, value)
+		if err != nil {
+			return "", err
+		}
+		return value, nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return value, nil
 }

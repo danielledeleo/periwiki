@@ -76,7 +76,7 @@ func (r *HTMLRenderer) Render(md string) (string, error) {
 		return string(rawhtml), nil
 	}
 
-	tmpl, err := template.ParseFiles("templates/helpers/toc.html")
+	tmpl, err := template.ParseFiles("templates/_render/toc.html")
 	if err != nil {
 		return "", err
 	}

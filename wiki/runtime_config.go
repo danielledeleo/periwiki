@@ -26,6 +26,7 @@ const (
 	SettingRenderWorkers             = "render_workers"
 	SettingCookieExpiry              = "cookie_expiry"
 	SettingMinPasswordLength         = "min_password_length"
+	SettingRenderTemplateHash        = "render_template_hash"
 )
 
 // Default values for runtime settings
@@ -132,4 +133,27 @@ func getOrCreateSetting(db *sql.DB, key string, defaultFn func() string) (string
 		return "", err
 	}
 	return value, nil
+}
+
+// UpdateSetting updates an existing setting or creates it if it doesn't exist.
+func UpdateSetting(db *sql.DB, key string, value string) error {
+	result, err := db.Exec(
+		"UPDATE Setting SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?",
+		value, key,
+	)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		_, err = db.Exec(
+			"INSERT INTO Setting (key, value) VALUES (?, ?)",
+			key, value,
+		)
+		return err
+	}
+	return nil
 }
