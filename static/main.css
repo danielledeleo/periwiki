@@ -364,6 +364,10 @@ article #toc ol > li:before {
     padding-right: 0.6rem;
 }
 
+article #toc ol ol {
+    padding-left: 1rem;
+}
+
 article #toc li ol > li {
     margin: 0;
 }

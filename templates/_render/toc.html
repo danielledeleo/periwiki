@@ -1,14 +1,13 @@
+{{define "tocItems"}}{{ range . }}
+        <li>
+            <a href="#{{ .ID }}">{{ .Text }}</a>
+            {{ if .Children }}<ol>{{template "tocItems" .Children}}</ol>{{ end }}
+        </li>{{ end }}{{end}}
 <div id="toc">
     <input type="checkbox" id="toc-toggle" class="toc-toggle" checked>
     <div class="toc-header">
         <strong>Contents</strong>
         <span class="toc-brackets">[</span><label for="toc-toggle"></label><span class="toc-brackets">]</span>
     </div>
-    <ol>{{ range .Headers }}
-        <li>
-            <a href="#{{ range .Attr }}{{ if eq .Key "id" }}{{ .Val }}{{ end }}{{ end }}">
-                {{ .FirstChild.Data }}
-            </a>
-        </li>{{ end }}
-    </ol>
+    <ol>{{template "tocItems" .Entries}}</ol>
 </div>
