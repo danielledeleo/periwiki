@@ -14,3 +14,4 @@ config.yaml
 # Test coverage
 coverage.out
 coverage.html
+testdata/

@@ -141,6 +141,12 @@ func (p *wikiLinkerParser) Parse(parent gast.Node, block text.Reader, pc parser.
 		return nil
 	}
 
+	// Fast path: avoid regex backtracking on pathological input.
+	// If there's no closing ]], there's no valid WikiLink.
+	if !bytes.Contains(line, []byte("]]")) {
+		return nil
+	}
+
 	m := p.WikiLinkRegexp.FindSubmatchIndex(line)
 	if m == nil {
 		return nil
