@@ -23,6 +23,7 @@
     --pw-info-bg: #e2f7ff;
     --pw-neutral-border: #d7d7d7;
     --pw-neutral-bg: #f9f9f9;
+    --pw-target-bg: #e0e3ff;
 }
 
 body {
@@ -229,6 +230,11 @@ article section.footnotes .footnote-backlink {
 
 article section.footnotes .footnote-letter {
     font-style: italic;
+}
+
+article section.footnotes li:target,
+article sup:target {
+    background: var(--pw-target-bg);
 }
 
 article div.pw-article-content > table {
