@@ -61,7 +61,7 @@ func projectRoot() string {
 }
 
 // SetupTestDB creates an in-memory SQLite database with the schema loaded.
-func SetupTestDB(t *testing.T) (*TestDB, func()) {
+func SetupTestDB(t testing.TB) (*TestDB, func()) {
 	t.Helper()
 
 	conn, err := sqlx.Open("sqlite3", ":memory:")
@@ -108,7 +108,7 @@ func SetupTestDB(t *testing.T) (*TestDB, func()) {
 }
 
 // SetupTestApp creates a full application instance for integration tests.
-func SetupTestApp(t *testing.T) (*TestApp, func()) {
+func SetupTestApp(t testing.TB) (*TestApp, func()) {
 	t.Helper()
 
 	db, dbCleanup := SetupTestDB(t)
@@ -220,7 +220,7 @@ func SetupTestApp(t *testing.T) (*TestApp, func()) {
 }
 
 // CreateTestUser creates a user in the test database and returns it.
-func CreateTestUser(t *testing.T, db *TestDB, screenname, email, password string) *wiki.User {
+func CreateTestUser(t testing.TB, db *TestDB, screenname, email, password string) *wiki.User {
 	t.Helper()
 
 	user := &wiki.User{
@@ -249,7 +249,7 @@ func CreateTestUser(t *testing.T, db *TestDB, screenname, email, password string
 }
 
 // CreateTestArticle creates an article in the test database and returns it.
-func CreateTestArticle(t *testing.T, app *TestApp, url, markdown string, creator *wiki.User) *wiki.Article {
+func CreateTestArticle(t testing.TB, app *TestApp, url, markdown string, creator *wiki.User) *wiki.Article {
 	t.Helper()
 
 	article := wiki.NewArticle(url, markdown)
