@@ -59,7 +59,11 @@ func main() {
 		}
 	}()
 
-	slog.Info("server starting", "url", "http://"+app.Config.Host, "commit", embedded.BuildCommit[:12])
+	commit := embedded.BuildCommit
+	if len(commit) > 12 {
+		commit = commit[:12]
+	}
+	slog.Info("server starting", "url", "http://"+app.Config.Host, "commit", commit)
 
 	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)

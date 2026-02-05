@@ -581,6 +581,9 @@ func FuzzRenderXSS(f *testing.F) {
 		regexp.MustCompile(`(?i)<meta[\s>]`),
 		regexp.MustCompile(`(?i)<base[\s>]`),
 		regexp.MustCompile(`(?i)<form[\s>]`),
+		regexp.MustCompile(`(?i)<style[\s>]`),
+		regexp.MustCompile(`(?i)<link[\s>]`),
+		regexp.MustCompile(`(?i)<svg[\s>]`),
 		// Event handlers in actual tags (< followed by tag content with on*=)
 		regexp.MustCompile(`(?i)<[^>]+\son\w+\s*=`),
 		// JavaScript protocol in href/src attributes (must be inside a tag)

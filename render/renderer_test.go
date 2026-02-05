@@ -110,6 +110,111 @@ func TestTOCNoHeaders(t *testing.T) {
 	}
 }
 
+func TestTOCOrphanH3BeforeH2(t *testing.T) {
+	r := NewHTMLRenderer(nil, nil, nil)
+
+	md := "### Orphan\n\n## Section\n\n### Sub\n"
+
+	html, err := r.Render(md)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	tocContent := extractTOC(t, html)
+
+	// "Orphan" h3 before any h2 should not appear in the TOC
+	if strings.Contains(tocContent, "Orphan") {
+		t.Error("orphan h3 before any h2 should not appear in the TOC")
+	}
+	// "Section" and "Sub" should appear
+	if !strings.Contains(tocContent, "Section") {
+		t.Error("expected 'Section' in TOC")
+	}
+	if !strings.Contains(tocContent, "Sub") {
+		t.Error("expected 'Sub' in TOC")
+	}
+}
+
+func TestTOCOrphanH4UnderH2(t *testing.T) {
+	r := NewHTMLRenderer(nil, nil, nil)
+
+	// h4 directly under h2 with no h3 intermediary -- should be dropped
+	md := "## Section\n\n#### Deep\n\n### Normal Sub\n"
+
+	html, err := r.Render(md)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	tocContent := extractTOC(t, html)
+
+	// "Deep" h4 without an h3 parent should be dropped
+	if strings.Contains(tocContent, "Deep") {
+		t.Error("orphan h4 (no h3 parent) should not appear in the TOC")
+	}
+	// "Normal Sub" h3 should appear
+	if !strings.Contains(tocContent, "Normal Sub") {
+		t.Error("expected 'Normal Sub' in TOC")
+	}
+}
+
+func TestTOCOnlyH3H4NoH2(t *testing.T) {
+	r := NewHTMLRenderer(nil, nil, nil)
+
+	md := "### A\n\n#### B\n"
+
+	html, err := r.Render(md)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	// No h2 means no root TOC entries, so no TOC should be generated
+	if strings.Contains(html, `id="toc"`) {
+		t.Error("expected no TOC when only h3/h4 headings (no h2)")
+	}
+}
+
+func TestTOCHeadingWithInlineMarkup(t *testing.T) {
+	r := NewHTMLRenderer(nil, nil, nil)
+
+	md := "## **Bold** heading\n\n## Normal\n"
+
+	html, err := r.Render(md)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	tocContent := extractTOC(t, html)
+
+	// textContent should extract text through inline markup
+	if !strings.Contains(tocContent, "Bold heading") {
+		t.Error("expected 'Bold heading' extracted from inline markup in TOC")
+	}
+}
+
+// extractTOC returns the full TOC div content from rendered HTML.
+func extractTOC(t *testing.T, html string) string {
+	t.Helper()
+	tocStart := strings.Index(html, `<div id="toc">`)
+	if tocStart == -1 {
+		t.Fatal("TOC div not found")
+	}
+	// Find the matching closing </div> by counting nesting depth.
+	depth := 0
+	for i := tocStart; i < len(html); i++ {
+		if strings.HasPrefix(html[i:], "<div") {
+			depth++
+		} else if strings.HasPrefix(html[i:], "</div>") {
+			depth--
+			if depth == 0 {
+				return html[tocStart : i+len("</div>")]
+			}
+		}
+	}
+	t.Fatal("TOC closing div not found")
+	return ""
+}
+
 func TestTOCH1Excluded(t *testing.T) {
 	r := NewHTMLRenderer(nil, nil, nil)
 

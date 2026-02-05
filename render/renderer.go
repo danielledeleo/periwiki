@@ -197,7 +197,11 @@ func (r *HTMLRenderer) Render(md string) (string, error) {
 		return string(rawhtml), nil
 	}
 
-	firstH2 := document.Find("h2").Nodes[0]
+	h2s := document.Find("h2")
+	if h2s.Length() == 0 {
+		return string(rawhtml), nil
+	}
+	firstH2 := h2s.Nodes[0]
 	firstH2.Parent.InsertBefore(tocNode, firstH2)
 
 	outbuf.Reset()
