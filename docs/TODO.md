@@ -26,6 +26,7 @@ Soon(ish)
 - Make user pages, index, and other special pages all types of Articles (and revisions)
 - User profiles pages to be ~user URLs, which are linked to with wikilinks e.g. [[~dani]]
 - User settings
+- Management UI for runtime config (anonymous editing toggle, password policy, render workers, etc.)
 - Password recovery, 2FA, Login providers
 - Backup/data export mechanism
 - Tagging system (frontmatter-based, with tag pages)

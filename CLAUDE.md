@@ -28,7 +28,7 @@ Sentinel errors in `wiki/errors.go` control HTTP responses (`ErrGenericNotFound`
 
 ### Rendering Pipeline
 
-Markdown → Goldmark (with wikilink, footnote extensions) → HTML sanitization (bluemonday) → TOC injection (goquery). Entry point: `render/renderer.go`. Service layer: `wiki/service/rendering.go`.
+Markdown → Goldmark (with wikilink, footnote extensions) → TOC injection (goquery) → HTML sanitization (bluemonday). Entry point: `render/renderer.go`. Service layer: `wiki/service/rendering.go`.
 
 Templates in `templates/_render/` are render-time templates (TOC, footnotes, wikilinks) hashed for stale content detection. Templates in `templates/` are page-level templates. Both use paths relative to project root.
 

@@ -60,7 +60,7 @@ Services are initialized in `internal/server/setup.go` via constructor functions
 
 ```go
 renderingService := service.NewRenderingService(renderer, sanitizer)
-articleService := service.NewArticleService(database, renderingService)
+articleService := service.NewArticleService(database, renderingService, renderQueue)
 ```
 
 Handlers access services through the receiver: `a.Articles.GetArticle(url)`
@@ -73,7 +73,9 @@ Handlers access services through the receiver: `a.Articles.GetArticle(url)`
 | `internal/server/` | HTTP handlers, middleware, app setup |
 | `internal/storage/` | SQLite repository implementations |
 | `internal/renderqueue/` | Async render queue (worker pool, priority heap) |
-| `internal/config/` | File-based configuration |
+| `internal/config/` | File-based configuration (`config.yaml`) |
+| `internal/embedded/` | Built-in help articles compiled into the binary |
+| `internal/logger/` | Structured logging setup (pretty/JSON/text) |
 | `wiki/` | Domain types (`Article`, `User`, `Revision`, `Frontmatter`) |
 | `wiki/service/` | Service interfaces and implementations |
 | `wiki/repository/` | Repository interfaces (no implementations) |
@@ -97,6 +99,9 @@ Handlers access services through the receiver: `a.Articles.GetArticle(url)`
 | `wiki/context.go` | Defines `UserKey` for context access |
 | `wiki/errors.go` | Sentinel errors (`ErrGenericNotFound`, etc.) |
 | `wiki/frontmatter.go` | NestedText frontmatter parsing |
+| `wiki/runtime_config.go` | Database-backed runtime settings (secrets, toggles) |
+| `internal/storage/migrations.go` | Schema migrations (run at startup) |
+| `render/templatehash.go` | SHA-256 hash of render templates for staleness detection |
 
 ## Error handling
 
@@ -120,3 +125,52 @@ user := req.Context().Value(wiki.UserKey).(*wiki.User)
 ```
 
 Anonymous users have `ID: 0`.
+
+## Render queue
+
+Article edits are rendered asynchronously through a priority queue (`internal/renderqueue/`). The queue has two priority tiers:
+
+- **Interactive** — user-initiated edits and views. Highest priority.
+- **Background** — bulk operations like `Special:RerenderAll` and stale content re-renders.
+
+If an article already has a queued job, the existing job is updated in-place (same-article deduplication) rather than adding a duplicate. Worker count is controlled by the `render_workers` runtime setting (`0` = one per CPU core). Each worker has panic recovery so a bad render cannot crash the server.
+
+On shutdown (SIGINT/SIGTERM), the queue drains in-flight jobs with a 30-second timeout before exiting.
+
+**Key files:** `internal/renderqueue/queue.go` (queue + workers), `internal/renderqueue/heap.go` (priority ordering).
+
+## Stale content detection
+
+Render-time templates (`templates/_render/`) are hashed at startup. If the hash differs from the stored `render_template_hash` in the database, Periwiki assumes the rendering pipeline has changed and:
+
+1. Nullifies cached HTML for all non-head revisions (reclaims storage).
+2. Queues all head revisions for background re-render.
+3. Old revisions with NULL HTML are lazily re-rendered when accessed.
+
+This means changes to TOC, footnote, or wikilink templates are automatically propagated to all articles without manual intervention.
+
+**Key files:** `render/templatehash.go`, `internal/server/setup.go` (`checkRenderTemplateStaleness`).
+
+## Database migrations
+
+Schema changes are applied automatically at startup via `internal/storage/migrations.go`. The migration runner:
+
+1. Executes the base schema (`internal/storage/schema.sql`, all `CREATE TABLE IF NOT EXISTS`).
+2. Runs incremental migrations that check column existence before acting (idempotent).
+
+Some migrations recreate tables because SQLite lacks `ALTER TABLE DROP COLUMN`. This is safe but may briefly increase startup time on large databases.
+
+## Embedded help articles
+
+Read-only help articles are compiled into the binary via `//go:embed` from `internal/embedded/help/*.md`. They are served under the `Periwiki:` namespace (e.g., `/wiki/Periwiki:Syntax`) and cannot be edited through the wiki interface.
+
+The embedded system also captures the git commit hash at build time (`go generate ./internal/embedded`) and uses it to generate source links pointing to the correct commit on GitHub.
+
+## Configuration layers
+
+Periwiki has a two-tier configuration system:
+
+- **File config** (`config.yaml` → `wiki.Config`): Bootstrap settings needed before the database is available — host, database path, base URL, logging. Loaded by `internal/config/config.go`.
+- **Runtime config** (SQLite `Setting` table → `wiki.RuntimeConfig`): Settings stored in the database — cookie secret, session expiry, password policy, anonymous edit toggle, render worker count. Loaded by `wiki/runtime_config.go`. No management UI yet.
+
+See [Installation and Configuration](installation-and-configuration.md) for the full list of settings.

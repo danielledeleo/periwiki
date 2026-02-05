@@ -22,12 +22,12 @@ Sessions use [gorilla/sessions](https://github.com/gorilla/sessions) with an SQL
 |---------|---------|-------------|
 | `cookie_expiry` | `604800` | Session lifetime in seconds (7 days) |
 
-The session secret is a 64-byte random key auto-generated on first run and stored in `.cookiesecret.yaml`. Keep this file secure — anyone with it can forge session cookies.
+The session secret is a 64-byte random key auto-generated on first run and stored in the SQLite `Setting` table (key `cookie_secret`). Keep your database secure — anyone with the secret can forge session cookies.
 
 **Key files:**
-- `session_middleware.go` — validates session, injects user into request context
+- `internal/server/middleware.go` — validates session, injects user into request context
 - `wiki/service/session.go` — cookie CRUD operations
-- `config.go` — secret generation and loading
+- `wiki/runtime_config.go` — secret generation and loading
 
 ## HTML sanitization
 
@@ -46,6 +46,13 @@ User-submitted markdown passes through a rendering pipeline before display:
                                │
                                ▼
 ┌──────────────────────────────────────────────────────────────────┐
+│  TOC Injection (goquery)                                         │
+│  - Finds h2/h3/h4 headings, builds table of contents            │
+│  - Injects TOC before the first h2 (render/renderer.go)         │
+└──────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────────┐
 │  Unsafe HTML (may contain scripts, iframes, etc.)                │
 └──────────────────────────────────────────────────────────────────┘
                                │
@@ -59,7 +66,7 @@ User-submitted markdown passes through a rendering pipeline before display:
                                │
                                ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  Custom allowlist additions (setup.go)                           │
+│  Custom allowlist additions (internal/server/setup.go)           │
 │  - class attribute globally (wiki styling)                       │
 │  - data-line-number on <a> (footnote navigation)                 │
 │  - style on <ins>, <del> (diff rendering)                        │
@@ -75,6 +82,6 @@ User-submitted markdown passes through a rendering pipeline before display:
 Sanitization happens at render time via `RenderingService.Render()`. The sanitized HTML is stored in the revision, so articles are not re-sanitized on every view.
 
 **Key files:**
-- `setup.go` — bluemonday policy configuration
+- `internal/server/setup.go` — bluemonday policy configuration
 - `wiki/service/rendering.go` — `RenderingService` interface and implementation
 - `render/renderer.go` — Goldmark markdown rendering

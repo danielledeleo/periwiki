@@ -15,6 +15,8 @@ All article actions use query parameters on the base article URL:
 | `/wiki/{article}?diff&old={a}` | Compare revision a to current |
 | `/wiki/{article}?diff&new={b}` | Compare previous revision to b |
 | `/wiki/{article}?diff` | Compare two most recent revisions |
+| `/wiki/{article}?rerender` | Force re-render current revision |
+| `/wiki/{article}?rerender&revision={id}` | Force re-render specific revision |
 
 Article URLs use underscores for spaces (`Main_Page`). URLs are case-sensitive.
 
@@ -30,6 +32,14 @@ Edit forms POST to `/wiki/{article}` with form data including:
 ## Namespaced URLs
 
 All URLs containing a colon (`Foo:Bar`) are routed to `NamespaceHandler`. Only recognized namespaces are served; unrecognized namespaces return 404. This reserves the colon as a system-controlled namespace delimiter.
+
+### Help pages (Periwiki: namespace)
+
+| URL | Description |
+|-----|-------------|
+| `/wiki/Periwiki:Syntax` | Built-in Markdown and WikiLink syntax reference |
+
+Help articles are read-only and compiled into the binary from `internal/embedded/help/`. They cannot be edited through the wiki interface.
 
 ### Special pages
 

@@ -1,5 +1,7 @@
 # Periwiki Code Review Report
 
+> **Note:** This report is a point-in-time snapshot from 2026-01-24. The codebase has changed since then — file paths (e.g. `server.go` → `internal/server/handlers.go`), template paths (`templates/helpers/` → `templates/_render/`), function signatures, and test coverage have all evolved. Treat specific code locations and line numbers as approximate.
+
 **Date:** 2026-01-24
 **Reviewer:** Claude Code (claude-opus-4-5-20251101)
 **Scope:** Full codebase review for tech debt assessment and future planning
