@@ -7,11 +7,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"text/template"
 
-	"github.com/go-git/go-git/v5"
 	"golang.org/x/mod/modfile"
 )
 
@@ -35,21 +35,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get HEAD commit
-	repo, err := git.PlainOpen(repoRoot)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error opening git repo: %v\n", err)
-		os.Exit(1)
+	// Get HEAD commit (best-effort — build works without git)
+	commit := "unknown"
+	if out, err := exec.Command("git", "-C", repoRoot, "rev-parse", "HEAD").Output(); err == nil {
+		commit = strings.TrimSpace(string(out))
+	} else {
+		fmt.Fprintf(os.Stderr, "warning: could not determine git commit: %v\n", err)
 	}
-	head, err := repo.Head()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error getting HEAD: %v\n", err)
-		os.Exit(1)
-	}
-	commit := head.Hash().String()
 
-	// Build base URL (GitHub only for now)
-	baseURL := buildBaseURL(modFile.Module.Mod.Path, commit)
+	// Build base URL (GitHub only for now, skip if no commit)
+	var baseURL string
+	if commit != "unknown" {
+		baseURL = buildBaseURL(modFile.Module.Mod.Path, commit)
+	}
 
 	// Generate output
 	outputPath := filepath.Join(repoRoot, "internal", "embedded", "metadata_gen.go")
@@ -58,7 +56,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Generated %s (commit: %s)\n", outputPath, commit[:12])
+	short := commit
+	if len(short) > 12 {
+		short = short[:12]
+	}
+	fmt.Printf("Generated %s (commit: %s)\n", outputPath, short)
 }
 
 func findRepoRoot(start string) (string, error) {

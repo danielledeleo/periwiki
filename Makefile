@@ -17,8 +17,7 @@ embedded := $(shell $(find_embedded))
 	GOBIN=$(shell pwd)/.bin go install github.com/aarondl/sqlboiler/v4/drivers/sqlboiler-sqlite3@latest
 
 internal/storage/skeleton.db: internal/storage/schema.sql
-	rm -f internal/storage/skeleton.db
-	sqlite3 -init internal/storage/schema.sql internal/storage/skeleton.db ""
+	go run ./cmd/mkskeleton
 
 model: internal/storage/skeleton.db sqlboiler.toml .bin/sqlboiler .bin/sqlboiler-sqlite3
 	PATH="$(shell pwd)/.bin:$(PATH)" go generate ./...

@@ -12,12 +12,12 @@ MediaWiki-inspired, [Goldmark](https://github.com/yuin/goldmark)-powered wiki wr
 
 ## Quick Start
 
-Requirements: just `go`
+Requirements: `go` and `make`
 
 ```bash
 git clone https://github.com/danielledeleo/periwiki
 cd periwiki
-go build && ./periwiki
+make && ./periwiki
 ```
 
 ## [Documentation](docs/index.md)
