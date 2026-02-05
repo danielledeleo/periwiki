@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/danielledeleo/periwiki/internal/embedded"
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/gorilla/mux"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -351,6 +352,12 @@ func (a *App) handleRerender(rw http.ResponseWriter, req *http.Request, articleU
 
 // handleHistory handles viewing revision history.
 func (a *App) handleHistory(rw http.ResponseWriter, req *http.Request, articleURL string) {
+	// Embedded articles have no history
+	if embedded.IsEmbeddedURL(articleURL) {
+		http.Redirect(rw, req, "/wiki/"+articleURL, http.StatusSeeOther)
+		return
+	}
+
 	revisions, err := a.Articles.GetRevisionHistory(articleURL)
 	if err != nil {
 		a.ErrorHandler(http.StatusNotFound, rw, req, err)
@@ -377,6 +384,12 @@ func (a *App) handleHistory(rw http.ResponseWriter, req *http.Request, articleUR
 
 // handleEdit handles the edit form display.
 func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
+	// Block editing of embedded articles
+	if embedded.IsEmbeddedURL(articleURL) {
+		http.Redirect(rw, req, "/wiki/"+articleURL, http.StatusSeeOther)
+		return
+	}
+
 	// Check if anonymous editing is allowed
 	user := req.Context().Value(wiki.UserKey).(*wiki.User)
 	if !a.RuntimeConfig.AllowAnonymousEditsGlobal && user.IsAnonymous() {
@@ -642,7 +655,7 @@ func (a *App) ErrorHandler(responseCode int, rw http.ResponseWriter, req *http.R
 }
 
 // NamespaceHandler routes requests for namespaced URLs (anything with a colon).
-// Currently only the "Special" namespace is handled; all other namespaces return 404.
+// Recognized namespaces: Special (dynamic pages), Periwiki (embedded help).
 func (a *App) NamespaceHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	namespace := vars["namespace"]
@@ -656,6 +669,24 @@ func (a *App) NamespaceHandler(rw http.ResponseWriter, req *http.Request) {
 			return
 		}
 		handler.Handle(rw, req)
+		return
+	}
+
+	// Periwiki namespace: embedded help articles
+	if strings.EqualFold(namespace, "periwiki") {
+		articleURL := "Periwiki:" + page // Canonical case for lookup
+		article, err := a.Articles.GetArticle(articleURL)
+		if err != nil {
+			a.ErrorHandler(http.StatusNotFound, rw, req, err)
+			return
+		}
+		err = a.RenderTemplate(rw, "article.html", "index.html", map[string]interface{}{
+			"Page":      article,
+			"Article":   article,
+			"Context":   req.Context(),
+			"EmbeddedSourceURL": embedded.SourceURL(articleURL),
+		})
+		check(err)
 		return
 	}
 

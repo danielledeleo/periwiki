@@ -2,9 +2,11 @@ all: periwiki
 
 find_go = find . -name '*.go' -not -path './model/*'
 find_templates = find templates -name '*.html'
+find_embedded = find internal/embedded/help -name '*.md'
 
 gosources := $(shell $(find_go)) go.sum go.mod
 templates := $(shell $(find_templates))
+embedded := $(shell $(find_embedded))
 
 .bin:
 	mkdir -p .bin
@@ -19,9 +21,9 @@ internal/storage/skeleton.db: internal/storage/schema.sql
 	sqlite3 -init internal/storage/schema.sql internal/storage/skeleton.db ""
 
 model: internal/storage/skeleton.db sqlboiler.toml .bin/sqlboiler .bin/sqlboiler-sqlite3
-	PATH="$(shell pwd)/.bin:$(PATH)" go generate
+	PATH="$(shell pwd)/.bin:$(PATH)" go generate ./...
 
-periwiki: model $(gosources) $(templates)
+periwiki: model $(gosources) $(templates) $(embedded)
 	go build -o periwiki ./cmd/periwiki
 
 run: periwiki
@@ -29,7 +31,7 @@ run: periwiki
 
 watch:
 	@command -v entr >/dev/null 2>&1 || { echo "entr not found — see https://eradman.com/entrproject/"; exit 1; }
-	{ $(find_go); $(find_templates); echo ./Makefile; } | entr -r make run
+	{ $(find_go); $(find_templates); $(find_embedded); echo ./Makefile; } | entr -r make run
 
 test: model
 	go test ./...
@@ -53,6 +55,7 @@ clean:
 	rm -f periwiki
 	rm -rf internal/storage/skeleton.db
 	rm -rf model
+	rm -f internal/embedded/metadata_gen.go
 	rm -f coverage.out coverage.html
 
 help:

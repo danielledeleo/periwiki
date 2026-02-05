@@ -3,6 +3,7 @@ vendor/
 tmp/
 static/images
 model/
+internal/embedded/metadata_gen.go
 .serena/
 
 /periwiki

@@ -1,8 +1,8 @@
 Soon(ish)
 - [MED] Backlinks feature (will help trigger redlink re-renders)
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
-- [MED] Article content injection fuzzing (security, testing)
-- ~~Stale content re-rendering~~ (see docs/plans/2026-02-03-stale-content-detection-design.md)
+- [MED] Talk:pages
+- Decide on case sensitivity in URLs
 - Page alias and redirect system (design TBD)
 - Article visibility settings
   - draft
@@ -36,6 +36,10 @@ Soon(ish)
   - Asset metadata is tracked by the wiki system, but blobs are not stored in the database
   - References are kept to an externally managed media system (local filesystem, S3, static files on an nginx server, etc.)
 - Allow the binary to launch in the event of database errors/connectivity loss (at least display an error page)
+
+Architecture
+- embeddedArticleService doesn't always need to wrap
+  - only requests for Periwiki:x need the decorated service
 
 Configuration and Runtime
 - First run/setup mode

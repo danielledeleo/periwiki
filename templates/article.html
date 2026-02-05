@@ -7,10 +7,19 @@
         <a href="{{articleURL .URL}}">View current version</a>
     </div>
     {{end}}
+    {{if .ReadOnly}}
+    <div class="pw-callout pw-neutral">
+        This is a built-in help article.
+    </div>
+    {{end}}
     <ul class="pw-tabs">
         <li class="pw-active"><a href="{{articleURL .URL}}">Article</a></li>
+        {{if not .ReadOnly}}
         <li><a href="{{editURL .URL .ID}}">Edit</a></li>
         <li><a href="{{historyURL .URL}}">History</a></li>
+        {{else if $.EmbeddedSourceURL}}
+        <li><a href="{{$.EmbeddedSourceURL}}" target="_blank">View source</a></li>
+        {{end}}
     </ul>
     <article>
         <h1>{{.DisplayTitle}}</h1>
@@ -18,7 +27,9 @@
             {{.HTML}}
         </div>
     </article>
+    {{if not .ReadOnly}}
     <span class="pw-last-edited">Last edited on {{.Created.Format "January 2, 2006 at 3:04 pm"}}</span>
+    {{end}}
     {{end}}
 </div>
 {{end}}

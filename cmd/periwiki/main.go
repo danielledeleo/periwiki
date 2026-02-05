@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/danielledeleo/periwiki/internal/embedded"
 	"github.com/danielledeleo/periwiki/internal/server"
 	"github.com/gorilla/mux"
 )
@@ -58,7 +59,7 @@ func main() {
 		}
 	}()
 
-	slog.Info("server starting", "url", "http://"+app.Config.Host)
+	slog.Info("server starting", "url", "http://"+app.Config.Host, "commit", embedded.BuildCommit[:12])
 
 	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)

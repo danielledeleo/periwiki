@@ -6,7 +6,8 @@ import (
 )
 
 type Article struct {
-	URL string
+	URL      string
+	ReadOnly bool // True for embedded/system articles
 	*Revision
 }
 

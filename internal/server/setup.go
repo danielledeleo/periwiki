@@ -9,14 +9,15 @@ import (
 	"runtime"
 
 	"github.com/danielledeleo/periwiki/extensions"
-	"github.com/danielledeleo/periwiki/wiki/repository"
 	"github.com/danielledeleo/periwiki/internal/config"
+	"github.com/danielledeleo/periwiki/internal/embedded"
 	"github.com/danielledeleo/periwiki/internal/renderqueue"
 	"github.com/danielledeleo/periwiki/internal/storage"
 	"github.com/danielledeleo/periwiki/render"
 	"github.com/danielledeleo/periwiki/special"
 	"github.com/danielledeleo/periwiki/templater"
 	"github.com/danielledeleo/periwiki/wiki"
+	"github.com/danielledeleo/periwiki/wiki/repository"
 	"github.com/danielledeleo/periwiki/wiki/service"
 	"github.com/jmoiron/sqlx"
 	"github.com/microcosm-cc/bluemonday"
@@ -124,6 +125,14 @@ func Setup() (*App, *renderqueue.Queue) {
 
 	// Create article service
 	articleService := service.NewArticleService(database, renderingService, renderQueue)
+
+	// Create embedded articles and wrap the article service
+	embeddedArticles, err := embedded.New(renderingService.Render)
+	if err != nil {
+		slog.Error("failed to load embedded articles", "error", err)
+		os.Exit(1)
+	}
+	articleService = service.NewEmbeddedArticleService(articleService, embeddedArticles)
 
 	// Check for stale render templates and invalidate cached HTML if needed
 	checkRenderTemplateStaleness(db.DB, database, articleService)

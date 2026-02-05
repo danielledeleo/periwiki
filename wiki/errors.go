@@ -16,4 +16,5 @@ var (
 	ErrRevisionAlreadyExists = errors.New("revision already exists")
 	ErrGenericNotFound       = errors.New("not found")
 	ErrNoArticles            = errors.New("no articles exist")
+	ErrReadOnlyArticle       = errors.New("article is read-only")
 )
