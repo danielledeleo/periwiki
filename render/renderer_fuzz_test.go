@@ -552,6 +552,16 @@ func FuzzRenderXSS(f *testing.F) {
 		"[^\"><script>alert(1)</script>]: Note\n\nRef[^\"><script>alert(1)</script>]",
 
 		// ============================================================
+		// HEADING ID INJECTION
+		// ============================================================
+		"## foo\" onclick=\"alert(1)\n\n## Safe\n",
+		"## foo<script>alert(1)</script>\n\n## Safe\n",
+		"## </h2><script>alert(1)</script>\n\n## Safe\n",
+		"## foo' onfocus='alert(1)\n\n## Safe\n",
+		"## <img src=x onerror=alert(1)>\n\n## Safe\n",
+		"## foo\"><img src=x onerror=alert(1)>\n\n## Safe\n",
+
+		// ============================================================
 		// COMBINED/COMPLEX PAYLOADS
 		// ============================================================
 		"[[page|<script>alert(1)</script>]] and [^x]\n\n[^x]: <img onerror=alert(2)>",

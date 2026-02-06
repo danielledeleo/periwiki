@@ -13,7 +13,6 @@ import (
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
-	"github.com/yuin/goldmark/parser"
 
 	"github.com/danielledeleo/periwiki/extensions"
 )
@@ -118,11 +117,9 @@ func NewHTMLRenderer(
 
 	r := &HTMLRenderer{
 		md: goldmark.New(
-			goldmark.WithParserOptions(
-				parser.WithAutoHeadingID(),
-			),
 			goldmark.WithExtensions(
 				extension.Table,
+				extensions.NewWikiHeadingIDs(),
 				extensions.NewWikiLinker(wikiLinkerParserOpts, wikiLinkRendererOpts),
 				extensions.NewFootnote(footnoteOpts...),
 			),

@@ -215,6 +215,85 @@ func extractTOC(t *testing.T, html string) string {
 	return ""
 }
 
+func TestHeadingIDFormat(t *testing.T) {
+	r := NewHTMLRenderer(nil, nil, nil)
+
+	tests := []struct {
+		name     string
+		heading  string
+		wantID   string
+	}{
+		{"preserves case", "## Government and Policies", "Government_and_Policies"},
+		{"underscores for spaces", "## Hello World", "Hello_World"},
+		{"keeps parens", "## Disambiguation (overview)", "Disambiguation_(overview)"},
+		{"keeps punctuation", "## It's a test!", `It&#39;s_a_test!`},
+		{"collapses whitespace", "## Too  many   spaces", "Too_many_spaces"},
+		{"deduplicates", "## Dupe\n\n## Dupe", "Dupe"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			html, err := r.Render(tt.heading + "\n\nBody\n")
+			if err != nil {
+				t.Fatalf("Render failed: %v", err)
+			}
+			if !strings.Contains(html, `id="`+tt.wantID+`"`) {
+				t.Errorf("expected id=%q in HTML:\n%s", tt.wantID, html)
+			}
+		})
+	}
+}
+
+func TestHeadingIDXSS(t *testing.T) {
+	r := NewHTMLRenderer(nil, nil, nil)
+
+	tests := []struct {
+		name    string
+		heading string
+		reject  []string // substrings that must NOT appear unescaped in output
+	}{
+		{
+			"double quote breakout",
+			`## foo" onclick="alert(1)`,
+			[]string{`" onclick="`},
+		},
+		{
+			"angle bracket injection",
+			`## foo<script>alert(1)</script>`,
+			[]string{`<script>`},
+		},
+		{
+			"single quote event handler",
+			`## foo' onfocus='alert(1)`,
+			[]string{`' onfocus='`},
+		},
+		{
+			"closing tag in heading",
+			`## </h2><script>alert(1)</script>`,
+			[]string{`<script>`},
+		},
+		{
+			"javascript protocol in heading",
+			"## javascript:alert(1)",
+			[]string{}, // just verify no crash; href is always #anchor
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			html, err := r.Render(tt.heading + "\n\n## Safe\n\nBody\n")
+			if err != nil {
+				t.Fatalf("Render failed: %v", err)
+			}
+			for _, bad := range tt.reject {
+				if strings.Contains(html, bad) {
+					t.Errorf("found dangerous substring %q in output:\n%s", bad, html)
+				}
+			}
+		})
+	}
+}
+
 func TestTOCH1Excluded(t *testing.T) {
 	r := NewHTMLRenderer(nil, nil, nil)
 

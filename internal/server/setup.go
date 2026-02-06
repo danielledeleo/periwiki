@@ -166,11 +166,14 @@ func Setup() (*App, *renderqueue.Queue) {
 // table. If the templates have changed, it invalidates cached HTML for old
 // revisions and queues head revisions for re-rendering.
 func checkRenderTemplateStaleness(db *sql.DB, repo repository.ArticleRepository, articles service.ArticleService) {
-	currentHash, err := render.HashRenderTemplates("templates/_render")
+	templateHash, err := render.HashRenderTemplates("templates/_render")
 	if err != nil {
 		slog.Error("failed to hash render templates", "error", err)
 		return
 	}
+	// Include the build commit so code changes to the rendering pipeline
+	// (not just template changes) also trigger a re-render.
+	currentHash := templateHash + ":" + embedded.BuildCommit
 
 	storedHash, err := getOrCreateSetting(db, wiki.SettingRenderTemplateHash, func() string {
 		return currentHash

@@ -1,16 +1,13 @@
 package extensions
 
 import (
-	"bytes"
-	"regexp"
+	"github.com/danielledeleo/periwiki/wiki"
 )
-
-var underscoreRegexp = regexp.MustCompile(`\s+`)
 
 type underscoreResolver struct{}
 
 func (r *underscoreResolver) Resolve(original []byte) ([]byte, [][]byte) {
-	return append([]byte("/wiki/"), underscoreRegexp.ReplaceAll(bytes.Trim(original, " \t"), []byte{'_'})...), nil
+	return []byte("/wiki/" + wiki.TitleToSlug(string(original))), nil
 }
 
 // WithUnderscoreResolver replaces all whitespace in WikiLinks with
@@ -31,7 +28,7 @@ type existenceAwareResolver struct {
 }
 
 func (r *existenceAwareResolver) Resolve(original []byte) ([]byte, [][]byte) {
-	url := append([]byte("/wiki/"), underscoreRegexp.ReplaceAll(bytes.Trim(original, " \t"), []byte{'_'})...)
+	url := []byte("/wiki/" + wiki.TitleToSlug(string(original)))
 
 	if r.checker != nil && !r.checker(string(url)) {
 		return url, [][]byte{deadlinkClass}

@@ -1,10 +1,21 @@
 package wiki
 
 import (
+	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 )
+
+var whitespaceRun = regexp.MustCompile(`\s+`)
+
+// TitleToSlug converts a display title to a URL/anchor slug.
+// It trims whitespace and collapses runs of whitespace into underscores.
+// Case and punctuation are preserved.
+func TitleToSlug(title string) string {
+	s := strings.TrimSpace(title)
+	return whitespaceRun.ReplaceAllString(s, "_")
+}
 
 // InferTitle converts a URL slug to a display title.
 // It replaces underscores with spaces and capitalizes only the first character.
