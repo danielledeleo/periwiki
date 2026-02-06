@@ -17,4 +17,6 @@ var (
 	ErrGenericNotFound       = errors.New("not found")
 	ErrNoArticles            = errors.New("no articles exist")
 	ErrReadOnlyArticle       = errors.New("article is read-only")
+	ErrForbidden             = errors.New("you do not have permission to perform this action")
+	ErrAdminRequired         = errors.New("administrator access required")
 )

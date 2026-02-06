@@ -40,8 +40,8 @@ func NewRerenderAllPage(articles ArticleRerenderer, templater RerenderAllTemplat
 func (p *RerenderAllPage) Handle(rw http.ResponseWriter, req *http.Request) {
 	user := req.Context().Value(wiki.UserKey).(*wiki.User)
 
-	if user.IsAnonymous() {
-		http.Error(rw, "Authentication required", http.StatusUnauthorized)
+	if !user.IsAdmin() {
+		http.Error(rw, "Administrator access required", http.StatusForbidden)
 		return
 	}
 

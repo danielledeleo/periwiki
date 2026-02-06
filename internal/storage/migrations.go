@@ -127,6 +127,68 @@ func RunMigrations(db *sqlx.DB) error {
 		return err
 	}
 
+	// Migration: Add role column to User table.
+	var roleColExists int
+	err = db.Get(&roleColExists, `SELECT COUNT(*) FROM pragma_table_info('User') WHERE name = 'role'`)
+	if err != nil {
+		return err
+	}
+	if roleColExists == 0 {
+		_, err = db.Exec(`ALTER TABLE User ADD COLUMN role TEXT NOT NULL DEFAULT 'user'`)
+		if err != nil {
+			return err
+		}
+		// Promote first registered user to admin
+		_, err = db.Exec(`UPDATE User SET role = 'admin' WHERE id = 1`)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Always ensure anonymous user has empty role. On new databases the column
+	// DEFAULT is 'user', so this corrects it. On existing databases it's a no-op.
+	_, err = db.Exec(`UPDATE User SET role = '' WHERE id = 0`)
+	if err != nil {
+		return err
+	}
+
+	// Migration: Add created_at column to User table, or fix it if it was
+	// added as nullable by an earlier buggy migration.
+	var createdAtNotNull int
+	err = db.Get(&createdAtNotNull, `SELECT COALESCE(
+		(SELECT "notnull" FROM pragma_table_info('User') WHERE name = 'created_at'),
+		-1)`)
+	if err != nil {
+		return err
+	}
+	if createdAtNotNull < 1 {
+		_, err = db.Exec(`PRAGMA foreign_keys = OFF`)
+		if err != nil {
+			return err
+		}
+		_, err = db.Exec(`
+			CREATE TABLE User_new (
+				id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+				email TEXT NOT NULL UNIQUE,
+				screenname TEXT NOT NULL UNIQUE,
+				role TEXT NOT NULL DEFAULT 'user',
+				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			INSERT INTO User_new (id, email, screenname, role, created_at)
+				SELECT id, email, screenname, role, COALESCE(created_at, CURRENT_TIMESTAMP) FROM User;
+			DROP TABLE User;
+			ALTER TABLE User_new RENAME TO User;
+		`)
+		if err != nil {
+			db.Exec(`PRAGMA foreign_keys = ON`)
+			return err
+		}
+		_, err = db.Exec(`PRAGMA foreign_keys = ON`)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

@@ -21,6 +21,15 @@ type UserService interface {
 
 	// GetUserByScreenName retrieves a user by their screen name.
 	GetUserByScreenName(screenname string) (*wiki.User, error)
+
+	// GetAllUsers returns all registered users (excluding anonymous).
+	GetAllUsers() ([]*wiki.User, error)
+
+	// GetUserByID retrieves a user by their ID.
+	GetUserByID(id int) (*wiki.User, error)
+
+	// SetUserRole changes a user's role. The acting user must be an admin.
+	SetUserRole(actingUser *wiki.User, targetID int, role string) error
 }
 
 // userService is the default implementation of UserService.
@@ -38,6 +47,7 @@ func NewUserService(repo repository.UserRepository, minimumPasswordLength int) U
 }
 
 // PostUser creates a new user after validation.
+// If the newly created user has ID 1, they are automatically promoted to admin.
 func (s *userService) PostUser(user *wiki.User) error {
 	if len(user.ScreenName) == 0 {
 		return wiki.ErrEmptyUsername
@@ -61,7 +71,19 @@ func (s *userService) PostUser(user *wiki.User) error {
 		return err
 	}
 
-	return s.repo.InsertUser(user)
+	if err := s.repo.InsertUser(user); err != nil {
+		return err
+	}
+
+	// Promote first registered user to admin
+	if user.ID == 1 {
+		if err := s.repo.UpdateUserRole(1, wiki.RoleAdmin); err != nil {
+			return err
+		}
+		user.Role = wiki.RoleAdmin
+	}
+
+	return nil
 }
 
 // CheckUserPassword verifies a user's password.
@@ -90,4 +112,33 @@ func (s *userService) GetUserByScreenName(screenname string) (*wiki.User, error)
 	}
 
 	return dbUser, err
+}
+
+// GetAllUsers returns all registered users (excluding anonymous).
+func (s *userService) GetAllUsers() ([]*wiki.User, error) {
+	return s.repo.SelectAllUsers()
+}
+
+// GetUserByID retrieves a user by their ID.
+func (s *userService) GetUserByID(id int) (*wiki.User, error) {
+	user, err := s.repo.SelectUserByID(id)
+	if err == sql.ErrNoRows {
+		return nil, wiki.ErrGenericNotFound
+	}
+	return user, err
+}
+
+// SetUserRole changes a user's role. The acting user must be an admin
+// and cannot demote themselves.
+func (s *userService) SetUserRole(actingUser *wiki.User, targetID int, role string) error {
+	if !actingUser.IsAdmin() {
+		return wiki.ErrAdminRequired
+	}
+	if role != wiki.RoleAdmin && role != wiki.RoleUser {
+		return fmt.Errorf("invalid role: %s", role)
+	}
+	if actingUser.ID == targetID {
+		return wiki.ErrForbidden
+	}
+	return s.repo.UpdateUserRole(targetID, role)
 }

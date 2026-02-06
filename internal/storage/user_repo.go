@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/danielledeleo/periwiki/wiki"
@@ -26,7 +27,7 @@ func (db *sqliteDb) InsertUser(user *wiki.User) (err error) {
 		}
 	}()
 
-	_, err = tx.Exec(`INSERT INTO User(screenname, email) VALUES (?, ?)`, user.ScreenName, user.Email)
+	result, err := tx.Exec(`INSERT INTO User(screenname, email) VALUES (?, ?)`, user.ScreenName, user.Email)
 
 	if err != nil {
 		if err.Error() == "UNIQUE constraint failed: User.screenname" {
@@ -36,7 +37,14 @@ func (db *sqliteDb) InsertUser(user *wiki.User) (err error) {
 		}
 		return
 	}
-	if _, err = tx.Exec(`INSERT INTO Password(user_id, passwordhash) VALUES (last_insert_rowid(), ?)`, user.PasswordHash); err != nil {
+
+	userID, err := result.LastInsertId()
+	if err != nil {
+		return
+	}
+	user.ID = int(userID)
+
+	if _, err = tx.Exec(`INSERT INTO Password(user_id, passwordhash) VALUES (?, ?)`, user.ID, user.PasswordHash); err != nil {
 		return
 	}
 
@@ -54,4 +62,24 @@ func (db *sqliteDb) SelectUserByScreenname(screenname string, withHash bool) (*w
 	}
 
 	return user, err
+}
+
+func (db *sqliteDb) SelectUserByID(id int) (*wiki.User, error) {
+	user := &wiki.User{}
+	err := db.conn.Get(user, `SELECT id, screenname, email, role, created_at FROM User WHERE id = ?`, id)
+	return user, err
+}
+
+func (db *sqliteDb) SelectAllUsers() ([]*wiki.User, error) {
+	var users []*wiki.User
+	err := db.conn.Select(&users, `SELECT id, screenname, email, role, created_at FROM User WHERE id != 0 ORDER BY id`)
+	return users, err
+}
+
+func (db *sqliteDb) UpdateUserRole(id int, role string) error {
+	if role != wiki.RoleAdmin && role != wiki.RoleUser {
+		return fmt.Errorf("invalid role: %s", role)
+	}
+	_, err := db.conn.Exec(`UPDATE User SET role = ? WHERE id = ?`, role, id)
+	return err
 }

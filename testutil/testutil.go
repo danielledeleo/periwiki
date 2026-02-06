@@ -3,6 +3,8 @@ package testutil
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -52,6 +54,7 @@ type TestApp struct {
 	RuntimeConfig *wiki.RuntimeConfig
 	Router        *mux.Router
 	DB            *TestDB
+	RawDB         *sql.DB
 }
 
 // projectRoot returns the root directory of the project.
@@ -140,6 +143,8 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 	err := tmpl.Load(
 		filepath.Join(templatesPath, "layouts", "*.html"),
 		filepath.Join(templatesPath, "*.html"),
+		filepath.Join(templatesPath, "special", "*.html"),
+		filepath.Join(templatesPath, "manage", "*.html"),
 	)
 	if err != nil {
 		dbCleanup()
@@ -210,6 +215,7 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 		Config:        config,
 		RuntimeConfig: runtimeConfig,
 		DB:            db,
+		RawDB:         db.conn.DB,
 	}
 
 	cleanup := func() {
@@ -246,6 +252,18 @@ func CreateTestUser(t testing.TB, db *TestDB, screenname, email, password string
 	}
 
 	return createdUser
+}
+
+// CreateTestAdmin creates an admin user in the test database and returns it.
+func CreateTestAdmin(t testing.TB, db *TestDB, screenname, email, password string) *wiki.User {
+	t.Helper()
+	user := CreateTestUser(t, db, screenname, email, password)
+	err := db.UpdateUserRole(user.ID, wiki.RoleAdmin)
+	if err != nil {
+		t.Fatalf("failed to set admin role: %v", err)
+	}
+	user.Role = wiki.RoleAdmin
+	return user
 }
 
 // CreateTestArticle creates an article in the test database and returns it.
@@ -586,7 +604,7 @@ func (tdb *TestDB) InsertUser(user *wiki.User) error {
 		}
 	}()
 
-	_, err = tx.Exec(`INSERT INTO User(screenname, email) VALUES (?, ?)`, user.ScreenName, user.Email)
+	result, err := tx.Exec(`INSERT INTO User(screenname, email) VALUES (?, ?)`, user.ScreenName, user.Email)
 	if err != nil {
 		if err.Error() == "UNIQUE constraint failed: User.screenname" {
 			return wiki.ErrUsernameTaken
@@ -596,7 +614,33 @@ func (tdb *TestDB) InsertUser(user *wiki.User) error {
 		return err
 	}
 
-	_, err = tx.Exec(`INSERT INTO Password(user_id, passwordhash) VALUES (last_insert_rowid(), ?)`, user.PasswordHash)
+	userID, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	user.ID = int(userID)
+
+	_, err = tx.Exec(`INSERT INTO Password(user_id, passwordhash) VALUES (?, ?)`, user.ID, user.PasswordHash)
+	return err
+}
+
+func (tdb *TestDB) SelectUserByID(id int) (*wiki.User, error) {
+	user := &wiki.User{}
+	err := tdb.conn.Get(user, `SELECT id, screenname, email, role, created_at FROM User WHERE id = ?`, id)
+	return user, err
+}
+
+func (tdb *TestDB) SelectAllUsers() ([]*wiki.User, error) {
+	var users []*wiki.User
+	err := tdb.conn.Select(&users, `SELECT id, screenname, email, role, created_at FROM User WHERE id != 0 ORDER BY id`)
+	return users, err
+}
+
+func (tdb *TestDB) UpdateUserRole(id int, role string) error {
+	if role != wiki.RoleAdmin && role != wiki.RoleUser {
+		return fmt.Errorf("invalid role: %s", role)
+	}
+	_, err := tdb.conn.Exec(`UPDATE User SET role = ? WHERE id = ?`, role, id)
 	return err
 }
 

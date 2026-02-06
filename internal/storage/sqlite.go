@@ -44,13 +44,13 @@ func InitializeStatements(conn *sqlx.DB) (*PreparedStatements, error) {
 		return nil, err
 	}
 
-	stmts.SelectUserScreennameStmt, err = conn.Preparex(`SELECT id, screenname, email FROM User WHERE screenname = ?`)
+	stmts.SelectUserScreennameStmt, err = conn.Preparex(`SELECT id, screenname, email, role, created_at FROM User WHERE screenname = ?`)
 	if err != nil {
 		return nil, err
 	}
 
 	stmts.SelectUserScreennameWithHashStmt, err = conn.Preparex(`
-		SELECT id, screenname, email, passwordhash FROM User JOIN Password ON Password.user_id = User.id WHERE screenname = ?`)
+		SELECT id, screenname, email, passwordhash, role, created_at FROM User JOIN Password ON Password.user_id = User.id WHERE screenname = ?`)
 	if err != nil {
 		return nil, err
 	}
