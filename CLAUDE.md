@@ -16,8 +16,6 @@ When making decisions, prefer the simpler solution that preserves these values.
 
 `make` builds the binary. `make test` or `go test ./...` runs tests.
 
-After schema changes in `internal/storage/schema.sql`, run `make model` to regenerate SQLBoiler models.
-
 ## Architecture
 
 Layered with interface-based DI: Handlers (`internal/server/`) → Services (`wiki/service/`) → Repositories (`wiki/repository/` interfaces, `internal/storage/` implementations) → SQLite.

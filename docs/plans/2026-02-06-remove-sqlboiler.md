@@ -1,6 +1,6 @@
 # Remove SQLBoiler Dead Code
 
-**Status:** Proposal
+**Status:** Done
 **Phase:** 1 of 3 (Database Layer Refactoring)
 **Prerequisites:** None
 **Next:** Phase 2 — Versioned Migrations (`2026-02-06-versioned-migrations.md`)

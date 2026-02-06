@@ -79,7 +79,6 @@ Periwiki uses SQLite. The database schema is applied and migrated automatically 
 | `make` | Build the `periwiki` binary (default) |
 | `make run` | Build and run the server |
 | `make watch` | Rebuild and restart on file changes (requires [entr](https://eradman.com/entrproject/)) |
-| `make model` | Regenerate SQLBoiler models from `schema.sql` |
 | `make test` | Run tests |
 | `make test-verbose` | Run tests with verbose output |
 | `make test-coverage` | Run tests with coverage summary |

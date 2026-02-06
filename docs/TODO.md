@@ -92,10 +92,6 @@ Depends on user-defined templates (see docs/plans/user-templates-design.md)
 - Rich customizable home page (featured articles, other custom widgets)
 
 Dependency Maintenance (January 2026)
-- [MEDIUM] Evaluate SQLBoiler alternatives (volatiletech/sqlboiler)
-  - Maintainers recommend Bob (https://bob.stephenafamo.com) or sqlc as alternatives
-  - Consider Bun, others found here (https://awesome-go.com/#orm)
-  - Project is in low-maintenance mode
 - [MEDIUM] Replace or fork michaeljs1990/sqlitestore
   - No releases, last commit May 2021, uses CGO-based sqlite driver
   - Consider implementing session store with modernc.org/sqlite instead
