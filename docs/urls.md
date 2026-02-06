@@ -46,7 +46,7 @@ Help articles are read-only and compiled into the binary from `internal/embedded
 | URL | Description |
 |-----|-------------|
 | `/wiki/Special:Random` | Redirect to random article |
-| `/wiki/Special:RerenderAll` | Rerender all articles (auth required) |
+| `/wiki/Special:RerenderAll` | Rerender all articles (admin only) |
 | `/wiki/Special:Sitemap` | HTML sitemap |
 | `/wiki/Special:Sitemap.xml` | XML sitemap |
 
@@ -61,6 +61,15 @@ The `Special` namespace is case-insensitive (`special:Random` also works).
 | `/user/login` | GET | Login form |
 | `/user/login` | POST | Submit login |
 | `/user/logout` | POST | End session |
+
+## Admin
+
+| URL | Method | Description |
+|-----|--------|-------------|
+| `/manage/users` | GET | List all users (admin only) |
+| `/manage/users/{id}` | POST | Change user role (admin only) |
+| `/manage/settings` | GET | Runtime settings (admin only) |
+| `/manage/settings` | POST | Update runtime settings (admin only) |
 
 ## Other
 

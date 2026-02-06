@@ -1,4 +1,5 @@
 Soon(ish)
+- [HIGH] Investigate why frontmatter is in the Article table and not the Revision table
 - [MED] Backlinks feature (will help trigger redlink re-renders)
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - [MED] Talk:pages
@@ -9,6 +10,7 @@ Soon(ish)
   - private
   - internal-only
 - Home page as a standard article
+- e2e database migration tests (old test databases as part of testing)
 - Improve editing request flow
   - unmodified content submissions should still re-render
   - submission errors should appear above editor window, not a new page (unmodified, conflicts)
@@ -46,7 +48,6 @@ Architecture
 - [BUG] POST to `Periwiki:` namespace silently returns 200 — should return 405
 - [BUG] Render queue `Shutdown` doesn't drain pending jobs — goroutines waiting on `waitCh` leak
 - Parse TOC template once at init instead of on every `Render()` call
-- Replace `go-git/v5` in `gen/main.go` with shelling out to `git rev-parse HEAD` (saves ~15 transitive deps)
 - Consider promoting orphan h4 headings (under h2, no h3) into the h2's children instead of dropping
 - Add explicit transaction wrapping for table-recreation migrations in `migrations.go`
 - Embedded articles not included in `GetAllArticles` — document whether intentional or add them
