@@ -1,30 +1,49 @@
 # Database Layer Migration: sqlc
 
 **Status:** Proposal
-**Author:** Claude (with Dani)
-**Date:** January 2026
+**Phase:** 3 of 3 (Database Layer Refactoring)
+**Prerequisites:** Phase 1 — Remove SQLBoiler, Phase 2 — Versioned Migrations
+**Next:** Feature development (backlinks, FTS, talk pages) on the new foundation
 
 ## Summary
 
-Replace SQLBoiler and direct sqlx usage with sqlc for type-safe, SQL-first database access. This migration enables multi-database support (SQLite, PostgreSQL, MySQL) while preserving the existing repository pattern.
+Replace direct sqlx usage with sqlc for type-safe, SQL-first database access. This migration enables multi-database support (SQLite, PostgreSQL) while preserving the existing repository pattern.
+
+By this phase, SQLBoiler is already removed (Phase 1) and the migration system is versioned and dialect-aware (Phase 2).
+
+## Goals
+
+1. **Type-safe query layer** — compile-time verification that queries match schema, no runtime SQL surprises
+2. **Multi-DB portability** — SQLite and PostgreSQL both work, chosen at runtime via config
+3. **Eliminate manual boilerplate** — sqlc generates scanning structs and query functions, replacing `articleResult` and manual `Scan()` calls
+4. **Easier feature development** — adding a new query means writing SQL in a `.sql` file and running `sqlc generate`
+
+## Non-Goals
+
+1. **ORM or query builder** — SQL stays explicit. No fluent APIs, no magic
+2. **Schema abstraction** — dialect differences are handled with concrete SQL, not hidden behind a generic layer
+3. **Multi-tenant support** — no tenant isolation, shared schemas, row-level security
+4. **MySQL support** — only SQLite and PostgreSQL
+5. **Horizontal scaling** — no sharding, read replicas, or distributed transactions
 
 ## Background
 
-### Current State
+### Current State (after Phase 1 and 2)
 
-The project uses a hybrid approach that provides minimal benefit:
+- **sqlx** handles all data access via prepared statements and manual SQL
+- **Manual result structs** (`articleResult`, etc.) with manual mapping to domain types
+- **Manual `PreparedStatements` struct** initialized at startup
+- **Versioned migration system** with dialect support (from Phase 2)
+- **SQLite-only** with dialect-specific functions (`strftime()`, `json_extract()`)
 
-- **SQLBoiler** generates 14 model files (~11.7K LOC) that are never used for queries
-- **sqlx** handles all actual data access via prepared statements and manual SQL
-- **Manual result structs** (`articleResult`, etc.) duplicate effort with manual mapping to domain types
-- **SQLite-only** with dialect-specific functions (`strftime()`, `RANDOM()`)
+### Why sqlc
 
-### Problems
-
-1. **Dead code**: SQLBoiler models generated but unused
-2. **No multi-DB path**: Queries use SQLite-specific syntax
-3. **Maintenance burden**: SQLBoiler in "low-maintenance mode", maintainers recommend alternatives
-4. **Duplicate mappings**: `articleResult` → `wiki.Article` done manually
+1. **SQL is explicit** — the query file IS the specification, no hidden behaviors
+2. **Agent-friendly** — SQL is the most represented database language in training data
+3. **Low migration lift** — existing SQL queries move to annotated `.sql` files with minimal changes
+4. **Generated boilerplate** — sqlc generates scanning structs and query functions
+5. **Compile-time safety** — generated Go code is type-checked
+6. **Multi-DB via config** — separate engine blocks in `sqlc.yaml` generate dialect-specific code
 
 ### Alternatives Evaluated
 
@@ -34,43 +53,50 @@ The project uses a hybrid approach that provides minimal benefit:
 | **Bun** | Good multi-DB support with `db.Dialect()` detection. Fluent API has large surface area, implicit behaviors. |
 | **sqlc** | **Selected.** SQL-first aligns with current approach. Excellent agent comprehension. Clear patterns. |
 
-## Why sqlc
+## Query Dialect Audit
 
-1. **SQL is explicit**: The query file IS the specification—no hidden behaviors
-2. **Agent-friendly**: SQL is the most represented database language in training data
-3. **Low migration lift**: Existing SQL queries move to annotated `.sql` files
-4. **Generated boilerplate**: sqlc generates scanning structs and query functions
-5. **Compile-time safety**: Generated Go code is type-checked
+Investigation of the current codebase shows ~80% of queries are portable:
+
+| Category | Count | Examples |
+|----------|-------|---------|
+| Portable | 16 | Most SELECTs, JOINs, UPDATEs, standard INSERTs |
+| Trivially adaptable | 2 | `INSERT OR REPLACE` → `ON CONFLICT`, `ABS(RANDOM())` |
+| SQLite-specific | 10 | `strftime()`, `json_extract()`, `jsonb()`, `last_insert_rowid()` |
+| DDL differences | 4 | `AUTOINCREMENT` → `SERIAL`, `INSERT OR IGNORE` → `ON CONFLICT DO NOTHING` |
+
+Of the 10 SQLite-specific queries, 5 are `strftime()` → `CURRENT_TIMESTAMP` (trivial), 2 are `jsonb()` cast changes (trivial), 1 is `json_extract()` → `->>'key'` (straightforward), and 1 is `last_insert_rowid()` → `RETURNING` (moderate).
 
 ## Architecture
 
 ### Directory Structure
+
+Common queries live once. Only genuinely incompatible queries get dialect-specific versions.
 
 ```
 internal/storage/
 ├── sqlc.yaml                    # sqlc configuration
 ├── schema/
 │   ├── common.sql               # Shared schema (portable DDL)
-│   ├── postgres.sql             # PG-specific (JSONB columns, GIN indexes)
-│   └── sqlite.sql               # SQLite-specific (JSON1, FTS5)
+│   ├── postgres.sql             # PG-specific (SERIAL, JSONB columns, GIN indexes)
+│   └── sqlite.sql               # SQLite-specific (AUTOINCREMENT, JSON1, FTS5)
 ├── queries/
-│   ├── common/                  # Queries that work on all dialects
+│   ├── common/                  # ~80% of queries — portable SQL
 │   │   ├── article.sql
 │   │   ├── user.sql
 │   │   └── preference.sql
-│   ├── postgres/                # PostgreSQL-specific queries
-│   │   └── article.sql          # JSONB operations, full-text search
-│   └── sqlite/                  # SQLite-specific queries
-│       └── article.sql          # json_extract(), FTS5
-├── postgres/                    # Generated code
+│   ├── postgres/                # Dialect-specific overrides only
+│   │   └── article.sql          # JSONB ops, FTS, RETURNING, timestamps
+│   └── sqlite/                  # Dialect-specific overrides only
+│       └── article.sql          # json_extract(), FTS5, strftime(), last_insert_rowid()
+├── postgres/                    # Generated code (by sqlc)
 │   ├── db.go
 │   ├── models.go
 │   └── queries.sql.go
-├── sqlite/                      # Generated code
+├── sqlitedb/                    # Generated code (by sqlc)
 │   ├── db.go
 │   ├── models.go
 │   └── queries.sql.go
-└── repository.go                # Factory: returns correct implementation
+└── repository.go                # Factory: returns correct implementation by dialect
 ```
 
 ### Configuration
@@ -89,8 +115,8 @@ sql:
       - "queries/sqlite/"
     gen:
       go:
-        package: "sqlite"
-        out: "sqlite"
+        package: "sqlitedb"
+        out: "sqlitedb"
         emit_interface: true
         emit_exact_table_names: false
 
@@ -110,13 +136,14 @@ sql:
         emit_exact_table_names: false
 ```
 
+Both engines reference `queries/common/`. Only the handful of queries that genuinely differ live in `queries/sqlite/` or `queries/postgres/`. When a dialect-specific file defines a query with the same name as one in common, it overrides it for that engine.
+
 ### Query File Convention
 
 ```sql
 -- queries/common/article.sql
 
 -- name: SelectArticle :one
--- SelectArticle retrieves an article with its latest revision and creator.
 SELECT
     a.url,
     r.id, r.title, r.markdown, r.html, r.hashval, r.created,
@@ -125,79 +152,53 @@ SELECT
 FROM article a
 JOIN revision r ON a.id = r.article_id
 JOIN "user" u ON r.user_id = u.id
-WHERE a.url = ?
+WHERE a.url = sqlc.arg('url')
 ORDER BY r.created DESC
 LIMIT 1;
 
--- name: SelectArticleByRevisionHash :one
-SELECT
-    a.url,
-    r.id, r.title, r.markdown, r.html, r.hashval, r.created,
-    r.previous_id, r.comment,
-    u.id AS user_id, u.screenname
-FROM article a
-JOIN revision r ON a.id = r.article_id
-JOIN "user" u ON r.user_id = u.id
-WHERE a.url = ? AND r.hashval = ?;
-
 -- name: InsertArticle :exec
-INSERT INTO article (url) VALUES (?);
-
--- name: InsertRevision :exec
-INSERT INTO revision (id, title, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO article (url) VALUES (sqlc.arg('url'));
 
 -- name: SelectRandomArticleURL :one
 SELECT url FROM article ORDER BY RANDOM() LIMIT 1;
 ```
 
-### Dialect-Specific Queries
+Cross-engine parameter syntax uses `sqlc.arg('name')`, which compiles to `?` for SQLite and `$1` for PostgreSQL.
 
-```sql
--- queries/postgres/article.sql
-
--- name: SelectArticlesByTag :many
--- PostgreSQL: Use JSONB containment operator with GIN index
-SELECT a.url, a.id, r.title
-FROM article a
-JOIN revision r ON a.id = r.article_id
-WHERE a.frontmatter @> jsonb_build_object('tags', jsonb_build_array($1::text))
-ORDER BY r.title;
-
--- name: SearchArticles :many
--- PostgreSQL: Full-text search with tsvector
-SELECT a.url, r.title, ts_rank(r.search_vector, query) AS rank
-FROM article a
-JOIN revision r ON a.id = r.article_id,
-     plainto_tsquery('english', $1) query
-WHERE r.search_vector @@ query
-ORDER BY rank DESC
-LIMIT $2;
-```
+### Dialect-Specific Overrides
 
 ```sql
 -- queries/sqlite/article.sql
 
+-- name: InsertArticleWithTimestamp :execresult
+INSERT INTO article (url, created)
+VALUES (sqlc.arg('url'), strftime("%Y-%m-%d %H:%M:%f", "now"));
+
 -- name: SelectArticlesByTag :many
--- SQLite: Use json_each() table-valued function
 SELECT a.url, a.id, r.title
 FROM article a
 JOIN revision r ON a.id = r.article_id
 WHERE EXISTS (
     SELECT 1 FROM json_each(a.frontmatter, '$.tags')
-    WHERE value = ?
+    WHERE value = sqlc.arg('tag')
 )
 ORDER BY r.title;
+```
 
--- name: SearchArticles :many
--- SQLite: Use FTS5 virtual table
-SELECT a.url, r.title, bm25(article_fts) AS rank
-FROM article_fts
-JOIN article a ON article_fts.rowid = a.id
+```sql
+-- queries/postgres/article.sql
+
+-- name: InsertArticleWithTimestamp :one
+INSERT INTO article (url, created)
+VALUES (sqlc.arg('url'), CURRENT_TIMESTAMP)
+RETURNING id;
+
+-- name: SelectArticlesByTag :many
+SELECT a.url, a.id, r.title
+FROM article a
 JOIN revision r ON a.id = r.article_id
-WHERE article_fts MATCH ?
-ORDER BY rank
-LIMIT ?;
+WHERE a.frontmatter @> jsonb_build_object('tags', jsonb_build_array(sqlc.arg('tag')::text))
+ORDER BY r.title;
 ```
 
 ### Repository Implementation
@@ -205,203 +206,105 @@ LIMIT ?;
 ```go
 // internal/storage/repository.go
 
-package storage
-
-import (
-    "context"
-    "database/sql"
-
-    "github.com/danielledeleo/periwiki/internal/storage/postgres"
-    "github.com/danielledeleo/periwiki/internal/storage/sqlite"
-    "github.com/danielledeleo/periwiki/wiki"
-    "github.com/danielledeleo/periwiki/wiki/repository"
-)
-
-type Dialect string
-
-const (
-    DialectSQLite   Dialect = "sqlite"
-    DialectPostgres Dialect = "postgres"
-)
-
 // NewArticleRepository returns the appropriate implementation for the dialect.
 func NewArticleRepository(db *sql.DB, dialect Dialect) repository.ArticleRepository {
     switch dialect {
     case DialectPostgres:
         return &postgresArticleRepo{q: postgres.New(db)}
     default:
-        return &sqliteArticleRepo{q: sqlite.New(db)}
+        return &sqliteArticleRepo{q: sqlitedb.New(db)}
     }
-}
-
-// SQLite implementation
-type sqliteArticleRepo struct {
-    q *sqlite.Queries
-}
-
-func (r *sqliteArticleRepo) SelectArticle(ctx context.Context, url string) (*wiki.Article, error) {
-    row, err := r.q.SelectArticle(ctx, url)
-    if err != nil {
-        return nil, err
-    }
-    return mapRowToArticle(row), nil
-}
-
-// PostgreSQL implementation
-type postgresArticleRepo struct {
-    q *postgres.Queries
-}
-
-func (r *postgresArticleRepo) SelectArticle(ctx context.Context, url string) (*wiki.Article, error) {
-    row, err := r.q.SelectArticle(ctx, url)
-    if err != nil {
-        return nil, err
-    }
-    return mapRowToArticle(row), nil
 }
 ```
+
+Each dialect-specific repo struct wraps the generated `Queries` and maps results to domain types. sqlc manages prepared statements internally — the manual `PreparedStatements` struct is removed.
 
 ### Domain Mapping
 
-```go
-// internal/storage/mapping.go
+sqlc generates separate row structs per engine (`sqlitedb.SelectArticleRow`, `postgres.SelectArticleRow`). Since the common queries produce identical column sets, mapping functions can be shared via generics or kept as simple per-dialect functions (decide during implementation — generics add complexity for marginal benefit).
 
-package storage
+## Open Decision
 
-import "github.com/danielledeleo/periwiki/wiki"
+**`context.Context` on repository interfaces** — sqlc generates context-aware functions by default. The current repository interfaces (22 methods across 4 interfaces) do not take `context.Context`. Adding it requires ~50-60 mechanical call site changes across ~15 files. Options:
+- Add context to all repo interfaces (Go standard, sqlc-native)
+- Wrap sqlc functions to strip context at the boundary (less churn, worse practice)
 
-// mapRowToArticle converts sqlc-generated row types to domain types.
-// Both sqlite.SelectArticleRow and postgres.SelectArticleRow have the same fields.
-func mapRowToArticle[T interface {
-    GetUrl() string
-    GetId() int32
-    GetTitle() string
-    GetMarkdown() string
-    GetHtml() string
-    GetHashval() string
-    GetCreated() time.Time
-    GetPreviousId() int32
-    GetComment() string
-    GetUserId() int64
-    GetScreenname() string
-}](row T) *wiki.Article {
-    return &wiki.Article{
-        URL: row.GetUrl(),
-        Revision: &wiki.Revision{
-            ID:         int(row.GetId()),
-            Title:      row.GetTitle(),
-            Markdown:   row.GetMarkdown(),
-            HTML:       row.GetHtml(),
-            Hash:       row.GetHashval(),
-            Created:    row.GetCreated(),
-            PreviousID: int(row.GetPreviousId()),
-            Comment:    row.GetComment(),
-            Creator: &wiki.User{
-                ID:         int(row.GetUserId()),
-                ScreenName: row.GetScreenname(),
-            },
-        },
-    }
-}
-```
+Decision deferred to implementation time.
 
-Note: Generic mapping requires sqlc's `emit_methods_with_db_argument` or manual implementation per dialect. Alternatively, keep separate mapping functions if generics add complexity.
+## Implementation Plan
 
-## Migration Plan
-
-### Phase 1: Setup and Parallel Implementation
+### Step 1: Setup and Parallel Implementation
 
 **Goal:** Get sqlc working alongside existing code.
 
-1. Add sqlc dependency and configuration
-2. Create `schema/` files from existing `schema.sql`
-3. Create `queries/common/` with portable queries
-4. Generate code, verify compilation
-5. Write mapping functions
+1. Install sqlc, add `sqlc.yaml` configuration
+2. Create `schema/common.sql` and `schema/sqlite.sql` from existing `schema.sql`
+3. Move portable queries to `queries/common/` with sqlc annotations
+4. Move SQLite-specific queries to `queries/sqlite/`
+5. Run `sqlc generate`, verify compilation
+6. Write domain mapping functions
+7. Add `sqlc generate` to Makefile
 
-**Deliverable:** sqlc generates code, existing tests still pass.
+**Deliverable:** sqlc generates code, existing tests still pass (sqlx still active).
 
-### Phase 2: Migrate SQLite Implementation
+### Step 2: Migrate SQLite Implementation
 
-**Goal:** Replace sqlx usage with sqlc for SQLite.
+**Goal:** Replace sqlx usage with sqlc-generated code for SQLite.
 
-1. Update repository interfaces to include `context.Context`
+1. Resolve `context.Context` decision for repository interfaces
 2. Implement `sqliteArticleRepo` using generated queries
 3. Migrate one repository at a time:
    - `ArticleRepository`
    - `UserRepository`
    - `PreferenceRepository`
-4. Remove `PreparedStatements` struct
+4. Remove `PreparedStatements` struct from `sqlite.go`
 5. Remove `articleResult` and other manual scanning structs
-6. Delete SQLBoiler configuration and generated models
+6. Remove sqlx dependency (if fully replaced)
 
-**Deliverable:** All repositories use sqlc. SQLBoiler removed.
+**Deliverable:** All repositories use sqlc. No manual SQL string building.
 
-### Phase 3: Add PostgreSQL Support
+### Step 3: Add PostgreSQL Support
 
 **Goal:** Enable PostgreSQL as an alternative database.
 
-1. Create `schema/postgres.sql` with dialect-specific DDL
-2. Add PostgreSQL-specific queries where needed
-3. Implement PostgreSQL repository wrappers
-4. Add database dialect to configuration
-5. Update `Init()` to select appropriate driver and dialect
-6. Add integration tests for PostgreSQL
+1. Create `schema/postgres.sql` with dialect-specific DDL (`SERIAL`, JSONB columns, GIN indexes)
+2. Add PostgreSQL-specific query overrides where needed
+3. Run `sqlc generate` for PostgreSQL engine
+4. Implement PostgreSQL repository wrappers
+5. Add database dialect to application configuration (runtime switch)
+6. Update `Init()` to select appropriate driver and dialect
+7. Add integration tests for PostgreSQL (separate test database)
+8. Write PostgreSQL-specific migrations in Phase 2's migration system
 
 **Deliverable:** Application runs on SQLite or PostgreSQL via config.
 
-### Phase 4: Feature-Specific Queries
-
-**Goal:** Implement planned features with proper dialect support.
+## Future Features (designed for, not implemented here)
 
 | Feature | Common Query | PostgreSQL | SQLite |
 |---------|--------------|------------|--------|
-| Frontmatter/Tags | - | JSONB + GIN | json_each() |
-| Full-text Search | - | tsvector | FTS5 |
-| Backlinks | Yes | Partial index | Standard index |
-| Rate Limiting | Yes (minor syntax diff) | INTERVAL | datetime() |
-
-## Database Feature Matrix
-
-Features from TODO.md mapped to database requirements:
-
-| Feature | Schema Change | Dialect Consideration |
-|---------|---------------|----------------------|
-| Frontmatter | `frontmatter` column on article | JSONB (PG) vs TEXT (SQLite) |
-| Redirect table | New table + indexes | Portable |
-| Backlinks | New table | Partial indexes (PG only) |
-| Search | FTS infrastructure | tsvector (PG) vs FTS5 (SQLite) |
-| Rate limiting | Action log table | INTERVAL vs datetime() |
-| User settings | Settings table or JSON | Portable or JSONB |
-| File metadata | Asset table | JSONB for EXIF (PG) |
-| Plugin tables | Dynamic schema | Multi-schema (PG) vs attached DB (SQLite) |
+| Backlinks | New table, portable queries | Partial index | Standard index |
+| Full-text Search | - | tsvector + GIN | FTS5 virtual table |
+| Talk Pages | New table, portable queries | Same | Same |
+| Frontmatter/Tags | Already implemented | JSONB + GIN | json_each() |
 
 ## Conventions for Agent-Driven Development
 
-Document these in CLAUDE.md:
+Document these in CLAUDE.md after implementation:
 
 ### Adding a New Query
 
 1. Determine if query is portable or dialect-specific
-2. Add to appropriate file in `queries/common/` or `queries/{dialect}/`
-3. Use annotation format: `-- name: QueryName :one|:many|:exec`
-4. Run `sqlc generate`
-5. Add domain mapping if new result shape
-6. Update repository interface and implementations
-
-### Query Annotations
-
-```sql
--- name: GetUser :one        -- Returns single row or error
--- name: ListUsers :many     -- Returns slice (empty if none)
--- name: CreateUser :exec    -- No return value
--- name: CreateUserReturningID :execresult  -- Returns last insert ID
-```
+2. Add to `queries/common/` or `queries/{dialect}/`
+3. Use annotation: `-- name: QueryName :one|:many|:exec|:execresult`
+4. Use `sqlc.arg('name')` for parameters (engine-agnostic)
+5. Run `sqlc generate`
+6. Add domain mapping if new result shape
+7. Update repository interface and both implementations
 
 ### Keeping Dialects in Sync
 
 When adding dialect-specific queries:
-1. Both `postgres/` and `sqlite/` must have the same query name
+1. Both `postgres/` and `sqlite/` must define the same query name
 2. Return types must match (same columns, same order)
 3. Test both implementations
 
@@ -409,29 +312,25 @@ When adding dialect-specific queries:
 
 | Risk | Mitigation |
 |------|------------|
-| Dialect queries drift out of sync | CI check that query names match across dialects |
-| Complex queries hard to express | sqlc allows raw SQL—no limitations |
-| Migration breaks existing functionality | Parallel implementation, migrate one repo at a time |
-| Agent forgets annotations | Document pattern in CLAUDE.md, add linter |
+| Dialect queries drift out of sync | CI check that query names match across dialect directories |
+| `sqlc.arg()` syntax unfamiliar | Document in CLAUDE.md, consistent examples in query files |
+| Generated code conflicts with existing | Parallel implementation (Step 1) before cutting over |
+| PostgreSQL integration test infra | Docker-based test database, skip in CI if unavailable |
 
 ## Success Criteria
 
-- [ ] SQLBoiler removed from project
 - [ ] All repositories use sqlc-generated code
 - [ ] Existing tests pass with SQLite
 - [ ] New integration tests pass with PostgreSQL
+- [ ] `PreparedStatements` struct removed
+- [ ] `articleResult` and manual scanning structs removed
 - [ ] Query patterns documented in CLAUDE.md
 - [ ] No manual SQL string building in repository layer
+- [ ] Application selects database at runtime via config
 
 ## Dependencies
 
-- sqlc v1.25+ (latest stable)
-- Remove: `volatiletech/sqlboiler`, `aarondl/null`, `aarondl/strmangle`, `friendsofgo/errors`
+- sqlc v2.x (latest stable)
 - Keep: `modernc.org/sqlite` (driver)
-- Add: `lib/pq` or `jackc/pgx` (PostgreSQL driver)
-
-## References
-
-- [sqlc documentation](https://docs.sqlc.dev/)
-- [sqlc multi-database config](https://docs.sqlc.dev/en/stable/reference/config.html)
-- [TODO.md database features analysis](./TODO.md)
+- Add: `jackc/pgx` (PostgreSQL driver)
+- Remove (after Step 2): `jmoiron/sqlx` (if fully replaced)
