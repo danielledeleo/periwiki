@@ -1,151 +1,297 @@
-# User-Defined Templates Design
+# Template & Widget System Design
+
+Status: **Draft — decisions in progress**
 
 ## Overview
 
-A template system enabling wiki-defined content types, widgets, and layouts. Templates are stored as special articles (`Template:Name`) and invoked by other articles via frontmatter or inline syntax.
+A template system enabling wiki-defined content types and widgets. Two layers:
+
+- **Core widgets** — Go `html/template` files on disk (`templates/_render/widget/`). Trusted code that produces HTML. Highly configurable with many parameters.
+- **User templates** — Wiki articles under the `Template:*` namespace. Provide convenience wrappers, parameter defaults, and documentation around core widgets. Can also be plain markdown for simple transclusion.
 
 **Goals:**
-- Infobox widgets (structured data cards like Wikipedia)
-- Reusable content blocks (boilerplate, navigation boxes)
-- Dynamic content types (recipes, profiles, custom layouts)
-- Replace hardcoded templates (homepage becomes an article invoking `Template:Homepage`)
+- Infobox widgets (structured data cards)
+- Reusable content blocks (boilerplate, navigation, notices)
+- Dynamic content types (recipes, profiles) via core widget + user template combos
 
-**Non-goals (for now):**
-- User-authored templates (admin-only initially)
-- Runtime template expansion (preprocessing only)
+**Non-goals:**
+- Raw HTML authoring through the wiki editor
 - Per-template JavaScript
+- Page-level layout templates (TODO: revisit later)
 
-## Core Concepts
+## Architecture
 
-### Template Tiers
+### Trust Model
 
-| Tier | Complexity | Invocation | Use Case |
-|------|-----------|------------|----------|
-| Basic | Simple params | Inline shortcode `{:Name: "a" "b"}` | Formatters, lookups, small insertions |
-| Widget | Structured data | Fenced block `{:Name:}...{/:Name:}` | Infoboxes, callouts, data tables |
-| Page | Full layout | Frontmatter `template: Name` | Content types, custom layouts |
+Trust is **structural**, not metadata:
 
-### Execution Model
+| Layer | Location | Trust | Produces HTML? |
+|-------|----------|-------|----------------|
+| Core widgets | `templates/_render/widget/*.html` | Trusted (code) | Yes — Go `html/template` |
+| User templates | `Template:*` wiki articles | Untrusted (content) | No — markdown + param mapping |
+| Articles | Regular wiki articles | Untrusted (content) | No — markdown with invocations |
 
-**Preprocessing:** Template expansion happens at article save time. Output is stored in the revision's rendered content. Templates cannot access runtime context (current user, current date).
+Core widgets are the **only** source of HTML in the template system. User templates are pure data mapping — they cannot execute code or emit raw HTML. This eliminates the need for function allowlists, output sanitization of template results, or template injection prevention at the user template layer.
 
-**Hybrid mode (special pages):** Special pages like `Special:Sitemap` use templates for layout but populate data at request time. The template defines *how* to display; the handler provides *what* to display.
+No `article.type` column or `template_meta` table. The `Template:*` namespace prefix identifies templates. All template configuration lives in frontmatter.
+
+### Rendering Pipeline
+
+Template expansion is a **Goldmark extension**, same as wikilinks and footnotes. Single rendering pass:
 
 ```
-Special:Sitemap request
-     |
-     v
-Handler gathers runtime data (sitemap entries)
-     |
-     v
-Load Template:SpecialSitemap (or fallback to hardcoded)
-     |
-     v
-Execute template with handler data as context
-     |
-     v
-Response (not stored)
+Article markdown
+  |
+  v
+Goldmark render (single pass, all extensions)
+  |
+  |-- Markdown syntax     --> HTML (existing)
+  |-- [[Wiki links]]      --> <a> tags (existing extension)
+  |-- [^Footnotes]        --> <sup>/<section> (existing extension)
+  |-- {{Template|params}} --> expanded content (NEW extension)
+  |       |
+  |       |-- User template (Template:*)?
+  |       |     Fetch article, substitute params, feed result
+  |       |     back for further expansion (recursive)
+  |       |
+  |       |-- Core widget (core:name)?
+  |       |     Execute disk template with params, emit HTML
+  |       |
+  |       |-- Plain transclusion?
+  |             Fetch Template:* content, insert as-is
+  |
+  v
+HTML
+  |
+  v
+Bluemonday sanitization
+  |
+  v
+Final HTML (stored in revision)
 ```
 
-## Article Frontmatter
+Recursive expansion handles user templates that invoke other templates or core widgets. Resolved content is fed back through Goldmark until no `{{...}}` invocations remain.
 
-Article frontmatter serves two distinct purposes that interact with the template system:
+### Relationship to Existing Infrastructure
 
-### Standard Metadata vs Template Parameters
+These systems are already in place (Phase 0 prerequisites from the original design):
 
-**Standard metadata** — Fields that apply to all articles regardless of template:
-```yaml
----yaml
-title: Valentino Garavani
-description: Italian fashion designer
-tags: [fashion, designer, italian]
-created: 2026-01-15
+- **Render queue** — Priority-based with interactive/background tiers, article deduplication
+- **Stale content detection** — Boot-time template hash check, lazy re-rendering
+- **Namespace routing** — `Foo:Bar` URLs route through `NamespaceHandler`; `Template:*` namespace needs registration
+- **Frontmatter parsing** — NestedText parser, `frontmatter` BLOB column on article table
+- **Special pages registry** — Dynamic handler registration
+
+## Invocation Syntax
+
+### Two Calling Conventions
+
+Like a function call — positional for simple inline use, named (NestedText) for structured data.
+
+**Positional (single line):**
+```markdown
+{{Stub}}
+{{FullName "Valentino" "Garavani"}}
+{{core:badge "warning" "Deprecated API"}}
+```
+
+**Named (multi-line, fenced NestedText):**
+```markdown
+{{Person
 ---
-```
-
-**Template parameters** — Fields specific to the invoked page template:
-```yaml
----yaml
-template: Biography
-# Standard metadata
-tags: [fashion, designer]
-# Template-specific parameters
-birth_date: 1932-05-11
-nationality: Italian
-occupation: Fashion designer
+name: Valentino Garavani
+born: May 11, 1932
+job:
+  title: Fashion designer
+  tenure: 1959-present
+awards:
+  - Legion of Honour
+  - CFDA Award
 ---
+}}
 ```
 
-The rendering pipeline:
-1. Parses all frontmatter fields
-2. Validates template-specific fields against the template schema
-3. Passes both to the template (standard fields available as `.Meta.*`, template params as `.Params.*` or top-level)
+Parser rule: single line = positional args, multi-line with `---` fences = NestedText params.
 
-### Relationship to Tagging
+### Core Widget Invocation
 
-A tagging system builds on template infrastructure but requires additional components:
+The `core:` prefix invokes a disk template directly:
 
-**What templates provide:**
-- Frontmatter parsing (tags declared as `tags: [a, b, c]`)
-- Rendering (page templates can output tag links)
-- Tag page layout (`Template:TagPage` for `Tag:*` special pages)
-
-**What tagging requires beyond templates:**
-- Tag index table (mapping tags → articles for efficient queries)
-- Tag page handler (special page that queries articles by tag)
-- Editor integration (autocomplete, validation)
-
-**Implicit tags from templates:** Templates could declare tags that are automatically applied:
-```yaml
-# Template:Recipe frontmatter
-implicit_tags: [recipe]
+```markdown
+{{core:infobox
+---
+name: Valentino Garavani
+born: May 11, 1932
+accent: #4a7c59
+---
+}}
 ```
-Any article using `Template:Recipe` inherits the `recipe` tag.
 
-### Plain Articles (No Template)
+This executes `templates/_render/widget/infobox.html` with the params as its Go template data context.
 
-Articles without a `template:` field still have frontmatter for metadata. The system provides a default rendering that:
-- Renders the markdown body
-- Displays standard metadata (tags, dates) in a consistent location
-- Could be customizable via a `Template:DefaultArticle` in the future
+### Block Syntax (Templates with Body Content)
 
-## Template Authoring
+Templates can wrap content. The body is accessible as `.body` in the template.
 
-Templates use Go's `html/template` syntax with a restricted function set.
+> **OPEN QUESTION:** Closing tag syntax — `{{/Name}}` or `{{end}}`?
 
-### Template Page Structure
+**Option A — Matching close tag:**
+```markdown
+{{core:callout "warning"}}
+This is the body content with **markdown**.
+{{/core:callout}}
+```
 
-```yaml
----yaml
-type: widget
-visibility: public
-config_languages: [yaml, kdl]
+**Option B — Generic end tag:**
+```markdown
+{{core:callout "warning"}}
+This is the body content with **markdown**.
+{{end}}
+```
+
+Option A is more explicit and supports nesting unambiguously. Option B is simpler.
+
+### Param References
+
+User templates use **dot notation** to reference passed parameters. The params object is the root context (`.`):
+
+- `.` — the entire params object (for pass-through)
+- `.name` — a specific param
+- `.job.title` — nested access
+- `.body` — reserved key for block content (injected by the system)
+
+NestedText naturally produces nested structures (maps, lists, strings), so params are `map[string]any`, not flat key-value pairs.
+
+> **OPEN QUESTION:** Should `@` be shorthand for `.`? e.g., `@.name` instead of `.name`. May improve readability but adds a synonym. Alternatively, `@` could be reserved specifically for "spread all params" in invocations, with `.name` for individual access.
+
+### Pass-Through and Mapping
+
+When a user template wraps a core widget:
+
+**Full pass-through (interfaces match):**
+```
+{{core:infobox .
+accent: #4a7c59
+}}
+```
+
+`.` spreads all params into the core widget, with `accent` as a static override.
+
+**Selective mapping (interfaces differ):**
+```
+{{core:infobox
+---
+name: .name
+born: .born
+occupation: .job.title
+accent: #4a7c59
+---
+}}
+```
+
+Dot references are substituted before the inner invocation is resolved.
+
+> **OPEN QUESTION:** Exact syntax for mixing dot references with literal values inside fenced NestedText. Does `.name` as a NestedText value get special treatment? Need to define when a value is a literal string vs a param reference. Possible convention: values starting with `.` are references, everything else is literal. Or require a sigil like `@.name`.
+
+### Positional Param Mapping
+
+For positional invocations, the template's frontmatter declares parameter order:
+
+```markdown
+---
+params:
+  - first_name
+  - last_name
+---
+.first_name .last_name
+```
+
+`{{FullName "Valentino" "Garavani"}}` maps to `{first_name: "Valentino", last_name: "Garavani"}`.
+
+## Template Interface Schema
+
+A `Template:*` article's frontmatter defines its calling interface. The schema needs to express:
+
+- Which params the template accepts
+- Which are required vs optional
+- Default values
+- Descriptions (for documentation and editor hints)
+- Nested structure (maps, lists)
+- Positional order
+
+> **OPEN QUESTION:** Schema format. Two options explored:
+
+**Option A — Verbose (explicit metadata per param):**
+```
+---
+widget: infobox
 params:
   name:
-    type: string
     required: true
-    description: "Person's full name"
+    description: Full name of the person
+    position: 1
   born:
-    type: date
-    format: "2006-01-02"
-  image:
-    type: string
-    pattern: "^File:.*"
+    description: Birth date
+    default: Unknown
+    position: 2
+  job:
+    description: Employment information
+    children:
+      title:
+      salary:
+      tenure:
   awards:
+    description: List of notable awards
     type: list
-    items: { type: string }
-css: |
-  [data-template="infobox"] {
-    border: 1px solid var(--border-color);
-    padding: 1rem;
-    float: right;
-    width: 300px;
-  }
 ---
-<aside data-template="infobox">
+```
+
+Pro: Explicit, self-documenting. Con: Heavy, fights NestedText's simplicity (no native booleans or types).
+
+**Option B — Lean (conventions encode metadata):**
+```
+---
+widget: infobox
+params:
+  name!: Full name of the person
+  born: Birth date
+  job:
+    title: Job title
+    salary:
+    tenure:
+  awards[]: List of notable awards
+defaults:
+  born: Unknown
+  job:
+    tenure: present
+---
+```
+
+- `name!` — trailing `!` means required
+- `awards[]` — trailing `[]` means list type
+- Leaf values are descriptions
+- Nested maps declare their shape inline
+- `defaults:` is a separate section matching the params shape
+- Positional order follows declaration order
+
+Pro: Compact, works with NestedText naturally. Con: Convention-based, less discoverable.
+
+### The `widget:` Field
+
+The `widget:` frontmatter field links a user template to a disk widget. Its value maps to `templates/_render/widget/{name}.html`.
+
+- **Has `widget:`** — The template wraps a core widget. Its body maps params through to the widget.
+- **No `widget:`** — Pure markdown transclusion. The template body is markdown with param substitution.
+
+## Full Example
+
+### Disk widget: `templates/_render/widget/infobox.html`
+
+```html
+<aside class="widget-infobox" style="--accent: {{.accent}}">
   <h3>{{.name}}</h3>
-  {{if .born}}<p>Born: {{.born | formatDate "January 2, 2006"}}</p>{{end}}
-  {{if .image}}<img src="{{.image}}" alt="{{.name}}">{{end}}
+  {{if .born}}<dl><dt>Born</dt><dd>{{.born}}</dd></dl>{{end}}
+  {{if .occupation}}<dl><dt>Occupation</dt><dd>{{.occupation}}</dd></dl>{{end}}
   {{if .awards}}
   <ul>
     {{range .awards}}<li>{{.}}</li>{{end}}
@@ -154,399 +300,266 @@ css: |
 </aside>
 ```
 
-### Frontmatter Language Tags
-
-Templates and articles can specify their frontmatter language:
+### User template: `Template:Person` (wiki article)
 
 ```
----yaml
-title: My Article
-template: Homepage
 ---
+widget: infobox
+params:
+  name!: Full name
+  born: Birth date
+  job:
+    title: Job title
+    salary:
+    tenure:
+  awards[]: Notable awards
+defaults:
+  job:
+    tenure: present
+---
+{{core:infobox .
+accent: #4a7c59
+}}
 
----kdl
-title "My Article"
-template "Homepage"
----
+.body
 ```
 
-## Invocation Syntax
-
-*Note: Syntax is placeholder, to be refined during implementation.*
-
-### Basic (inline)
+### Article using the template
 
 ```markdown
-The designer {:FullName: "Valentino" "Garavani"} was born in Italy.
-```
-
-### Widget (multi-line)
-
-```markdown
-{:InfoBox:}
+---
+title: Valentino Garavani
+---
+{{Person
+---
 name: Valentino Garavani
-born: 1932-05-11
+born: May 11, 1932
+job:
+  title: Fashion designer
+  tenure: 1959-present
 awards:
   - Legion of Honour
   - CFDA Award
-{/:InfoBox:}
-```
-
-With explicit config language:
-
-```markdown
-{:InfoBox:kdl}
-name "Valentino Garavani"
-born 1932-05-11
-awards "Legion of Honour" "CFDA Award"
-{/:InfoBox:}
-```
-
-### Page (frontmatter)
-
-```yaml
----yaml
-template: Homepage
-featured_article: Fashion_design
-show_recent: true
 ---
-Optional body content accessible as {{.Body}}
+}}
+
+Valentino Garavani is an Italian fashion designer...
 ```
 
-### Template Pinning
+### Resolution trace
 
-Invokers can pin to a specific template revision:
-
-```markdown
-{:InfoBox@r42:}
-name: Valentino
-{/:InfoBox:}
 ```
-
-Unpinned invocations use the latest template version and trigger re-renders when the template updates.
+1. Goldmark encounters {{Person ---...---}}
+2. Parse NestedText params into map
+3. Fetch Template:Person article
+4. Substitute .name, .born, etc. into template body
+5. Result contains {{core:infobox ...}}
+6. Recursive pass: resolve core:infobox
+7. Execute templates/_render/widget/infobox.html with params
+8. HTML fragment emitted into document
+9. No more {{...}} invocations — done
+```
 
 ## Template CSS
 
-Templates can include scoped CSS that gets collected and deduplicated at build time.
+> **OPEN QUESTION:** Two approaches under consideration.
 
-### Scoping via Data Attributes
+**Option A — Full CSS blocks in disk widgets:**
+CSS defined alongside the Go template, collected and deduplicated at render time, injected as `<style>` in page `<head>`. Scoped via `data-template` attributes.
 
-Templates output scoped markup:
+**Option B — CSS custom property overrides only:**
+Base widget styles live in the site theme CSS (`static/style.css`). Disk widget templates only emit inline `style="--var: value"` for parameterized aspects. No CSS collection/injection needed.
 
 ```html
-<aside data-template="infobox">...</aside>
+<!-- Widget outputs: -->
+<aside class="widget-infobox" style="--accent: #4a7c59">...</aside>
 ```
-
-CSS uses attribute selectors:
 
 ```css
-[data-template="infobox"] {
-  display: grid;
-  gap: 1rem;
-}
-[data-template="infobox"] .field {
-  border-bottom: 1px solid var(--border-color);
+/* In theme CSS: */
+.widget-infobox {
+  border: 1px solid var(--border-color);
+  border-top: 3px solid var(--accent, var(--theme-accent));
+  float: right;
+  width: 300px;
 }
 ```
 
-### Parameterized Styles
+Option B is simpler (no build-time CSS pipeline) and keeps all CSS in one place. Custom properties provide the parameterization hook. Leaning toward Option B.
 
-CSS custom properties bridge template parameters to styles:
+## Security
 
-```yaml
-params:
-  color:
-    type: string
-    default: "var(--theme-accent)"
-css: |
-  [data-template="callout"] {
-    border-left: 4px solid var(--callout-color);
-    background: color-mix(in srgb, var(--callout-color) 10%, transparent);
-  }
----
-<aside data-template="callout" style="--callout-color: {{.color}};">
-  {{.Body}}
-</aside>
-```
+### Structural Safety
 
-### Build Pipeline
+The two-layer architecture provides security by construction:
 
-1. Collect CSS from all templates used by the article
-2. Deduplicate (same template used multiple times)
-3. Inject as single `<style>` block in page `<head>`
+1. **Core widgets** are Go templates on disk — reviewed code, not user input
+2. **User templates** are content, not code — they map params and produce markdown
+3. **Parameters are always data** — passed as `map[string]any` to Go templates, never parsed as template source
+4. **No raw HTML from editor** — user-authored content goes through Goldmark + Bluemonday
 
-Templates can reference theme variables (`var(--border-color)`) for consistency.
+### Sanitization
 
-## Security Model
+Core widget HTML output needs to survive Bluemonday sanitization.
 
-### Trust Tiers
-
-| Author | Can Create | Function Access | Output Treatment |
-|--------|------------|-----------------|------------------|
-| Admin | Any template | Extended allowlist | Trusted (no sanitization) |
-| User (future) | Basic/Widget | Restricted allowlist | Sanitized via Bluemonday |
-
-### Template Visibility
-
-- **Public:** Invokable by any article or template
-- **Private:** Only invokable by system or same-namespace templates
-
-### Function Allowlists
-
-**User templates (restricted):**
-- String: `upper`, `lower`, `trim`, `replace`, `split`, `join`
-- Date: `formatDate`
-- Collections: `len`, `index`, `first`, `last`
-- Logic: `eq`, `ne`, `lt`, `gt`, `and`, `or`, `not`
-
-**Admin templates (extended):**
-- All user functions, plus:
-- Data queries: Article lookups, category listings
-- Template helpers: `safeHTML`, `safeJS`, `safeCSS`
-- System: Config values, feature flags
-
-### Resource Limits
-
-- Output size cap (e.g., 1MB rendered)
-- Execution timeout (e.g., 500ms)
-- Recursion depth limit for nested templates (e.g., 10 levels)
-
-### HTML Sanitization (User Templates)
-
-User template output passes through Bluemonday with a restrictive policy.
-
-**Blocked elements:** `script`, `style`, `link`, `meta`, `base`, `iframe`, `frame`, `object`, `embed`, `applet`, `form`, `svg`
-
-**Blocked attributes:** `on*` event handlers, `style` (or sanitize CSS properties)
-
-**Blocked URL schemes:** `javascript:`, `data:` (except `data:image/*`)
-
-**Attack vectors to test:**
-- Direct script injection
-- Event handler attributes (`onerror`, `onmouseover`, etc.)
-- JavaScript/data URLs in href/src
-- SVG with embedded scripts
-- Meta refresh redirects
-- Base tag hijacking
-- Form injection for phishing
-- CSS-based data exfiltration
+> **OPEN QUESTION:** How to handle this. Options:
+> - Bluemonday allowlist tuned for known widget elements/attributes
+> - Different sanitization policy that recognizes trusted widget output
+> - Core widget output marked as pre-sanitized and bypassed
+>
+> Needs investigation. The existing Bluemonday policy already allows `class`, some `data-*` attributes, and `style` on specific elements.
 
 ### Template Injection Prevention
 
-Parameters are always data, never parsed as template source:
+- Parameters containing `{{` sequences must not trigger template expansion
+- Template names in invocations must resolve to known articles or core widgets
+- Circular references detected and halted with error placeholder
 
-```go
-// SAFE: parameters are data
-tmpl.Execute(w, map[string]string{"Name": userInput})
+### Resource Limits
 
-// DANGEROUS: never do this
-templateSource := "Hello, " + userInput + "!"
-```
+- **Recursion depth:** 100 (no loops — just a hard ceiling)
+- **Output size cap:** TBD
+- **No execution timeout needed** — user templates are substitution only, core widgets are simple Go templates
 
-Additional safeguards:
-- Template names in `{{template .Name}}` must be from allowlist, not parameters
-- No re-parsing of template output
-- Nested template calls use the invoking article's trust level
-
-## Rendering Pipeline
-
-```
-Article Content
-     |
-     v
-1. Parse Frontmatter --- Extract page template, metadata
-     |
-     v
-2. Template Expansion --- Resolve {:Template:} invocations (recursive, depth-limited)
-     |
-     v
-3. Markdown Render --- Goldmark + extensions (wikilinks, footnotes)
-     |
-     v
-4. Sanitization --- Bluemonday (policy based on template trust)
-     |
-     v
-5. CSS Collection --- Gather and dedupe template CSS
-     |
-     v
-Stored in Revision (rendered content + build metadata)
-```
-
-### Error Handling
+## Error Handling
 
 | Error | Behavior |
 |-------|----------|
 | Template not found | Render placeholder: `[Template:Name not found]` |
-| Template is private | Render placeholder: `[Template:Name is private]` |
-| Schema validation failed | Render with details: `[Template:Name: missing required param 'title']` |
+| Core widget not found | Render placeholder: `[core:name not found]` |
+| Missing required param | Render warning: `[Template:Name: missing required param 'title']` |
+| Invalid param | Render warning with details |
 | Circular reference | Render placeholder: `[Circular template reference detected]` |
 | Depth limit exceeded | Render placeholder: `[Template nesting too deep]` |
-| Timeout/size limit | Render placeholder: `[Template:Name exceeded resource limits]` |
 
-**Publish blocking:** Errors render visibly but prevent save/publish. Author must fix template invocations before committing.
+Errors render visibly in the article output as inline warnings.
 
-## Storage Schema
+## Dependency Tracking
 
-### Article Type Field
+Blocked on a **backlink system** (template dependencies operate the same way — article A depends on Template B). When the backlink system exists:
 
-```sql
-ALTER TABLE article ADD COLUMN type TEXT NOT NULL DEFAULT 'article';
--- Values: 'article', 'template'
-```
+- Track which articles invoke which templates
+- Re-render dependent articles when a template changes
+- Show dependent count in template edit view
+- Deletion safeguards (warn before deleting a template with dependents)
 
-### Template Metadata
-
-```sql
-CREATE TABLE template_meta (
-    article_id INTEGER PRIMARY KEY REFERENCES article(id),
-    template_type TEXT NOT NULL,        -- 'basic', 'widget', 'page'
-    visibility TEXT NOT NULL DEFAULT 'public',
-    config_languages TEXT NOT NULL,     -- JSON array: ["yaml", "kdl"]
-    schema TEXT NOT NULL,               -- JSON schema definition
-    trust_level TEXT NOT NULL           -- 'admin', 'user'
-);
-
-CREATE INDEX idx_template_meta_visibility ON template_meta(visibility);
-```
-
-### Build Metadata
-
-Store template versions used at build time in the revision table:
-
-```sql
-ALTER TABLE revision ADD COLUMN build_metadata TEXT; -- JSON
-```
-
-```json
-{
-  "built_at": "2026-01-24T18:27:49Z",
-  "templates": {
-    "Template:Infobox": { "revision": 15, "pinned": false },
-    "Template:Citation": { "revision": 8, "pinned": true }
-  }
-}
-```
-
-### Schema API Route
-
-`Template:Name/Schema` returns the parsed schema as JSON for tooling and editor support.
-
-### Usage Statistics
-
-Template edit view shows usage stats per revision:
-- How many articles reference each template version
-- Which are pinned vs. floating (latest)
-- Link to `Template:Name/Dependents` for full list
-
-## Editing Safeguards
-
-- **Breaking change detection:** Warn when saving a template if required params were added (will break existing invocations)
-- **Dependent article list:** `Template:Name/Dependents` shows articles invoking this template
-- **Re-render trigger:** Queue re-render of dependent articles when template changes (unpinned invocations only)
-- **Deletion safeguards:** Show dependent count before deletion; options: cancel, force delete, or deprecate
+TODO: Design backlink system first, then extend for template dependencies.
 
 ## Implementation Phases
 
-### Phase 0: Prerequisites
-- Content re-render queue system
-- Article type field migration
+### Phase 0: Prerequisites (DONE)
 
-### Phase 1: Foundation
-- `Template:` namespace recognition
-- Template storage (`template_meta` table)
-- Schema parsing (frontmatter extraction)
-- Basic template execution (no nesting)
-- Admin-only authorship
-- Single config language (YAML)
+- [x] Content re-render queue with priority tiers
+- [x] Stale content detection and lazy re-rendering
+- [x] Namespace routing (`NamespaceHandler`)
+- [x] NestedText frontmatter parsing
+- [x] Special pages registry
 
-### Phase 2: Invocation Syntax
-- Inline basic templates `{:Name: args}`
-- Multi-line widget syntax `{:Name:}...{/:Name:}`
-- Goldmark extension for parsing invocations
-- Schema validation on invocation
-- Error placeholders
+### Phase 1: Core Widget Rendering
 
-### Phase 3: Page Templates
-- Frontmatter `template:` directive
-- Page layout templates
-- Special page hybrid mode (template + handler data)
-- Homepage as article with `Template:Homepage`
+- Register `Template:*` namespace in `NamespaceHandler`
+- `Template:*` articles: create, edit, view (same as regular articles)
+- Goldmark extension: parse `{{core:name ...}}` syntax
+- Execute disk widget templates with params
+- Positional and fenced NestedText param parsing
+- Error placeholders for missing widgets / bad params
 
-### Phase 4: Dependency Tracking
-- Build metadata storage (JSON column)
-- Template revision pinning (`@r42`)
-- Re-render triggers on template update
-- Deletion safeguards with dependent count
+### Phase 2: User Template Transclusion
+
+- Goldmark extension: parse `{{Name ...}}` syntax (wiki template lookup)
+- Fetch `Template:*` article content
+- Param substitution (`.name`, `.job.title`, etc.)
+- Recursive expansion with depth limit
+- Block syntax with `.body` support
+- Plain markdown transclusion (no `widget:` field)
+- Error placeholders for missing templates
+
+### Phase 3: Template Interface Schema
+
+- Frontmatter schema definition (format TBD — see open questions)
+- Required/optional param validation
+- Default value injection
+- Schema-aware error messages
+
+### Phase 4: Template CSS
+
+- Decide on CSS approach (full blocks vs custom property overrides)
+- Implement chosen approach
+- Theme integration
+
+### Phase 5: Dependency Tracking
+
+- Requires backlink system (separate design)
+- Re-render triggers on template change
+- Deletion safeguards
 - Usage stats in template editor
 
-### Phase 5: Template CSS
-- CSS section in template frontmatter
-- Scoped output via `data-template` attributes
-- CSS collection and deduplication at build
-- CSS custom properties for parameterized styles
+### Future / Out of Scope
 
-### Phase 6: Advanced Features
-- Nested template invocation (with depth limits)
-- Additional config languages (KDL)
+- Page-level layout templates (frontmatter `template:` directive)
+- Template revision pinning
+- Special page hybrid mode (template + handler data)
 - Template visibility (public/private)
-- `Template:Name/Schema` API route
-- `Template:Name/Dependents` view
-
-### Phase 7: User Templates (Future)
-- Tiered function allowlists
-- Output sanitization for user-authored templates
+- Schema API route (`Template:Name/Schema`)
 
 ## Testing Strategy
 
 ### Unit Tests
 
-- Schema parsing and validation
-- Parameter type coercion (string, date, list)
-- Function allowlist enforcement
-- Resource limit enforcement (timeout, size, depth)
+- Invocation syntax parsing (positional and NestedText)
+- Param substitution (flat, nested, lists, pass-through)
+- Recursive expansion with depth limiting
+- Schema validation (required params, defaults)
+- Error placeholder generation
 
 ### Integration Tests
 
-- Full rendering pipeline with templates
-- Nested template resolution
-- Build metadata storage and retrieval
-- Re-render queue triggers
+- Full rendering pipeline with templates + existing extensions
+- Core widget execution with various param shapes
+- User template wrapping core widget (two-pass resolution)
+- Block syntax with body content
+- Multiple template invocations in one article
 
 ### Security Tests
 
-**Template injection:**
-- Parameters containing `{{` sequences
-- Template names from user input
-- Nested template privilege escalation
-
-**HTML injection (user templates):**
-- Direct `<script>` injection
-- Event handler attributes (`onerror`, `onmouseover`, `onload`)
-- JavaScript URLs (`href="javascript:..."`)
-- Data URLs with HTML content
-- SVG with embedded scripts
-- Meta refresh redirects
-- Base tag hijacking
-- Form injection
-- CSS-based exfiltration (`url()` in styles)
-- Attribute breakout via parameters
-
-**Resource exhaustion:**
-- Deeply nested templates (depth limit)
-- Large output generation (size limit)
-- Slow template execution (timeout)
+- Parameters containing `{{` sequences (must not trigger expansion)
+- Deeply nested templates (depth limit enforcement)
 - Circular template references
+- Large output generation
+- Template names from user input (must resolve to known templates only)
 
 ### Regression Tests
 
 - Existing article rendering unchanged
 - WikiLink and footnote extensions still work
+- Frontmatter parsing unaffected
 - Special pages render correctly
 
-## Open Research
+## NestedText and Type Coercion
 
-- [ ] **MediaWiki template system:** How does MediaWiki handle template dependencies, deletion, and breaking changes? <!-- Research before Phase 4 -->
-- [ ] **Hugo text/template patterns:** Best practices for template function design and security <!-- Research before Phase 1 -->
-- [ ] **KDL parsing in Go:** Available libraries, maturity, edge cases <!-- Research before Phase 6 -->
-- [ ] **Invocation syntax refinement:** Finalize `{:Template:}` syntax, consider alternatives <!-- Ongoing through Phase 2 -->
-- [ ] **Tagging system design:** Index storage, tag page handlers, editor integration, implicit tags from templates <!-- After Phase 3 -->
+Per the [NestedText schema philosophy](https://nestedtext.org/en/latest/schemas.html), NestedText deliberately does not interpret data types. Everything parsed is strings, lists of strings, or maps of strings. Type coercion and validation are the responsibility of the consuming application, not the format.
+
+This has direct implications for our schema design:
+
+1. **User template schemas don't encode types.** The template frontmatter declares param names, descriptions, required/optional, and defaults — but not types. NestedText will always produce strings.
+
+2. **Core widgets are the source of truth for types.** The Go template (or a companion schema) knows that `.born` should be parsed as a date and `.port` as an integer. Type coercion happens in Go when the core widget receives params.
+
+3. **Validation is two-stage:**
+   - **User template schema:** Does the invocation have the expected param names? Are required params present?
+   - **Core widget execution:** Can the string values be coerced to the expected Go types? (Errors here produce rendering warnings.)
+
+4. **No booleans in NestedText.** `required: true` in a schema is the string `"true"`. This favors convention-based schemas (like `name!` for required) over verbose metadata schemas that fight the format.
+
+This aligns with NestedText's design: the format handles structure (nesting, lists, maps), the application handles meaning (types, validation, coercion). See also [NestedText techniques](https://nestedtext.org/en/latest/techniques.html) for validation patterns in Python (Voluptuous, Pydantic) — we'll need a Go equivalent.
+
+## Open Questions
+
+- [ ] **Close tag syntax:** `{{/Name}}` vs `{{end}}` for block templates
+- [ ] **Param reference syntax:** bare `.name` vs `@.name` — how to distinguish references from literal strings in NestedText values
+- [ ] **Schema format:** Verbose (explicit metadata) vs lean (conventions like `!`, `[]`)
+- [ ] **CSS approach:** Full CSS blocks with collection/dedup vs custom property overrides in theme CSS
+- [ ] **Sanitization strategy:** How core widget HTML survives Bluemonday
+- [ ] **Conditionals in user templates:** Should user templates support `{{if .born}}...{{end}}` or stay pure data mapping?
+- [ ] **Tail call optimization:** When a user template's entire output is a single `{{core:...}}` invocation, skip the re-parse
+- [ ] **Type coercion:** NestedText produces strings — core widgets may just work with strings directly (text in, text out). Coercion to Go types (dates, ints) only needed if widgets do type-specific logic. May not be necessary at all. See nestedtext.org/en/latest/schemas.html for the design philosophy.
