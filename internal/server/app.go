@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"log/slog"
 	"net/http"
 	"time"
@@ -22,6 +23,7 @@ type App struct {
 	SpecialPages  *special.Registry
 	Config        *wiki.Config
 	RuntimeConfig *wiki.RuntimeConfig
+	DB            *sql.DB
 }
 
 // responseWriter wraps http.ResponseWriter to capture the status code

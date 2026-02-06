@@ -1,0 +1,39 @@
+{{define "content"}}
+<div id="article-area">
+    <article>
+        <h1>Settings</h1>
+        <div class="pw-article-content">
+            {{ if .calloutMessage }}
+            <div class="pw-callout {{ .calloutClasses }}">{{ .calloutMessage }}</div>
+            {{ end }}
+            <form method="POST" action="/manage/settings">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td><label for="allow_anonymous_edits">Allow anonymous edits</label></td>
+                            <td><input type="checkbox" id="allow_anonymous_edits" name="allow_anonymous_edits" {{ if .Settings.AllowAnonymousEdits }}checked{{ end }}></td>
+                        </tr>
+                        <tr>
+                            <td><label for="minimum_password_length">Minimum password length</label></td>
+                            <td><input type="number" id="minimum_password_length" name="minimum_password_length" value="{{ .Settings.MinimumPasswordLength }}" min="1"></td>
+                        </tr>
+                        <tr>
+                            <td><label for="cookie_expiry">Session expiry (seconds)</label></td>
+                            <td><input type="number" id="cookie_expiry" name="cookie_expiry" value="{{ .Settings.CookieExpiry }}" min="1"></td>
+                        </tr>
+                        <tr>
+                            <td><label for="render_workers">Render workers</label></td>
+                            <td><input type="number" id="render_workers" name="render_workers" value="{{ .Settings.RenderWorkers }}" min="0"></td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td><small>0 = auto-detect (use all CPUs). Changes to render workers and session expiry take effect on restart.</small></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button type="submit">Save</button>
+            </form>
+        </div>
+    </article>
+</div>
+{{end}}

@@ -67,7 +67,7 @@ func Setup() (*App, *renderqueue.Queue) {
 
 	t := templater.New()
 
-	if err := t.Load("templates/layouts/*.html", "templates/*.html", "templates/special/*.html"); err != nil {
+	if err := t.Load("templates/layouts/*.html", "templates/*.html", "templates/special/*.html", "templates/manage/*.html"); err != nil {
 		slog.Error("failed to load templates", "error", err)
 		os.Exit(1)
 	}
@@ -158,6 +158,7 @@ func Setup() (*App, *renderqueue.Queue) {
 		SpecialPages:  specialPages,
 		Config:        modelConf,
 		RuntimeConfig: runtimeConfig,
+		DB:            db.DB,
 	}, renderQueue
 }
 

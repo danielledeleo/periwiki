@@ -7,5 +7,12 @@
         <li class="pw-sidebar-title">Tools</li>
         <li><a href="#">Cite This Page</a></li>
     </ul>
+    {{ if and .User .User.IsAdmin }}
+    <ul>
+        <li class="pw-sidebar-title">Admin</li>
+        <li><a href="/manage/users">Manage users</a></li>
+        <li><a href="/manage/settings">Settings</a></li>
+    </ul>
+    {{ end }}
 </div>
 {{end}}

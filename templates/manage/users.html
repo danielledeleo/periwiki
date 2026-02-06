@@ -1,0 +1,44 @@
+{{define "content"}}
+<div id="article-area">
+    <article>
+        <h1>Manage Users</h1>
+        <div class="pw-article-content">
+            {{ if .calloutMessage }}
+            <div class="pw-callout {{ .calloutClasses }}">{{ .calloutMessage }}</div>
+            {{ end }}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Registered</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .Users }}
+                    <tr>
+                        <td>{{ .ID }}</td>
+                        <td>{{ .ScreenName }}</td>
+                        <td>{{ .Email }}</td>
+                        <td>{{ .CreatedAt.Format "2006-01-02" }}</td>
+                        <td>{{ .Role }}</td>
+                        <td>
+                            <form method="POST" action="/manage/users/{{ .ID }}" style="display:inline">
+                                <select name="role">
+                                    <option value="user" {{ if eq .Role "user" }}selected{{ end }}>user</option>
+                                    <option value="admin" {{ if eq .Role "admin" }}selected{{ end }}>admin</option>
+                                </select>
+                                <button type="submit">Update</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+    </article>
+</div>
+{{end}}

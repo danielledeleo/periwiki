@@ -14,6 +14,7 @@
         <ul id="login-bar">
             {{ if and .User (ne .User.ScreenName "Anonymous") }}
                 <li><a href="/profile/{{ pathEscape .User.ScreenName }}">{{.User.ScreenName}}</a></li>
+                {{ if .User.IsAdmin }}<li><a href="/manage/users">Admin</a></li>{{ end }}
                 <li><a href="/user/settings">Settings</a></li>
                 <li><form method="POST" action="/user/logout"><button class="pw-logout-btn" type="submit">Logout</button></form></li>
             {{ else }}
@@ -23,7 +24,7 @@
         </ul>
     </nav>
     <div id="flex-container">
-        {{template "sidebar" .Sidebar }}
+        {{template "sidebar" . }}
         <div id="right-panel">
             {{template "content" . }}
         </div>

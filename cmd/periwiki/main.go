@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -37,12 +36,10 @@ func main() {
 	router.HandleFunc("/user/login", app.LoginPostHandler).Methods("POST")
 	router.HandleFunc("/user/logout", app.LogoutPostHandler).Methods("POST")
 
-	manageRouter := mux.NewRouter().PathPrefix("/manage").Subrouter()
-	manageRouter.HandleFunc("/{page}", func(rw http.ResponseWriter, req *http.Request) {
-		vars := mux.Vars(req)
-		fmt.Fprintln(rw, vars["page"])
-	})
-	router.Handle("/manage/{page}", manageRouter)
+	router.HandleFunc("/manage/users", app.ManageUsersHandler).Methods("GET")
+	router.HandleFunc("/manage/users/{id:[0-9]+}", app.ManageUserRoleHandler).Methods("POST")
+	router.HandleFunc("/manage/settings", app.ManageSettingsHandler).Methods("GET")
+	router.HandleFunc("/manage/settings", app.ManageSettingsPostHandler).Methods("POST")
 
 	handler := server.SlogLoggingMiddleware(router)
 
