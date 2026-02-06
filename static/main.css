@@ -232,6 +232,10 @@ article section.footnotes .footnote-letter {
     font-style: italic;
 }
 
+article sup {
+    line-height: 0;
+}
+
 article section.footnotes li:target,
 article sup:target {
     background: var(--pw-target-bg);
