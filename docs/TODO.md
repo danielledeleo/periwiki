@@ -1,8 +1,8 @@
 Soon(ish)
-- [HIGH] Investigate why frontmatter is in the Article table and not the Revision table
+- [MED] finish db refactor (see plans)
 - [MED] Backlinks feature (will help trigger redlink re-renders)
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
-- [MED] Talk:pages
+- [MED] Talk:pages, User:pages
 - Decide on case sensitivity in URLs
 - Page alias and redirect system (design TBD)
 - Article visibility settings
@@ -16,7 +16,7 @@ Soon(ish)
   - submission errors should appear above editor window, not a new page (unmodified, conflicts)
 - Docs-on-docs (ship the documentation for Periwiki as sample files)
 - Include better sample pages
-- Move .go files out of root directory
+- Move .go files out of root directory (note: `content.go` added for overlay FS embed)
 - User-defined templates system (see docs/plans/user-templates-design.md)
   - Prerequisites: content re-render queue, article type field
   - Subsumes: widgets, tagging/frontmatter, rich homepage, some special page customization
@@ -24,10 +24,8 @@ Soon(ish)
   - **Privileged templates defined in the theme, dynamic templates defined as Articles**
   - In order for runtime privileged templates to work, we'll likely need a theming system
   - They should have distinct names
-- Create Markdown templates for default pages (user profiles, admin pages, etc.)
-- Make user pages, index, and other special pages all types of Articles (and revisions)
-- User profiles pages to be ~user URLs, which are linked to with wikilinks e.g. [[~dani]]
-- User settings
+- Create Markdown templates for default pages (admin pages, etc.)
+- User settings?
 - Management UI for runtime config (anonymous editing toggle, password policy, render workers, etc.)
 - Password recovery, 2FA, Login providers
 - Backup/data export mechanism
@@ -57,7 +55,7 @@ Architecture
 Configuration and Runtime
 - First run/setup mode
   - Auto populate new databases with an Admin user with id 1 as the owner of all the default pages
-- Compile template files into the binary (embed) (possible wontfix)
+- ~~Compile template files into the binary (embed) (possible wontfix)~~ Done: overlay FS with per-file disk overrides
 - Improve "server failed to start" error message with specific reason (port in use, permission denied, etc.)
 - CLI flags to override config file path, database file, host, log level, etc.
 

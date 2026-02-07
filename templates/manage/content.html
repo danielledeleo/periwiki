@@ -1,8 +1,14 @@
 {{define "content"}}
 <div id="article-area">
     <article>
-        <h1>Content Files</h1>
+        <h1>Content files</h1>
         <div class="pw-article-content">
+            <p>
+                Templates, static assets, and the help articles are embedded into
+                Periwiki binary at build time. To override any file, place a copy
+                at the same relative path next to the binary &mdash; it will take
+                precedence over the embedded version.
+            </p>
             <p>
                 {{ if .ShortCommit }}
                 Build commit:

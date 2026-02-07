@@ -121,7 +121,7 @@ func TestListContentFiles(t *testing.T) {
 	}
 
 	for _, expected := range []string{
-		"internal/storage/schema.sql",
+		"help/Syntax.md",
 		"static/main.css",
 		"templates/layouts/index.html",
 	} {

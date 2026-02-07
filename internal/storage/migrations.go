@@ -1,23 +1,21 @@
 package storage
 
 import (
+	_ "embed"
 	"encoding/json"
-	"io/fs"
 
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/jmoiron/sqlx"
 )
 
+//go:embed schema.sql
+var schemaSQL string
+
 // RunMigrations executes the database schema and any necessary migrations.
 // This function is idempotent and safe to run multiple times.
-func RunMigrations(db *sqlx.DB, contentFS fs.FS) error {
-	// Read and execute the main schema
-	sqlFile, err := fs.ReadFile(contentFS, "internal/storage/schema.sql")
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec(string(sqlFile))
+func RunMigrations(db *sqlx.DB) error {
+	// Execute the embedded schema
+	_, err := db.Exec(schemaSQL)
 	if err != nil {
 		return err
 	}

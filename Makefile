@@ -2,7 +2,7 @@ all: periwiki
 
 find_go = find . -name '*.go' -not -name '*_gen.go'
 find_templates = find templates -name '*.html'
-find_embedded = find internal/embedded/help -name '*.md'
+find_embedded = find help -name '*.md'
 find_statics = find static -type f
 
 gosources := $(shell $(find_go)) go.sum go.mod

@@ -79,9 +79,9 @@ func SetupTestDB(t testing.TB) (*TestDB, func()) {
 		t.Fatalf("failed to open in-memory database: %v", err)
 	}
 
-	// Read schema from project root via FS
-	contentFS := TestContentFS()
-	schema, err := fs.ReadFile(contentFS, "internal/storage/schema.sql")
+	// Read schema directly from disk (it's embedded locally in the storage package,
+	// not in the root overlay FS)
+	schema, err := os.ReadFile(filepath.Join(projectRoot(), "internal", "storage", "schema.sql"))
 	if err != nil {
 		conn.Close()
 		t.Fatalf("failed to read schema.sql: %v", err)

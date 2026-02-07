@@ -74,7 +74,8 @@ Handlers access services through the receiver: `a.Articles.GetArticle(url)`
 | `internal/storage/` | SQLite repository implementations |
 | `internal/renderqueue/` | Async render queue (worker pool, priority heap) |
 | `internal/config/` | File-based configuration (`config.yaml`) |
-| `internal/embedded/` | Built-in help articles compiled into the binary |
+| `internal/embedded/` | Embedded article loader and build metadata generator |
+| `help/` | Help article markdown sources (embedded into binary) |
 | `internal/logger/` | Structured logging setup (pretty/JSON/text) |
 | `wiki/` | Domain types (`Article`, `User`, `Revision`, `Frontmatter`) |
 | `wiki/service/` | Service interfaces and implementations |
@@ -160,9 +161,25 @@ Schema changes are applied automatically at startup via `internal/storage/migrat
 
 Some migrations recreate tables because SQLite lacks `ALTER TABLE DROP COLUMN`. This is safe but may briefly increase startup time on large databases.
 
+## Embedded content and overlay FS
+
+Templates, static assets, and help articles are compiled into the binary via `//go:embed`. An overlay filesystem (`content.go`) layers on-disk files over the embedded defaults: if a file exists on disk at the same path, it takes precedence. Directory listings always come from the embedded FS.
+
+```
+templates/   → page templates, render templates
+static/      → CSS, favicon, logo
+help/        → help article markdown sources
+```
+
+All consumers (templater, renderer, template hasher, embedded articles) receive the overlay FS via the `fs.FS` interface. The database schema (`internal/storage/schema.sql`) is embedded separately within the storage package and is not part of the overlay FS.
+
+An admin page at `/manage/content` shows the full tree of content files and which ones have disk overrides.
+
+**Key files:** `content.go` (overlay FS, file listing), `cmd/periwiki/main.go` (wiring).
+
 ## Embedded help articles
 
-Read-only help articles are compiled into the binary via `//go:embed` from `internal/embedded/help/*.md`. They are served under the `Periwiki:` namespace (e.g., `/wiki/Periwiki:Syntax`) and cannot be edited through the wiki interface.
+Read-only help articles are compiled into the binary from `help/*.md`. They are served under the `Periwiki:` namespace (e.g., `/wiki/Periwiki:Syntax`) and cannot be edited through the wiki interface. Because they are part of the overlay content FS, they can be overridden by placing a file at the same path on disk (e.g., `help/Syntax.md`).
 
 The embedded system also captures the git commit hash at build time (`go generate ./internal/embedded`) and uses it to generate source links pointing to the correct commit on GitHub.
 

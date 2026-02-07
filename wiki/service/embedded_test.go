@@ -19,7 +19,7 @@ func TestEmbeddedArticleService_GetArticle(t *testing.T) {
 	defer cleanup()
 
 	// Create embedded articles with mock renderer to avoid template loading issues
-	ea, err := embedded.New(mockRender)
+	ea, err := embedded.New(testutil.TestContentFS(), mockRender)
 	if err != nil {
 		t.Fatalf("failed to create embedded articles: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestEmbeddedArticleService_PostArticle(t *testing.T) {
 	app, cleanup := testutil.SetupTestApp(t)
 	defer cleanup()
 
-	ea, _ := embedded.New(mockRender)
+	ea, _ := embedded.New(testutil.TestContentFS(), mockRender)
 	wrappedService := service.NewEmbeddedArticleService(app.Articles, ea)
 
 	t.Run("rejects post to embedded URL", func(t *testing.T) {

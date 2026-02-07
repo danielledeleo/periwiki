@@ -7,7 +7,7 @@ import (
 	"sort"
 )
 
-//go:embed all:templates static internal/storage/schema.sql
+//go:embed all:templates static help
 var embeddedFS embed.FS
 
 // overlayFS implements fs.FS with disk overrides for individual files.
@@ -29,8 +29,8 @@ func (o *overlayFS) Open(name string) (fs.File, error) {
 }
 
 // ContentFS is the filesystem used for all content access (templates, static
-// assets, schema). It layers on-disk files over the embedded defaults, allowing
-// per-file overrides without a rebuild.
+// assets, help articles). It layers on-disk files over the embedded defaults,
+// allowing per-file overrides without a rebuild.
 var ContentFS fs.FS = &overlayFS{base: embeddedFS, override: os.DirFS(".")}
 
 // ContentFileEntry describes a single file in the content filesystem.

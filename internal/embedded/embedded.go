@@ -3,15 +3,11 @@ package embedded
 //go:generate go run ./gen/main.go
 
 import (
-	"embed"
 	"io/fs"
 	"strings"
 
 	"github.com/danielledeleo/periwiki/wiki"
 )
-
-//go:embed help/*.md
-var helpFS embed.FS
 
 const embeddedPrefix = "Periwiki:"
 
@@ -29,13 +25,14 @@ type EmbeddedArticles struct {
 type RenderFunc func(markdown string) (string, error)
 
 // New creates a new EmbeddedArticles instance by loading and rendering
-// all markdown files from the embedded filesystem.
-func New(render RenderFunc) (*EmbeddedArticles, error) {
+// all markdown files from the given filesystem. The FS should contain a
+// "help/" directory with .md files (e.g. via fs.Sub on the content FS).
+func New(fsys fs.FS, render RenderFunc) (*EmbeddedArticles, error) {
 	ea := &EmbeddedArticles{
 		articles: make(map[string]*wiki.Article),
 	}
 
-	entries, err := fs.ReadDir(helpFS, "help")
+	entries, err := fs.ReadDir(fsys, "help")
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +42,7 @@ func New(render RenderFunc) (*EmbeddedArticles, error) {
 			continue
 		}
 
-		content, err := fs.ReadFile(helpFS, "help/"+entry.Name())
+		content, err := fs.ReadFile(fsys, "help/"+entry.Name())
 		if err != nil {
 			return nil, err
 		}
@@ -94,5 +91,5 @@ func SourceURL(articleURL string) string {
 	}
 	// articleURL is like "Periwiki:Syntax", file is "Syntax.md"
 	name := strings.TrimPrefix(articleURL, embeddedPrefix)
-	return SourceBaseURL + "/internal/embedded/help/" + name + ".md"
+	return SourceBaseURL + "/help/" + name + ".md"
 }

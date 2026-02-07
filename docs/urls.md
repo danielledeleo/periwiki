@@ -39,7 +39,7 @@ All URLs containing a colon (`Foo:Bar`) are routed to `NamespaceHandler`. Only r
 |-----|-------------|
 | `/wiki/Periwiki:Syntax` | Built-in Markdown and WikiLink syntax reference |
 
-Help articles are read-only and compiled into the binary from `internal/embedded/help/`. They cannot be edited through the wiki interface.
+Help articles are read-only and compiled into the binary from `help/`. They can be overridden by placing a file at the same path on disk. They cannot be edited through the wiki interface.
 
 ### Special pages
 

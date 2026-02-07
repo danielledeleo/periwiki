@@ -1,10 +1,18 @@
 package embedded_test
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/danielledeleo/periwiki/internal/embedded"
 )
+
+func projectRoot() string {
+	_, filename, _, _ := runtime.Caller(0)
+	return filepath.Dir(filepath.Dir(filepath.Dir(filename)))
+}
 
 func TestNew(t *testing.T) {
 	// Simple render function for testing
@@ -12,7 +20,7 @@ func TestNew(t *testing.T) {
 		return "<p>rendered</p>", nil
 	}
 
-	ea, err := embedded.New(render)
+	ea, err := embedded.New(os.DirFS(projectRoot()), render)
 	if err != nil {
 		t.Fatalf("New() failed: %v", err)
 	}

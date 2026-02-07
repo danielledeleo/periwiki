@@ -38,7 +38,7 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 	}
 
 	// Phase 3: Run migrations
-	if err := storage.RunMigrations(db, contentFS); err != nil {
+	if err := storage.RunMigrations(db); err != nil {
 		slog.Error("failed to run migrations", "error", err)
 		os.Exit(1)
 	}
@@ -128,8 +128,9 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 	// Create article service
 	articleService := service.NewArticleService(database, renderingService, renderQueue)
 
-	// Create embedded articles and wrap the article service
-	embeddedArticles, err := embedded.New(renderingService.Render)
+	// Create embedded articles and wrap the article service.
+	// contentFS has help/ at the root, which is what embedded.New expects.
+	embeddedArticles, err := embedded.New(contentFS, renderingService.Render)
 	if err != nil {
 		slog.Error("failed to load embedded articles", "error", err)
 		os.Exit(1)
