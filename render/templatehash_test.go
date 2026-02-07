@@ -13,7 +13,9 @@ func TestHashRenderTemplates(t *testing.T) {
 	writeFile(t, filepath.Join(dir, "a.html"), "content-a")
 	writeFile(t, filepath.Join(dir, "b.html"), "content-b")
 
-	hash1, err := HashRenderTemplates(dir)
+	fsys := os.DirFS(dir)
+
+	hash1, err := HashRenderTemplates(fsys, ".")
 	if err != nil {
 		t.Fatalf("HashRenderTemplates: %v", err)
 	}
@@ -22,7 +24,7 @@ func TestHashRenderTemplates(t *testing.T) {
 	}
 
 	// Same content produces the same hash.
-	hash2, err := HashRenderTemplates(dir)
+	hash2, err := HashRenderTemplates(fsys, ".")
 	if err != nil {
 		t.Fatalf("HashRenderTemplates: %v", err)
 	}
@@ -32,7 +34,7 @@ func TestHashRenderTemplates(t *testing.T) {
 
 	// Changing file content changes the hash.
 	writeFile(t, filepath.Join(dir, "b.html"), "content-b-modified")
-	hash3, err := HashRenderTemplates(dir)
+	hash3, err := HashRenderTemplates(fsys, ".")
 	if err != nil {
 		t.Fatalf("HashRenderTemplates: %v", err)
 	}
@@ -42,7 +44,7 @@ func TestHashRenderTemplates(t *testing.T) {
 
 	// Renaming a file changes the hash (path is included).
 	os.Rename(filepath.Join(dir, "b.html"), filepath.Join(dir, "c.html"))
-	hash4, err := HashRenderTemplates(dir)
+	hash4, err := HashRenderTemplates(fsys, ".")
 	if err != nil {
 		t.Fatalf("HashRenderTemplates: %v", err)
 	}
@@ -54,7 +56,7 @@ func TestHashRenderTemplates(t *testing.T) {
 func TestHashRenderTemplatesEmptyDir(t *testing.T) {
 	dir := t.TempDir()
 
-	hash, err := HashRenderTemplates(dir)
+	hash, err := HashRenderTemplates(os.DirFS(dir), ".")
 	if err != nil {
 		t.Fatalf("HashRenderTemplates: %v", err)
 	}
@@ -64,7 +66,7 @@ func TestHashRenderTemplatesEmptyDir(t *testing.T) {
 }
 
 func TestHashRenderTemplatesNonexistentDir(t *testing.T) {
-	_, err := HashRenderTemplates("/nonexistent/path")
+	_, err := HashRenderTemplates(os.DirFS("/nonexistent"), "path")
 	if err == nil {
 		t.Fatal("expected error for nonexistent directory")
 	}

@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/gorilla/mux"
@@ -157,4 +160,109 @@ func (a *App) ManageSettingsPostHandler(rw http.ResponseWriter, req *http.Reques
 
 	slog.Info("settings updated", "acting_user", user.ScreenName)
 	http.Redirect(rw, req, "/manage/settings?msg=Settings+saved", http.StatusSeeOther)
+}
+
+// contentTreeNode represents a file or directory in the content tree.
+type contentTreeNode struct {
+	Name     string
+	IsDir    bool
+	Source   string // "embedded" or "disk" (files only)
+	Children []*contentTreeNode
+}
+
+// buildContentTree creates a nested tree from a flat list of content files.
+func buildContentTree(files []ContentFileEntry) []*contentTreeNode {
+	root := &contentTreeNode{IsDir: true}
+
+	for _, f := range files {
+		parts := strings.Split(f.Path, "/")
+		node := root
+		for i, part := range parts {
+			isLast := i == len(parts)-1
+			// Find or create child
+			var child *contentTreeNode
+			for _, c := range node.Children {
+				if c.Name == part {
+					child = c
+					break
+				}
+			}
+			if child == nil {
+				child = &contentTreeNode{
+					Name:  part,
+					IsDir: !isLast,
+				}
+				if isLast {
+					child.Source = f.Source
+				}
+				node.Children = append(node.Children, child)
+			}
+			node = child
+		}
+	}
+
+	// Sort children at each level
+	sortTree(root)
+	return root.Children
+}
+
+func sortTree(node *contentTreeNode) {
+	sort.Slice(node.Children, func(i, j int) bool {
+		// Directories first, then alphabetical
+		if node.Children[i].IsDir != node.Children[j].IsDir {
+			return node.Children[i].IsDir
+		}
+		return node.Children[i].Name < node.Children[j].Name
+	})
+	for _, c := range node.Children {
+		if c.IsDir {
+			sortTree(c)
+		}
+	}
+}
+
+// ManageContentHandler displays the content files tree for admin inspection.
+func (a *App) ManageContentHandler(rw http.ResponseWriter, req *http.Request) {
+	user := a.RequireAdmin(rw, req)
+	if user == nil {
+		return
+	}
+
+	var tree []*contentTreeNode
+	var totalFiles, overrideCount int
+	var shortCommit, commitURL string
+
+	if a.ContentInfo != nil {
+		tree = buildContentTree(a.ContentInfo.Files)
+		totalFiles = len(a.ContentInfo.Files)
+		for _, f := range a.ContentInfo.Files {
+			if f.Source == "disk" {
+				overrideCount++
+			}
+		}
+		if a.ContentInfo.BuildCommit != "" {
+			shortCommit = a.ContentInfo.BuildCommit
+			if len(shortCommit) > 12 {
+				shortCommit = shortCommit[:12]
+			}
+			if a.ContentInfo.SourceURL != "" {
+				// SourceURL is like "https://github.com/.../blob/<commit>"
+				// We want to link to the commit itself
+				commitURL = path.Dir(a.ContentInfo.SourceURL) + "/commit/" + a.ContentInfo.BuildCommit
+			}
+		}
+	}
+
+	data := map[string]any{
+		"Page":          wiki.NewStaticPage("Content Files"),
+		"Context":       req.Context(),
+		"Tree":          tree,
+		"TotalFiles":    totalFiles,
+		"OverrideCount": overrideCount,
+		"ShortCommit":   shortCommit,
+		"CommitURL":     commitURL,
+	}
+
+	err := a.RenderTemplate(rw, "content.html", "index.html", data)
+	check(err)
 }

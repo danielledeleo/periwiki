@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"database/sql"
+	"io/fs"
 	"log/slog"
 	"os"
 	"regexp"
@@ -25,7 +26,7 @@ import (
 
 // Setup initializes the application and returns the App instance along with
 // the render queue (which must be shut down when the server stops).
-func Setup() (*App, *renderqueue.Queue) {
+func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue) {
 	// Phase 1: Load file-based config
 	modelConf := config.SetupConfig()
 
@@ -37,7 +38,7 @@ func Setup() (*App, *renderqueue.Queue) {
 	}
 
 	// Phase 3: Run migrations
-	if err := storage.RunMigrations(db); err != nil {
+	if err := storage.RunMigrations(db, contentFS); err != nil {
 		slog.Error("failed to run migrations", "error", err)
 		os.Exit(1)
 	}
@@ -65,7 +66,7 @@ func Setup() (*App, *renderqueue.Queue) {
 	bm.AllowAttrs("type", "id", "class", "checked").OnElements("input")
 	bm.AllowAttrs("for").OnElements("label")
 
-	t := templater.New()
+	t := templater.New(contentFS)
 
 	if err := t.Load("templates/layouts/*.html", "templates/*.html", "templates/special/*.html", "templates/manage/*.html"); err != nil {
 		slog.Error("failed to load templates", "error", err)
@@ -101,6 +102,7 @@ func Setup() (*App, *renderqueue.Queue) {
 
 	// Create renderer with extension templates
 	renderer := render.NewHTMLRenderer(
+		contentFS,
 		existenceChecker,
 		[]extensions.WikiLinkRendererOption{extensions.WithWikiLinkTemplates(wikiLinkTemplates)},
 		[]extensions.FootnoteOption{extensions.WithFootnoteTemplates(footnoteTemplates)},
@@ -135,7 +137,7 @@ func Setup() (*App, *renderqueue.Queue) {
 	articleService = service.NewEmbeddedArticleService(articleService, embeddedArticles)
 
 	// Check for stale render templates and invalidate cached HTML if needed
-	checkRenderTemplateStaleness(db.DB, database, articleService)
+	checkRenderTemplateStaleness(contentFS, db.DB, database, articleService)
 
 	// Create preference service
 	preferenceService := service.NewPreferenceService(database)
@@ -148,6 +150,18 @@ func Setup() (*App, *renderqueue.Queue) {
 	specialPages.Register("Sitemap.xml", sitemapHandler)
 	specialPages.Register("RerenderAll", special.NewRerenderAllPage(articleService, t))
 
+	// Log content override summary
+	if contentInfo != nil {
+		var overrideCount int
+		for _, f := range contentInfo.Files {
+			if f.Source == "disk" {
+				slog.Debug("content override", "path", f.Path)
+				overrideCount++
+			}
+		}
+		slog.Info("content files loaded", "total", len(contentInfo.Files), "overrides", overrideCount)
+	}
+
 	return &App{
 		Templater:     t,
 		Articles:      articleService,
@@ -158,6 +172,7 @@ func Setup() (*App, *renderqueue.Queue) {
 		SpecialPages:  specialPages,
 		Config:        modelConf,
 		RuntimeConfig: runtimeConfig,
+		ContentInfo:   contentInfo,
 		DB:            db.DB,
 	}, renderQueue
 }
@@ -166,8 +181,8 @@ func Setup() (*App, *renderqueue.Queue) {
 // (templates/_render/) and compares it against the stored hash in the Setting
 // table. If the templates have changed, it invalidates cached HTML for old
 // revisions and queues head revisions for re-rendering.
-func checkRenderTemplateStaleness(db *sql.DB, repo repository.ArticleRepository, articles service.ArticleService) {
-	templateHash, err := render.HashRenderTemplates("templates/_render")
+func checkRenderTemplateStaleness(contentFS fs.FS, db *sql.DB, repo repository.ArticleRepository, articles service.ArticleService) {
+	templateHash, err := render.HashRenderTemplates(contentFS, "templates/_render")
 	if err != nil {
 		slog.Error("failed to hash render templates", "error", err)
 		return

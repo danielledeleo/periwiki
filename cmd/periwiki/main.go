@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -9,21 +10,41 @@ import (
 	"syscall"
 	"time"
 
+	periwiki "github.com/danielledeleo/periwiki"
 	"github.com/danielledeleo/periwiki/internal/embedded"
 	"github.com/danielledeleo/periwiki/internal/server"
 	"github.com/gorilla/mux"
 )
 
 func main() {
-	app, renderQueue := server.Setup()
+	// Build content info from the embedded/overlay filesystem
+	files, err := periwiki.ListContentFiles()
+	if err != nil {
+		slog.Error("failed to list content files", "error", err)
+		os.Exit(1)
+	}
+
+	contentInfo := &server.ContentInfo{
+		BuildCommit: embedded.BuildCommit,
+		SourceURL:   embedded.SourceBaseURL,
+	}
+	for _, f := range files {
+		contentInfo.Files = append(contentInfo.Files, server.ContentFileEntry{
+			Path:   f.Path,
+			Source: f.Source,
+		})
+	}
+
+	app, renderQueue := server.Setup(periwiki.ContentFS, contentInfo)
 
 	router := mux.NewRouter().StrictSlash(true)
 
 	router.Use(app.SessionMiddleware)
 
 	// Routes are documented in docs/urls.md — update it when adding or changing routes.
-	fs := http.FileServer(http.Dir("./static"))
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
+	staticSub, _ := fs.Sub(periwiki.ContentFS, "static")
+	staticFS := http.FileServer(http.FS(staticSub))
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", staticFS))
 	router.HandleFunc("/", app.HomeHandler).Methods("GET")
 
 	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", app.NamespaceHandler).Methods("GET", "POST")
@@ -40,6 +61,7 @@ func main() {
 	router.HandleFunc("/manage/users/{id:[0-9]+}", app.ManageUserRoleHandler).Methods("POST")
 	router.HandleFunc("/manage/settings", app.ManageSettingsHandler).Methods("GET")
 	router.HandleFunc("/manage/settings", app.ManageSettingsPostHandler).Methods("POST")
+	router.HandleFunc("/manage/content", app.ManageContentHandler).Methods("GET")
 
 	handler := server.SlogLoggingMiddleware(router)
 

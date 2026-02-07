@@ -70,6 +70,7 @@ The `Special` namespace is case-insensitive (`special:Random` also works).
 | `/manage/users/{id}` | POST | Change user role (admin only) |
 | `/manage/settings` | GET | Runtime settings (admin only) |
 | `/manage/settings` | POST | Update runtime settings (admin only) |
+| `/manage/content` | GET | Content files tree (admin only) |
 
 ## Other
 

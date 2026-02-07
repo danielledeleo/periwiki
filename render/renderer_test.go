@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestTOCNestedHeadings(t *testing.T) {
-	r := NewHTMLRenderer(nil, nil, nil)
+	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
 
 	md := "## Section One\n\n### Sub One\n\n### Sub Two\n\n#### Deep\n\n## Section Two\n"
 
@@ -78,7 +78,7 @@ func TestTOCNestedHeadings(t *testing.T) {
 }
 
 func TestTOCFlatH2Only(t *testing.T) {
-	r := NewHTMLRenderer(nil, nil, nil)
+	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
 
 	md := "## First\n\n## Second\n\n## Third\n"
 
@@ -96,7 +96,7 @@ func TestTOCFlatH2Only(t *testing.T) {
 }
 
 func TestTOCNoHeaders(t *testing.T) {
-	r := NewHTMLRenderer(nil, nil, nil)
+	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
 
 	md := "Just a paragraph.\n"
 
@@ -111,7 +111,7 @@ func TestTOCNoHeaders(t *testing.T) {
 }
 
 func TestTOCOrphanH3BeforeH2(t *testing.T) {
-	r := NewHTMLRenderer(nil, nil, nil)
+	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
 
 	md := "### Orphan\n\n## Section\n\n### Sub\n"
 
@@ -136,7 +136,7 @@ func TestTOCOrphanH3BeforeH2(t *testing.T) {
 }
 
 func TestTOCOrphanH4UnderH2(t *testing.T) {
-	r := NewHTMLRenderer(nil, nil, nil)
+	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
 
 	// h4 directly under h2 with no h3 intermediary -- should be dropped
 	md := "## Section\n\n#### Deep\n\n### Normal Sub\n"
@@ -159,7 +159,7 @@ func TestTOCOrphanH4UnderH2(t *testing.T) {
 }
 
 func TestTOCOnlyH3H4NoH2(t *testing.T) {
-	r := NewHTMLRenderer(nil, nil, nil)
+	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
 
 	md := "### A\n\n#### B\n"
 
@@ -175,7 +175,7 @@ func TestTOCOnlyH3H4NoH2(t *testing.T) {
 }
 
 func TestTOCHeadingWithInlineMarkup(t *testing.T) {
-	r := NewHTMLRenderer(nil, nil, nil)
+	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
 
 	md := "## **Bold** heading\n\n## Normal\n"
 
@@ -216,7 +216,7 @@ func extractTOC(t *testing.T, html string) string {
 }
 
 func TestHeadingIDFormat(t *testing.T) {
-	r := NewHTMLRenderer(nil, nil, nil)
+	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
 
 	tests := []struct {
 		name     string
@@ -245,7 +245,7 @@ func TestHeadingIDFormat(t *testing.T) {
 }
 
 func TestHeadingIDXSS(t *testing.T) {
-	r := NewHTMLRenderer(nil, nil, nil)
+	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
 
 	tests := []struct {
 		name    string
@@ -295,7 +295,7 @@ func TestHeadingIDXSS(t *testing.T) {
 }
 
 func TestTOCH1Excluded(t *testing.T) {
-	r := NewHTMLRenderer(nil, nil, nil)
+	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
 
 	md := "# Title\n\n## Section\n\n### Sub\n"
 

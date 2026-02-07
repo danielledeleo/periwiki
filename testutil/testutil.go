@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -63,6 +64,12 @@ func projectRoot() string {
 	return filepath.Dir(filepath.Dir(filename))
 }
 
+// TestContentFS returns an os.DirFS rooted at the project root, suitable for
+// passing to components that accept an fs.FS.
+func TestContentFS() fs.FS {
+	return os.DirFS(projectRoot())
+}
+
 // SetupTestDB creates an in-memory SQLite database with the schema loaded.
 func SetupTestDB(t testing.TB) (*TestDB, func()) {
 	t.Helper()
@@ -72,9 +79,9 @@ func SetupTestDB(t testing.TB) (*TestDB, func()) {
 		t.Fatalf("failed to open in-memory database: %v", err)
 	}
 
-	// Read schema from project root
-	schemaPath := filepath.Join(projectRoot(), "internal", "storage", "schema.sql")
-	schema, err := os.ReadFile(schemaPath)
+	// Read schema from project root via FS
+	contentFS := TestContentFS()
+	schema, err := fs.ReadFile(contentFS, "internal/storage/schema.sql")
 	if err != nil {
 		conn.Close()
 		t.Fatalf("failed to read schema.sql: %v", err)
@@ -137,14 +144,16 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 	bm.AllowAttrs("style").OnElements("ins", "del")
 	bm.AllowAttrs("style").Matching(regexp.MustCompile(`^text-align:\s+(left|right|center);$`)).OnElements("td", "th")
 
+	// Create content FS from project root
+	contentFS := TestContentFS()
+
 	// Create templater and load templates
-	tmpl := templater.New()
-	templatesPath := filepath.Join(projectRoot(), "templates")
+	tmpl := templater.New(contentFS)
 	err := tmpl.Load(
-		filepath.Join(templatesPath, "layouts", "*.html"),
-		filepath.Join(templatesPath, "*.html"),
-		filepath.Join(templatesPath, "special", "*.html"),
-		filepath.Join(templatesPath, "manage", "*.html"),
+		"templates/layouts/*.html",
+		"templates/*.html",
+		"templates/special/*.html",
+		"templates/manage/*.html",
 	)
 	if err != nil {
 		dbCleanup()
@@ -152,7 +161,7 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 	}
 
 	// Load footnote templates
-	footnoteTemplates, err := tmpl.LoadExtensionTemplates(templatesPath, "footnote", []string{
+	footnoteTemplates, err := tmpl.LoadExtensionTemplates("templates", "footnote", []string{
 		"link", "backlink", "list", "item",
 	})
 	if err != nil {
@@ -161,7 +170,7 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 	}
 
 	// Load wikilink templates
-	wikiLinkTemplates, err := tmpl.LoadExtensionTemplates(templatesPath, "wikilink", []string{
+	wikiLinkTemplates, err := tmpl.LoadExtensionTemplates("templates", "wikilink", []string{
 		"link",
 	})
 	if err != nil {
@@ -181,6 +190,7 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 
 	// Create renderer with extension templates
 	renderer := render.NewHTMLRenderer(
+		contentFS,
 		existenceChecker,
 		[]extensions.WikiLinkRendererOption{extensions.WithWikiLinkTemplates(wikiLinkTemplates)},
 		[]extensions.FootnoteOption{extensions.WithFootnoteTemplates(footnoteTemplates)},

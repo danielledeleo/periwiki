@@ -3,15 +3,17 @@ all: periwiki
 find_go = find . -name '*.go' -not -name '*_gen.go'
 find_templates = find templates -name '*.html'
 find_embedded = find internal/embedded/help -name '*.md'
+find_statics = find static -type f
 
 gosources := $(shell $(find_go)) go.sum go.mod
 templates := $(shell $(find_templates))
 embedded := $(shell $(find_embedded))
+statics := $(shell $(find_statics))
 
 generate:
 	go generate ./internal/embedded
 
-periwiki: generate $(gosources) $(templates) $(embedded)
+periwiki: generate $(gosources) $(templates) $(embedded) $(statics)
 	go build -o periwiki ./cmd/periwiki
 
 run: periwiki
@@ -19,7 +21,7 @@ run: periwiki
 
 watch:
 	@command -v entr >/dev/null 2>&1 || { echo "entr not found — see https://eradman.com/entrproject/"; exit 1; }
-	{ $(find_go); $(find_templates); $(find_embedded); echo ./Makefile; } | entr -r make run
+	{ $(find_go); $(find_templates); $(find_embedded); $(find_statics); echo ./Makefile; } | entr -r make run
 
 test: generate
 	go test ./...

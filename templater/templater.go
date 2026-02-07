@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
-	"path/filepath"
+	"path"
 	"strings"
 	"text/template"
 	"unicode"
@@ -20,6 +21,7 @@ import (
 
 // Templater ecapsulates the map to prevent direct access. See RenderTemplate
 type Templater struct {
+	fsys      fs.FS
 	templates map[string]*template.Template
 	funcs     map[string]any
 }
@@ -57,27 +59,27 @@ func (item HTMLItem) AddAttribute(key string, value ...string) {
 	item.attr[key] = value
 }
 
-func New() *Templater {
-	return &Templater{}
+func New(fsys fs.FS) *Templater {
+	return &Templater{fsys: fsys}
 }
 
 // ExtensionTemplates holds parsed templates for an extension.
 type ExtensionTemplates map[string]*template.Template
 
-// LoadExtensionTemplates loads templates for a named extension from <templatesDir>/extensions/<name>/.
-// The templatesDir parameter should be the base templates directory (e.g., "templates" or an absolute path).
+// LoadExtensionTemplates loads templates for a named extension from <templatesDir>/_render/<name>/.
+// The templatesDir parameter should be the base templates directory (e.g., "templates").
 // Returns error if any required template file is missing.
 func (t *Templater) LoadExtensionTemplates(templatesDir, name string, required []string) (ExtensionTemplates, error) {
 	templates := make(ExtensionTemplates)
-	dir := filepath.Join(templatesDir, "_render", name)
+	dir := path.Join(templatesDir, "_render", name)
 
 	for _, tmplName := range required {
-		path := filepath.Join(dir, tmplName+".html")
-		tmpl, err := template.New(tmplName).Funcs(t.funcs).ParseFiles(path)
+		p := path.Join(dir, tmplName+".html")
+		tmpl, err := template.New(tmplName).Funcs(t.funcs).ParseFS(t.fsys, p)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load extension template %s/%s: %w", name, tmplName, err)
 		}
-		// ParseFiles names the template after the file basename, so we need to look it up
+		// ParseFS names the template after the file basename, so we need to look it up
 		templates[tmplName] = tmpl.Lookup(tmplName + ".html")
 		if templates[tmplName] == nil {
 			return nil, fmt.Errorf("template %s/%s.html not found after parsing", name, tmplName)
@@ -96,14 +98,14 @@ func (t *Templater) Load(baseGlob string, mainGlobs ...string) error {
 
 	var layouts []string
 	for _, mainGlob := range mainGlobs {
-		matches, err := filepath.Glob(mainGlob)
+		matches, err := fs.Glob(t.fsys, mainGlob)
 		if err != nil {
 			return err
 		}
 		layouts = append(layouts, matches...)
 	}
 
-	base, err := filepath.Glob(baseGlob)
+	base, err := fs.Glob(t.fsys, baseGlob)
 	if err != nil {
 		return err
 	}
@@ -128,7 +130,8 @@ func (t *Templater) Load(baseGlob string, mainGlobs ...string) error {
 	// Generate our templates map from our layouts/ and includes/ directories
 	for _, layout := range layouts {
 		files := append(base, layout)
-		t.templates[filepath.Base(layout)] = template.Must(template.New(filepath.Base(layout)).Funcs(t.funcs).ParseFiles(files...))
+		basename := path.Base(layout)
+		t.templates[basename] = template.Must(template.New(basename).Funcs(t.funcs).ParseFS(t.fsys, files...))
 	}
 	return nil
 }

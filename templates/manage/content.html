@@ -1,0 +1,41 @@
+{{define "content"}}
+<div id="article-area">
+    <article>
+        <h1>Content Files</h1>
+        <div class="pw-article-content">
+            <p>
+                {{ if .ShortCommit }}
+                Build commit:
+                {{ if .CommitURL }}<a href="{{ .CommitURL }}"><code>{{ .ShortCommit }}</code></a>{{ else }}<code>{{ .ShortCommit }}</code>{{ end }}
+                &mdash;
+                {{ end }}
+                {{ .TotalFiles }} files ({{ .OverrideCount }} overridden from disk)
+            </p>
+            {{ if .Tree }}
+            <div class="pw-content-tree">
+                {{ template "tree" .Tree }}
+            </div>
+            {{ else }}
+            <p>No content files found.</p>
+            {{ end }}
+        </div>
+    </article>
+</div>
+{{end}}
+
+{{define "tree"}}
+<ul>
+    {{ range . }}
+    <li>
+        {{ if .IsDir }}
+        <details open>
+            <summary><strong>{{ .Name }}/</strong></summary>
+            {{ template "tree" .Children }}
+        </details>
+        {{ else }}
+        {{ .Name }} <span class="pw-source-badge pw-source-{{ .Source }}">{{ .Source }}</span>
+        {{ end }}
+    </li>
+    {{ end }}
+</ul>
+{{end}}

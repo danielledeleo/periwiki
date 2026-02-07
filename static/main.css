@@ -477,6 +477,51 @@ article.pw-preview {
     background-color: var(--pw-neutral-bg);
 }
 
+/* Content tree (admin content page) */
+.pw-content-tree {
+    font-family: "Andale Mono", "Consolas", monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.pw-content-tree ul {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 1.2rem;
+}
+
+.pw-content-tree > ul {
+    padding-left: 0;
+}
+
+.pw-content-tree details > summary {
+    cursor: pointer;
+}
+
+.pw-content-tree details > summary:hover {
+    text-decoration: underline;
+}
+
+.pw-source-badge {
+    font-family: "Helvetica", sans-serif;
+    font-size: 0.7rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    vertical-align: middle;
+}
+
+.pw-source-embedded {
+    border: 1px solid var(--pw-neutral-border);
+    background-color: var(--pw-neutral-bg);
+    color: var(--pw-dark-grey);
+}
+
+.pw-source-disk {
+    border: 1px solid var(--pw-info-border);
+    background-color: var(--pw-info-bg);
+    color: var(--pw-link-color);
+}
+
 .hidden {
     display: none;
 }

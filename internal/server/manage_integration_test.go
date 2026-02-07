@@ -40,6 +40,7 @@ func setupManageTestServer(t *testing.T) (*httptest.Server, *testutil.TestApp, f
 	router.HandleFunc("/manage/users/{id:[0-9]+}", app.ManageUserRoleHandler).Methods("POST")
 	router.HandleFunc("/manage/settings", app.ManageSettingsHandler).Methods("GET")
 	router.HandleFunc("/manage/settings", app.ManageSettingsPostHandler).Methods("POST")
+	router.HandleFunc("/manage/content", app.ManageContentHandler).Methods("GET")
 
 	server := httptest.NewServer(router)
 
@@ -380,6 +381,110 @@ func TestManageSettingsUpdate(t *testing.T) {
 
 		if rw.Code != http.StatusForbidden {
 			t.Errorf("expected 403, got %d", rw.Code)
+		}
+	})
+}
+
+func TestManageContentRequiresAdmin(t *testing.T) {
+	_, testApp, cleanup := setupManageTestServer(t)
+	defer cleanup()
+
+	app := &App{
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
+		DB:            testApp.RawDB,
+		ContentInfo: &ContentInfo{
+			Files: []ContentFileEntry{
+				{Path: "templates/layouts/index.html", Source: "embedded"},
+				{Path: "static/main.css", Source: "disk"},
+			},
+			BuildCommit: "abc123def456",
+			SourceURL:   "https://github.com/example/repo/blob/abc123def456",
+		},
+	}
+
+	t.Run("non-admin user gets 403", func(t *testing.T) {
+		user := testutil.CreateTestUser(t, testApp.DB, "regular2", "regular2@example.com", "password1234")
+
+		req := testutil.MakeTestRequest("GET", "/manage/content", user)
+		rw := httptest.NewRecorder()
+
+		app.ManageContentHandler(rw, req)
+
+		if rw.Code != http.StatusForbidden {
+			t.Errorf("expected 403, got %d", rw.Code)
+		}
+	})
+
+	t.Run("admin user gets 200 with content tree", func(t *testing.T) {
+		admin := testutil.CreateTestAdmin(t, testApp.DB, "admin2", "admin2@example.com", "password1234")
+
+		req := testutil.MakeTestRequest("GET", "/manage/content", admin)
+		rw := httptest.NewRecorder()
+
+		app.ManageContentHandler(rw, req)
+
+		if rw.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rw.Code)
+		}
+
+		body := rw.Body.String()
+
+		// Check for commit info
+		if !strings.Contains(body, "abc123def456") {
+			t.Error("expected commit hash in response body")
+		}
+
+		// Check for file count
+		if !strings.Contains(body, "2 files") {
+			t.Error("expected file count in response body")
+		}
+
+		// Check for override count
+		if !strings.Contains(body, "1 overridden") {
+			t.Error("expected override count in response body")
+		}
+
+		// Check for source badges
+		if !strings.Contains(body, "embedded") {
+			t.Error("expected 'embedded' source badge")
+		}
+		if !strings.Contains(body, "disk") {
+			t.Error("expected 'disk' source badge")
+		}
+	})
+
+	t.Run("nil content info renders gracefully", func(t *testing.T) {
+		admin := testutil.CreateTestAdmin(t, testApp.DB, "admin3", "admin3@example.com", "password1234")
+
+		appNil := &App{
+			Templater:     testApp.Templater,
+			Articles:      testApp.Articles,
+			Users:         testApp.Users,
+			Sessions:      testApp.Sessions,
+			Rendering:     testApp.Rendering,
+			Preferences:   testApp.Preferences,
+			SpecialPages:  testApp.SpecialPages,
+			Config:        testApp.Config,
+			RuntimeConfig: testApp.RuntimeConfig,
+			DB:            testApp.RawDB,
+			ContentInfo:   nil,
+		}
+
+		req := testutil.MakeTestRequest("GET", "/manage/content", admin)
+		rw := httptest.NewRecorder()
+
+		appNil.ManageContentHandler(rw, req)
+
+		if rw.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rw.Code)
 		}
 	})
 }

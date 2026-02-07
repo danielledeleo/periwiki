@@ -2,7 +2,7 @@ package storage
 
 import (
 	"encoding/json"
-	"os"
+	"io/fs"
 
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/jmoiron/sqlx"
@@ -10,9 +10,9 @@ import (
 
 // RunMigrations executes the database schema and any necessary migrations.
 // This function is idempotent and safe to run multiple times.
-func RunMigrations(db *sqlx.DB) error {
+func RunMigrations(db *sqlx.DB, contentFS fs.FS) error {
 	// Read and execute the main schema
-	sqlFile, err := os.ReadFile("internal/storage/schema.sql")
+	sqlFile, err := fs.ReadFile(contentFS, "internal/storage/schema.sql")
 	if err != nil {
 		return err
 	}

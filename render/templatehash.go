@@ -4,16 +4,16 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io/fs"
-	"os"
-	"path/filepath"
 	"sort"
+	"strings"
 )
 
-// HashRenderTemplates computes a SHA-256 hash of all files in the given directory.
-// Files are processed in sorted order so the hash is deterministic.
-func HashRenderTemplates(dir string) (string, error) {
+// HashRenderTemplates computes a SHA-256 hash of all files under dir within
+// the given filesystem. Files are processed in sorted order so the hash is
+// deterministic.
+func HashRenderTemplates(fsys fs.FS, dir string) (string, error) {
 	var paths []string
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(fsys, dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -31,13 +31,11 @@ func HashRenderTemplates(dir string) (string, error) {
 	h := sha256.New()
 	for _, path := range paths {
 		// Include the relative path in the hash so renames are detected.
-		rel, err := filepath.Rel(dir, path)
-		if err != nil {
-			return "", err
-		}
+		// Trim the dir prefix to get a consistent relative name.
+		rel := strings.TrimPrefix(path, dir+"/")
 		h.Write([]byte(rel))
 
-		data, err := os.ReadFile(path)
+		data, err := fs.ReadFile(fsys, path)
 		if err != nil {
 			return "", fmt.Errorf("reading %s: %w", path, err)
 		}

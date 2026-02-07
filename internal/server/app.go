@@ -12,6 +12,19 @@ import (
 	"github.com/danielledeleo/periwiki/wiki/service"
 )
 
+// ContentInfo holds metadata about embedded content files for the admin UI.
+type ContentInfo struct {
+	Files       []ContentFileEntry
+	BuildCommit string
+	SourceURL   string // URL to the source at this commit
+}
+
+// ContentFileEntry describes a single file in the content filesystem.
+type ContentFileEntry struct {
+	Path   string // e.g. "templates/layouts/index.html"
+	Source string // "embedded" or "disk"
+}
+
 // App holds all application dependencies and services.
 type App struct {
 	*templater.Templater
@@ -23,6 +36,7 @@ type App struct {
 	SpecialPages  *special.Registry
 	Config        *wiki.Config
 	RuntimeConfig *wiki.RuntimeConfig
+	ContentInfo   *ContentInfo
 	DB            *sql.DB
 }
 

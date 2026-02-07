@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -18,7 +19,8 @@ import (
 )
 
 type HTMLRenderer struct {
-	md goldmark.Markdown
+	fsys fs.FS
+	md   goldmark.Markdown
 }
 
 // TOCEntry represents a heading in the table of contents.
@@ -104,6 +106,7 @@ func textContent(n *html.Node) string {
 // WikiLinks to non-existent pages will be styled with the pw-deadlink class.
 // WikiLink and footnote options can be passed to customize rendering.
 func NewHTMLRenderer(
+	fsys fs.FS,
 	existenceChecker extensions.ExistenceChecker,
 	wikiLinkRendererOpts []extensions.WikiLinkRendererOption,
 	footnoteOpts []extensions.FootnoteOption,
@@ -116,6 +119,7 @@ func NewHTMLRenderer(
 	}
 
 	r := &HTMLRenderer{
+		fsys: fsys,
 		md: goldmark.New(
 			goldmark.WithExtensions(
 				extension.Table,
@@ -160,7 +164,7 @@ func (r *HTMLRenderer) Render(md string) (string, error) {
 		return string(rawhtml), nil
 	}
 
-	tmpl, err := template.ParseFiles("templates/_render/toc.html")
+	tmpl, err := template.ParseFS(r.fsys, "templates/_render/toc.html")
 	if err != nil {
 		return "", err
 	}
