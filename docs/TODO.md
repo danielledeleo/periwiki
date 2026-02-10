@@ -10,12 +10,10 @@ Soon(ish)
   - draft
   - private
   - internal-only
-- Home page as a standard article
 - e2e database migration tests (old test databases as part of testing)
 - Improve editing request flow
   - unmodified content submissions should still re-render
   - submission errors should appear above editor window, not a new page (unmodified, conflicts)
-- Docs-on-docs (ship the documentation for Periwiki as sample files)
 - Include better sample pages
 - Move .go files out of root directory (note: `content.go` added for overlay FS embed)
 - User-defined templates system (see docs/plans/user-templates-design.md)
@@ -56,7 +54,6 @@ Architecture
 Configuration and Runtime
 - First run/setup mode
   - Auto populate new databases with an Admin user with id 1 as the owner of all the default pages
-- ~~Compile template files into the binary (embed) (possible wontfix)~~ Done: overlay FS with per-file disk overrides
 - Improve "server failed to start" error message with specific reason (port in use, permission denied, etc.)
 - CLI flags to override config file path, database file, host, log level, etc.
 
