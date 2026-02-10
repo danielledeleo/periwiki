@@ -238,12 +238,23 @@ func checkRenderTemplateStaleness(contentFS fs.FS, db *sql.DB, repo repository.A
 	}
 
 	if storedHash == currentHash {
-		slog.Debug("render templates unchanged", "hash", currentHash[:12])
+		slog.Debug("render templates unchanged")
 		return
 	}
 
-	slog.Info("render templates changed, invalidating cached HTML",
-		"old_hash", storedHash[:12], "new_hash", currentHash[:12])
+	// Split "templateHash:buildCommit" to log which part changed.
+	storedTemplate, storedCommit, _ := strings.Cut(storedHash, ":")
+	templatesChanged := storedTemplate != templateHash
+	binaryChanged := storedCommit != embedded.BuildCommit
+
+	if templatesChanged {
+		slog.Info("render templates changed", "old", storedTemplate[:12], "new", templateHash[:12])
+	}
+	if binaryChanged {
+		slog.Info("binary changed", "old", storedCommit[:7], "new", embedded.BuildCommit[:7])
+	}
+
+	slog.Info("invalidating cached HTML")
 
 	// Null out HTML for all non-head revisions
 	invalidated, err := repo.InvalidateNonHeadRevisionHTML()
