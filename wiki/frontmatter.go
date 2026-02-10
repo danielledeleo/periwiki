@@ -22,6 +22,7 @@ var frontmatterRegex = regexp.MustCompile(`(?s)\A---\r?\n(.*?)(?:\r?\n)?---(?:\r
 type Frontmatter struct {
 	DisplayTitle string            `json:"display_title,omitempty"`
 	Layout       string            `json:"layout,omitempty"`
+	TOC          *bool             `json:"toc,omitempty"`
 	Extra        map[string]string `json:"extra,omitempty"`
 }
 
@@ -49,6 +50,13 @@ func (fm Frontmatter) MarshalJSON() ([]byte, error) {
 	if fm.Layout != "" {
 		m["layout"] = fm.Layout
 	}
+	if fm.TOC != nil {
+		if *fm.TOC {
+			m["toc"] = "true"
+		} else {
+			m["toc"] = "false"
+		}
+	}
 
 	return json.Marshal(m)
 }
@@ -67,6 +75,11 @@ func (fm *Frontmatter) UnmarshalJSON(data []byte) error {
 	if v, ok := m["layout"]; ok {
 		fm.Layout = v
 		delete(m, "layout")
+	}
+	if v, ok := m["toc"]; ok {
+		b := v != "false"
+		fm.TOC = &b
+		delete(m, "toc")
 	}
 
 	if len(m) > 0 {
@@ -100,6 +113,11 @@ func ParseFrontmatter(markdown string) (Frontmatter, string) {
 	if v, ok := raw["layout"]; ok {
 		fm.Layout = v
 		delete(raw, "layout")
+	}
+	if v, ok := raw["toc"]; ok {
+		b := v != "false"
+		fm.TOC = &b
+		delete(raw, "toc")
 	}
 	if len(raw) > 0 {
 		fm.Extra = raw

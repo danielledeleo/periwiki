@@ -133,13 +133,18 @@ func NewHTMLRenderer(
 	return r
 }
 
-func (r *HTMLRenderer) Render(md string) (string, error) {
+func (r *HTMLRenderer) Render(md string, skipTOC ...bool) (string, error) {
 	buf := &bytes.Buffer{}
 
 	if err := r.md.Convert([]byte(md), buf); err != nil {
 		return "", fmt.Errorf("failed to Convert: %w", err)
 	}
 	rawhtml := buf.Bytes()
+
+	if len(skipTOC) > 0 && skipTOC[0] {
+		return string(rawhtml), nil
+	}
+
 	htmlreader := bytes.NewReader(rawhtml)
 
 	root, err := html.Parse(htmlreader)

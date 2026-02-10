@@ -328,3 +328,30 @@ func TestTOCH1Excluded(t *testing.T) {
 		t.Error("h1 'Title' should not appear in the TOC")
 	}
 }
+
+func TestTOCSkipped(t *testing.T) {
+	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+
+	md := "## First\n\n## Second\n"
+
+	// Without skipTOC, TOC is present
+	withTOC, err := r.Render(md)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+	if !strings.Contains(withTOC, `id="toc"`) {
+		t.Error("expected TOC when skipTOC is false")
+	}
+
+	// With skipTOC, TOC is absent
+	withoutTOC, err := r.Render(md, true)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+	if strings.Contains(withoutTOC, `id="toc"`) {
+		t.Error("expected no TOC when skipTOC is true")
+	}
+	if !strings.Contains(withoutTOC, "First") {
+		t.Error("expected heading content preserved when TOC skipped")
+	}
+}

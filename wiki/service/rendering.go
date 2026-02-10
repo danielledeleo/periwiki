@@ -32,9 +32,10 @@ func NewRenderingService(renderer *render.HTMLRenderer, sanitizer *bluemonday.Po
 // Render converts markdown to sanitized HTML.
 func (s *renderingService) Render(markdown string) (string, error) {
 	// Strip frontmatter before rendering
-	_, content := wiki.ParseFrontmatter(markdown)
+	fm, content := wiki.ParseFrontmatter(markdown)
 
-	unsafe, err := s.renderer.Render(content)
+	skipTOC := fm.TOC != nil && !*fm.TOC
+	unsafe, err := s.renderer.Render(content, skipTOC)
 	if err != nil {
 		return "", err
 	}

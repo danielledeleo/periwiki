@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+func boolPtr(b bool) *bool { return &b }
+
 func TestParseFrontmatter(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -64,6 +66,18 @@ func TestParseFrontmatter(t *testing.T) {
 			name:            "layout and display_title together",
 			input:           "---\nlayout: mainpage\ndisplay_title: Main Page\n---\n# Hello",
 			expectedFM:      Frontmatter{Layout: "mainpage", DisplayTitle: "Main Page"},
+			expectedContent: "# Hello",
+		},
+		{
+			name:            "toc false disables table of contents",
+			input:           "---\ntoc: false\n---\n# Hello",
+			expectedFM:      Frontmatter{TOC: boolPtr(false)},
+			expectedContent: "# Hello",
+		},
+		{
+			name:            "toc true keeps table of contents",
+			input:           "---\ntoc: true\n---\n# Hello",
+			expectedFM:      Frontmatter{TOC: boolPtr(true)},
 			expectedContent: "# Hello",
 		},
 		{
