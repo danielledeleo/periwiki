@@ -166,20 +166,7 @@ func (a *App) LogoutPostHandler(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (a *App) HomeHandler(rw http.ResponseWriter, req *http.Request) {
-	data := make(map[string]interface{})
-
-	article := &wiki.Article{
-		URL: "Home",
-		Revision: &wiki.Revision{
-			HTML: "Welcome to periwiki! Why don't you check out <a href='/wiki/Test'>Test</a>?",
-		},
-	}
-	data["Page"] = article
-	data["Article"] = article
-	data["Context"] = req.Context()
-
-	err := a.RenderTemplate(rw, "home.html", "index.html", data)
-	check(err)
+	http.Redirect(rw, req, "/wiki/Main_Page", http.StatusFound)
 }
 
 func (a *App) ArticleHandler(rw http.ResponseWriter, req *http.Request) {

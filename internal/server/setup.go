@@ -3,11 +3,13 @@ package server
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"io/fs"
 	"log/slog"
 	"os"
 	"regexp"
 	"runtime"
+	"strconv"
 
 	"github.com/danielledeleo/periwiki/extensions"
 	"github.com/danielledeleo/periwiki/internal/config"
@@ -23,6 +25,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/microcosm-cc/bluemonday"
 )
+
+//go:embed default_main_page.md
+var defaultMainPageContent string
 
 // Setup initializes the application and returns the App instance along with
 // the render queue (which must be shut down when the server stops).
@@ -136,6 +141,9 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 		os.Exit(1)
 	}
 	articleService = service.NewEmbeddedArticleService(articleService, embeddedArticles)
+
+	// Run first-time setup tasks (e.g. seed Main_Page)
+	runFirstTimeSetup(db.DB, articleService)
 
 	// Check for stale render templates and invalidate cached HTML if needed
 	checkRenderTemplateStaleness(contentFS, db.DB, database, articleService)
@@ -257,4 +265,59 @@ func getOrCreateSetting(db *sql.DB, key string, defaultFn func() string) (string
 		return "", err
 	}
 	return value, nil
+}
+
+const currentSetupVersion = 1
+
+// runFirstTimeSetup executes versioned one-time setup tasks.
+// Each task runs only once; the current version is persisted in the Setting table.
+func runFirstTimeSetup(db *sql.DB, articles service.ArticleService) {
+	stored := getSetupVersion(db)
+	if stored >= currentSetupVersion {
+		return
+	}
+
+	if stored < 1 {
+		seedMainPage(articles)
+	}
+	// Future: if stored < 2 { ... }
+
+	updateSetupVersion(db, currentSetupVersion)
+}
+
+func getSetupVersion(db *sql.DB) int {
+	var value string
+	err := db.QueryRow("SELECT value FROM Setting WHERE key = ?", wiki.SettingSetupVersion).Scan(&value)
+	if err != nil {
+		return 0
+	}
+	v, err := strconv.Atoi(value)
+	if err != nil {
+		return 0
+	}
+	return v
+}
+
+func updateSetupVersion(db *sql.DB, version int) {
+	value := strconv.Itoa(version)
+	if err := wiki.UpdateSetting(db, wiki.SettingSetupVersion, value); err != nil {
+		slog.Error("failed to update setup version", "error", err)
+	}
+}
+
+func seedMainPage(articles service.ArticleService) {
+	// Check if Main_Page already exists
+	existing, err := articles.GetArticle("Main_Page")
+	if err == nil && existing != nil {
+		slog.Debug("Main_Page already exists, skipping seed")
+		return
+	}
+
+	article := wiki.NewArticle("Main_Page", defaultMainPageContent)
+	article.Creator = &wiki.User{ID: 0}
+	if err := articles.PostArticle(article); err != nil {
+		slog.Error("failed to seed Main_Page", "error", err)
+		return
+	}
+	slog.Info("seeded Main_Page article")
 }

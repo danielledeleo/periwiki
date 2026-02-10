@@ -27,6 +27,7 @@ const (
 	SettingCookieExpiry              = "cookie_expiry"
 	SettingMinPasswordLength         = "min_password_length"
 	SettingRenderTemplateHash        = "render_template_hash"
+	SettingSetupVersion              = "setup_version"
 )
 
 // Default values for runtime settings

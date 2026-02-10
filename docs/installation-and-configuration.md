@@ -21,7 +21,9 @@ This compiles the `periwiki` binary in the current directory.
 ./periwiki
 ```
 
-On first run, Periwiki creates the SQLite database and a default `config.yaml` automatically. By default, it listens on `0.0.0.0:8080`.
+On first run, Periwiki creates the SQLite database, a default `config.yaml`, and a `Main_Page` article with a getting-started guide. By default, it listens on `0.0.0.0:8080`.
+
+The root URL (`/`) redirects to `/wiki/Main_Page`. The seeded main page is a regular wiki article — you can edit or replace it at any time. It uses `layout: mainpage` frontmatter to display "Main page" instead of "Article" in the tab bar.
 
 Periwiki handles SIGINT and SIGTERM gracefully — it stops accepting new HTTP requests, waits for in-flight requests and render jobs to finish (up to 30 seconds), then exits.
 

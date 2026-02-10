@@ -55,6 +55,18 @@ func TestParseFrontmatter(t *testing.T) {
 			expectedContent: "\n# Heading\n\nBody text here.",
 		},
 		{
+			name:            "layout field parsed",
+			input:           "---\nlayout: mainpage\n---\n# Hello",
+			expectedFM:      Frontmatter{Layout: "mainpage"},
+			expectedContent: "# Hello",
+		},
+		{
+			name:            "layout and display_title together",
+			input:           "---\nlayout: mainpage\ndisplay_title: Main Page\n---\n# Hello",
+			expectedFM:      Frontmatter{Layout: "mainpage", DisplayTitle: "Main Page"},
+			expectedContent: "# Hello",
+		},
+		{
 			name:            "unknown fields captured in Extra",
 			input:           "---\ndisplay_title: Known\nunknown_field: Value\n---\n# Hello",
 			expectedFM:      Frontmatter{DisplayTitle: "Known", Extra: map[string]string{"unknown_field": "Value"}},

@@ -19,6 +19,7 @@ The rest of the article content goes here...
 | Field | Purpose |
 |-------|---------|
 | `display_title` | Override the article's display title (URL remains unchanged) |
+| `layout` | Controls page appearance. `mainpage` shows "Main page" tab instead of "Article" |
 
 Additional fields are preserved for future use.
 

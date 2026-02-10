@@ -162,6 +162,32 @@ func (a *App) ManageSettingsPostHandler(rw http.ResponseWriter, req *http.Reques
 	http.Redirect(rw, req, "/manage/settings?msg=Settings+saved", http.StatusSeeOther)
 }
 
+// ResetMainPageHandler resets the Main_Page article to the embedded default content.
+func (a *App) ResetMainPageHandler(rw http.ResponseWriter, req *http.Request) {
+	user := a.RequireAdmin(rw, req)
+	if user == nil {
+		return
+	}
+
+	article := wiki.NewArticle("Main_Page", defaultMainPageContent)
+	article.Creator = user
+
+	// Set PreviousID so PostArticle doesn't conflict with an existing article.
+	existing, err := a.Articles.GetArticle("Main_Page")
+	if err == nil && existing != nil {
+		article.PreviousID = existing.ID
+	}
+
+	if err := a.Articles.PostArticle(article); err != nil {
+		slog.Error("failed to reset Main_Page", "error", err)
+		http.Redirect(rw, req, "/manage/settings?err=Failed+to+reset+main+page:+"+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	slog.Info("Main_Page reset to default", "acting_user", user.ScreenName)
+	http.Redirect(rw, req, "/manage/settings?msg=Main+page+reset+to+default", http.StatusSeeOther)
+}
+
 // contentTreeNode represents a file or directory in the content tree.
 type contentTreeNode struct {
 	Name     string

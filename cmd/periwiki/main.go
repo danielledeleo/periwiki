@@ -61,6 +61,7 @@ func main() {
 	router.HandleFunc("/manage/users/{id:[0-9]+}", app.ManageUserRoleHandler).Methods("POST")
 	router.HandleFunc("/manage/settings", app.ManageSettingsHandler).Methods("GET")
 	router.HandleFunc("/manage/settings", app.ManageSettingsPostHandler).Methods("POST")
+	router.HandleFunc("/manage/settings/reset-main-page", app.ResetMainPageHandler).Methods("POST")
 	router.HandleFunc("/manage/content", app.ManageContentHandler).Methods("GET")
 
 	handler := server.SlogLoggingMiddleware(router)

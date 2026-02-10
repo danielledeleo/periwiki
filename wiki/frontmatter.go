@@ -21,6 +21,7 @@ var frontmatterRegex = regexp.MustCompile(`(?s)\A---\r?\n(.*?)(?:\r?\n)?---(?:\r
 // All string values are sanitized to strip HTML on parse.
 type Frontmatter struct {
 	DisplayTitle string            `json:"display_title,omitempty"`
+	Layout       string            `json:"layout,omitempty"`
 	Extra        map[string]string `json:"extra,omitempty"`
 }
 
@@ -28,6 +29,7 @@ type Frontmatter struct {
 // Called automatically by ParseFrontmatter.
 func (fm *Frontmatter) sanitize() {
 	fm.DisplayTitle = strictPolicy.Sanitize(fm.DisplayTitle)
+	fm.Layout = strictPolicy.Sanitize(fm.Layout)
 	for k, v := range fm.Extra {
 		fm.Extra[k] = strictPolicy.Sanitize(v)
 	}
@@ -44,6 +46,9 @@ func (fm Frontmatter) MarshalJSON() ([]byte, error) {
 	if fm.DisplayTitle != "" {
 		m["display_title"] = fm.DisplayTitle
 	}
+	if fm.Layout != "" {
+		m["layout"] = fm.Layout
+	}
 
 	return json.Marshal(m)
 }
@@ -58,6 +63,10 @@ func (fm *Frontmatter) UnmarshalJSON(data []byte) error {
 	if v, ok := m["display_title"]; ok {
 		fm.DisplayTitle = v
 		delete(m, "display_title")
+	}
+	if v, ok := m["layout"]; ok {
+		fm.Layout = v
+		delete(m, "layout")
 	}
 
 	if len(m) > 0 {
@@ -87,6 +96,10 @@ func ParseFrontmatter(markdown string) (Frontmatter, string) {
 	if v, ok := raw["display_title"]; ok {
 		fm.DisplayTitle = v
 		delete(raw, "display_title")
+	}
+	if v, ok := raw["layout"]; ok {
+		fm.Layout = v
+		delete(raw, "layout")
 	}
 	if len(raw) > 0 {
 		fm.Extra = raw

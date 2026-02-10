@@ -40,6 +40,7 @@ func setupManageTestServer(t *testing.T) (*httptest.Server, *testutil.TestApp, f
 	router.HandleFunc("/manage/users/{id:[0-9]+}", app.ManageUserRoleHandler).Methods("POST")
 	router.HandleFunc("/manage/settings", app.ManageSettingsHandler).Methods("GET")
 	router.HandleFunc("/manage/settings", app.ManageSettingsPostHandler).Methods("POST")
+	router.HandleFunc("/manage/settings/reset-main-page", app.ResetMainPageHandler).Methods("POST")
 	router.HandleFunc("/manage/content", app.ManageContentHandler).Methods("GET")
 
 	server := httptest.NewServer(router)
@@ -485,6 +486,67 @@ func TestManageContentRequiresAdmin(t *testing.T) {
 
 		if rw.Code != http.StatusOK {
 			t.Errorf("expected 200, got %d", rw.Code)
+		}
+	})
+}
+
+func TestResetMainPage(t *testing.T) {
+	_, testApp, cleanup := setupManageTestServer(t)
+	defer cleanup()
+
+	app := &App{
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
+		DB:            testApp.RawDB,
+	}
+
+	t.Run("non-admin user gets 403", func(t *testing.T) {
+		user := testutil.CreateTestUser(t, testApp.DB, "resetnonadmin", "resetnonadmin@example.com", "password1234")
+
+		req := testutil.MakeTestRequest("POST", "/manage/settings/reset-main-page", user)
+		rw := httptest.NewRecorder()
+
+		app.ResetMainPageHandler(rw, req)
+
+		if rw.Code != http.StatusForbidden {
+			t.Errorf("expected 403, got %d", rw.Code)
+		}
+	})
+
+	t.Run("admin resets main page", func(t *testing.T) {
+		admin := testutil.CreateTestAdmin(t, testApp.DB, "resetadmin", "resetadmin@example.com", "password1234")
+
+		// Create Main_Page with custom content
+		testutil.CreateTestArticle(t, testApp, "Main_Page", "Custom content", admin)
+
+		req := testutil.MakeTestRequest("POST", "/manage/settings/reset-main-page", admin)
+		rw := httptest.NewRecorder()
+
+		app.ResetMainPageHandler(rw, req)
+
+		if rw.Code != http.StatusSeeOther {
+			t.Errorf("expected 303 redirect, got %d", rw.Code)
+		}
+
+		location := rw.Header().Get("Location")
+		if !strings.Contains(location, "msg=") {
+			t.Errorf("expected success message in redirect, got %q", location)
+		}
+
+		// Verify Main_Page was reset to default content
+		article, err := testApp.Articles.GetArticle("Main_Page")
+		if err != nil {
+			t.Fatalf("failed to get Main_Page: %v", err)
+		}
+		if !strings.Contains(article.Markdown, "layout: mainpage") {
+			t.Error("expected reset article to contain default frontmatter")
 		}
 	})
 }

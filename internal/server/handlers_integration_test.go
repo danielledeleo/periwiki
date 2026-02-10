@@ -56,16 +56,13 @@ func TestHomeHandler(t *testing.T) {
 
 	router.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Errorf("expected status 200, got %d", rr.Code)
+	if rr.Code != http.StatusFound {
+		t.Errorf("expected status 302, got %d", rr.Code)
 	}
 
-	body := rr.Body.String()
-	if !strings.Contains(body, "Home") {
-		t.Error("expected body to contain 'Home'")
-	}
-	if !strings.Contains(body, "Welcome to periwiki") {
-		t.Error("expected body to contain welcome message")
+	location := rr.Header().Get("Location")
+	if location != "/wiki/Main_Page" {
+		t.Errorf("expected redirect to /wiki/Main_Page, got %q", location)
 	}
 }
 

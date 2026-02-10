@@ -76,7 +76,7 @@ The `Special` namespace is case-insensitive (`special:Random` also works).
 
 | URL | Description |
 |-----|-------------|
-| `/` | Home page |
+| `/` | Redirects to `/wiki/Main_Page` (302) |
 | `/static/*` | Static assets |
 
 ## WikiLinks

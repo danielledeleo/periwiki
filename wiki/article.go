@@ -32,6 +32,12 @@ func (a *Article) DisplayTitle() string {
 	return InferTitle(a.URL)
 }
 
+// Layout returns the article's layout from frontmatter.
+func (a *Article) Layout() string {
+	fm, _ := ParseFrontmatter(a.Markdown)
+	return fm.Layout
+}
+
 // ArticleSummary represents minimal article info for sitemaps.
 // Note: Does not include markdown for performance - use InferTitle for display.
 // ArticleSummary is a lightweight article representation for listings.

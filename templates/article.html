@@ -13,7 +13,7 @@
     </div>
     {{end}}
     <ul class="pw-tabs">
-        <li class="pw-active"><a href="{{articleURL .URL}}">Article</a></li>
+        <li class="pw-active"><a href="{{articleURL .URL}}">{{if eq .Layout "mainpage"}}Main page{{else}}Article{{end}}</a></li>
         {{if not .ReadOnly}}
         <li><a href="{{editURL .URL .ID}}">Edit</a></li>
         <li><a href="{{historyURL .URL}}">History</a></li>
