@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"github.com/danielledeleo/periwiki/extensions"
 	"github.com/danielledeleo/periwiki/internal/config"
@@ -95,14 +96,35 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 		os.Exit(1)
 	}
 
+	// Declare these before the checker so the closure captures them by reference.
+	// They are assigned real values later in this function.
+	var embeddedArticles *embedded.EmbeddedArticles
+	var specialPages *special.Registry
+
 	// Create existence checker for wiki links
 	existenceChecker := func(url string) bool {
 		const prefix = "/wiki/"
 		if len(url) > len(prefix) {
 			url = url[len(prefix):]
 		}
+
+		// Check database
 		article, _ := database.SelectArticle(url)
-		return article != nil
+		if article != nil {
+			return true
+		}
+
+		// Check embedded articles (Periwiki:* namespace)
+		if embeddedArticles != nil && embedded.IsEmbeddedURL(url) {
+			return embeddedArticles.Get(url) != nil
+		}
+
+		// Check special pages (Special:* namespace)
+		if specialPages != nil && strings.HasPrefix(url, "Special:") {
+			return specialPages.Has(strings.TrimPrefix(url, "Special:"))
+		}
+
+		return false
 	}
 
 	// Create renderer with extension templates
@@ -135,7 +157,7 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 
 	// Create embedded articles and wrap the article service.
 	// contentFS has help/ at the root, which is what embedded.New expects.
-	embeddedArticles, err := embedded.New(contentFS, renderingService.Render)
+	embeddedArticles, err = embedded.New(contentFS, renderingService.Render)
 	if err != nil {
 		slog.Error("failed to load embedded articles", "error", err)
 		os.Exit(1)
@@ -151,13 +173,20 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 	// Create preference service
 	preferenceService := service.NewPreferenceService(database)
 
-	specialPages := special.NewRegistry()
+	specialPages = special.NewRegistry()
 	specialPages.Register("Random", special.NewRandomPage(articleService))
 
 	sitemapHandler := special.NewSitemapPage(articleService, t, modelConf.BaseURL)
 	specialPages.Register("Sitemap", sitemapHandler)
 	specialPages.Register("Sitemap.xml", sitemapHandler)
 	specialPages.Register("RerenderAll", special.NewRerenderAllPage(articleService, t))
+
+	// Re-render embedded articles now that the existence checker can see
+	// embeddedArticles and specialPages (they were nil during initial render).
+	if err := embeddedArticles.RenderAll(renderingService.Render); err != nil {
+		slog.Error("failed to re-render embedded articles", "error", err)
+		os.Exit(1)
+	}
 
 	// Log content override summary
 	if contentInfo != nil {

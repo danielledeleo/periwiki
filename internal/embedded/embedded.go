@@ -74,6 +74,20 @@ func (ea *EmbeddedArticles) Get(url string) *wiki.Article {
 	return ea.articles[url]
 }
 
+// RenderAll re-renders all embedded articles using the given render function.
+// This is useful when the render function depends on state that wasn't available
+// at initial construction time (e.g. the existence checker for wikilinks).
+func (ea *EmbeddedArticles) RenderAll(render RenderFunc) error {
+	for _, article := range ea.articles {
+		html, err := render(article.Markdown)
+		if err != nil {
+			return err
+		}
+		article.HTML = html
+	}
+	return nil
+}
+
 // List returns all embedded article URLs.
 func (ea *EmbeddedArticles) List() []string {
 	urls := make([]string, 0, len(ea.articles))

@@ -1,16 +1,18 @@
-# Troubleshooting
+---
+display_title: Troubleshooting
+---
 
-## Startup Errors
+## Startup errors
 
 **"failed to read config"**
 The `config.yaml` file exists but is malformed. Validate the YAML syntax or delete the file to use defaults.
 
-## Runtime Errors
+## Runtime errors
 
 **"article save failed"**
-An edit could not be saved. The log includes the reason—commonly a conflict when two users edit the same revision simultaneously.
+An edit could not be saved. The log includes the reason — commonly a conflict when two users edit the same revision simultaneously.
 
-## Database Issues
+## Database issues
 
 If you encounter SQLite errors, ensure:
 - The database file has correct permissions

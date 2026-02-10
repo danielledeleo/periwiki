@@ -1,25 +1,21 @@
 ---
-display_title: Syntax help
+display_title: Syntax reference
 ---
 
-## WikiLinks
+Quick reference for Periwiki's Markdown extensions. For a comprehensive guide, see [[Periwiki:Writing_articles|Writing Articles]].
 
-Link between articles using double brackets:
+## WikiLinks
 
 | Syntax | Result |
 |--------|--------|
 | `[[Target]]` | Link to Target |
 | `[[Target\|display text]]` | Link showing "display text" |
 
-Spaces around brackets and pipes are trimmed.
-
-**Dead links** (to non-existent pages) appear in red.
-
-e.g. [[Periwiki:Deadlink]][^deadlink]
+Spaces around brackets and pipes are trimmed. Links to non-existent pages appear in red.
 
 ## Frontmatter
 
-Optional metadata at the start of an article:
+Optional metadata at the start of an article, enclosed in `---` fences. Uses [NestedText](https://nestedtext.org/) format.
 
 ```
 ---
@@ -30,10 +26,12 @@ display_title: Custom Title
 | Field | Purpose |
 |-------|---------|
 | `display_title` | Override the displayed title |
+| `layout` | Page appearance (`mainpage` shows "Main page" tab) |
+| `toc` | Set to `false` to hide the table of contents |
 
 ## Footnotes
 
-Add references[^multi] with `[^label]` in text and `[^label]: content` at the end:
+Add references with `[^label]` in text and `[^label]: content` at the end:
 
 ```
 Fact[^1].
@@ -41,29 +39,17 @@ Fact[^1].
 [^1]: Source citation.
 ```
 
-Referencing[^multi] the same footnote multiple times will create multiple backlinks lettered a-z (see [below](#references)).
+Referencing the same footnote multiple times creates multiple backlinks lettered a-z.
 
-```
-Fact[^1]
-...
-later reference to the same fact[^1]
-
-[^1]: Source citation.
-```
-
-
-## Markdown quick reference
+## Markdown
 
 | Syntax | Result |
 |--------|--------|
 | `**bold**` | **bold** |
 | `*italic*` | *italic* |
-| `[text](url)` | Link[^link] |
+| `[text](url)` | Hyperlink |
 | `# Heading` | Heading (1-6) |
 | `` `code` `` | Inline code |
 | `> quote` | Block quote |
 
-
-[^deadlink]: Normally, a deadlink would lead to a page that you could edit.
-[^multi]: This footnote was referenced twice
-[^link]: For internal links, always prefer WikiLinks over Markdown links.
+For internal links, always prefer WikiLinks over Markdown links.

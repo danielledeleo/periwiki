@@ -1,6 +1,7 @@
 Soon(ish)
 - [MED] finish db refactor (see plans)
 - [MED] Backlinks feature (will help trigger redlink re-renders)
+  - any dep that causes a rerender
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - [MED] Talk:pages, User:pages
 - Decide on case sensitivity in URLs

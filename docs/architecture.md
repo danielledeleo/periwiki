@@ -190,4 +190,4 @@ Periwiki has a two-tier configuration system:
 - **File config** (`config.yaml` → `wiki.Config`): Bootstrap settings needed before the database is available — host, database path, base URL, logging. Loaded by `internal/config/config.go`.
 - **Runtime config** (SQLite `Setting` table → `wiki.RuntimeConfig`): Settings stored in the database — cookie secret, session expiry, password policy, anonymous edit toggle, render worker count. Loaded by `wiki/runtime_config.go`. No management UI yet.
 
-See [Installation and Configuration](installation-and-configuration.md) for the full list of settings.
+See the in-app help article [Periwiki:Installation](/wiki/Periwiki:Installation) for the full list of settings.

@@ -196,9 +196,11 @@ func TestWikiLinkCustomResolver(t *testing.T) {
 }
 
 func TestWikiLinkExistenceAwareResolver(t *testing.T) {
-	// Mock existence checker: only "Existing_Page" exists
+	// Mock existence checker: simulates DB, embedded, and special page lookups
 	existingPages := map[string]bool{
-		"/wiki/Existing_Page": true,
+		"/wiki/Existing_Page":    true,
+		"/wiki/Periwiki:Syntax":  true,
+		"/wiki/Special:Sitemap":  true,
 	}
 	checker := func(url string) bool {
 		return existingPages[url]
@@ -213,6 +215,10 @@ func TestWikiLinkExistenceAwareResolver(t *testing.T) {
 		{name: "non-existing page", md: "[[Non Existing Page]]", expectDeadlink: true},
 		{name: "existing with display text", md: "[[Existing Page|Click here]]", expectDeadlink: false},
 		{name: "non-existing with display text", md: "[[Dead Link|Click here]]", expectDeadlink: true},
+		{name: "embedded help page exists", md: "[[Periwiki:Syntax]]", expectDeadlink: false},
+		{name: "embedded help page not found", md: "[[Periwiki:NonExistent]]", expectDeadlink: true},
+		{name: "special page exists", md: "[[Special:Sitemap]]", expectDeadlink: false},
+		{name: "special page not found", md: "[[Special:NonExistent]]", expectDeadlink: true},
 	}
 
 	markdown := goldmark.New(

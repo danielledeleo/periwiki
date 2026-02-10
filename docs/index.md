@@ -14,14 +14,8 @@ Built for small teams, passion projects, and personal knowledge bases.
 
 ## Documentation
 
-**Running Periwiki**
-- [Installation](installation-and-configuration.md) — Building from source, configuration, first run
-- [Security](security.md) — Password handling, sessions, HTML sanitization
-- [Troubleshooting](troubleshooting.md) — Common issues and log interpretation
-
-**Using Periwiki**
-- [Writing Articles](writing-articles.md) — Markdown syntax and WikiLinks
-- [URL Reference](urls.md) — Article URLs, history, diffs, special pages
+**User-facing documentation** is built into the wiki itself as help articles (the `Periwiki:` namespace). After running Periwiki, visit [Periwiki:Help_overview](/wiki/Periwiki:Help_overview) for the full list.
 
 **Developing Periwiki**
+- [URL Reference](urls.md) — Article URLs, history, diffs, special pages
 - [Architecture](architecture.md) — System overview and request flow

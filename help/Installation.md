@@ -1,4 +1,6 @@
-# Installation and configuration
+---
+display_title: Installation and configuration
+---
 
 ## Requirements
 
@@ -73,18 +75,3 @@ All logs are written to stderr using Go's `slog` package. HTTP requests are auto
 ## Database
 
 Periwiki uses SQLite. The database schema is applied and migrated automatically at startup. Some migrations involve recreating tables (SQLite lacks `ALTER TABLE DROP COLUMN`), which may briefly increase startup time on large databases.
-
-## Make targets
-
-| Target | Description |
-|--------|-------------|
-| `make` | Build the `periwiki` binary (default) |
-| `make run` | Build and run the server |
-| `make watch` | Rebuild and restart on file changes (requires [entr](https://eradman.com/entrproject/)) |
-| `make test` | Run tests |
-| `make test-verbose` | Run tests with verbose output |
-| `make test-coverage` | Run tests with coverage summary |
-| `make test-coverage-html` | Run tests and generate HTML coverage report |
-| `make test-race` | Run tests with race detector |
-| `make clean` | Remove build artifacts and generated files |
-| `make help` | Show all targets |

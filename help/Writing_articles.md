@@ -1,10 +1,12 @@
-# Writing articles
+---
+display_title: Writing articles
+---
 
-Periwiki articles are written in [CommonMark](https://commonmark.org/) Markdown, extended with WikiLink syntax for connecting articles.
+Periwiki articles are written in [CommonMark](https://commonmark.org/) Markdown, extended with WikiLink syntax for connecting articles. See [[Periwiki:Syntax|Syntax]] for a quick reference.
 
 ## Frontmatter
 
-Articles can include optional frontmatter at the very beginning, enclosed in `---` fences. Frontmatter uses [NestedText](https://nestedtext.org/) format (similar to YAML, but all values are strings—no surprises with wikilinks).
+Articles can include optional frontmatter at the very beginning, enclosed in `---` fences. Frontmatter uses [NestedText](https://nestedtext.org/) format (similar to YAML, but all values are strings — no surprises with wikilinks).
 
 ```markdown
 ---
@@ -39,12 +41,6 @@ see_also: [[Related Article]]
 WikiLinks use double-bracket syntax to link between articles:
 
 ```markdown
-Usage:
-[[Target]]
-[[Target|text override]]
-```
-
-```markdown
 The common periwinkle, [[Littorina littorea]], is found along rocky coastlines.
 ```
 
@@ -70,7 +66,7 @@ WikiLinks to articles that do not yet exist are displayed in red, distinguishing
 
 ## Table of Contents
 
-Articles containing two or more `##` headings automatically display a table of contents before the first heading.
+Articles containing two or more `##` headings automatically display a table of contents before the first heading. To hide the table of contents, add `toc: false` to the article's frontmatter.
 
 ## Footnotes
 
@@ -94,7 +90,7 @@ Periwinkles are herbivores[^diet]. They graze on algae[^diet].
 
 When a footnote is referenced multiple times, each backlink is labeled (^a, ^b, etc.) to return readers to the specific location in the text.
 
-## Markdown Reference
+## Markdown
 
 Periwiki supports standard CommonMark syntax. For the complete specification, see [commonmark.org](https://spec.commonmark.org/).
 
@@ -102,12 +98,12 @@ Periwiki supports standard CommonMark syntax. For the complete specification, se
 |--------|--------|
 | `**bold**` | **bold** |
 | `*italic*` | *italic* |
-| `[text](url)` | Hyperlink * |
-| `# Heading` | Heading (levels 1–6) |
+| `[text](url)` | Hyperlink |
+| `# Heading` | Heading (levels 1-6) |
 | `` `code` `` | Inline code |
 | `> quote` | Block quotation |
 
-\* Standard Markdown links require the full URL. For internal links between articles, WikiLinks are preferred:
+For internal links between articles, prefer WikiLinks over standard Markdown links:
 
 ```markdown
 <!-- Markdown link (verbose, fragile) -->

@@ -37,3 +37,11 @@ func (r *Registry) Get(name string) (Handler, bool) {
 	handler, ok := r.handlers[name]
 	return handler, ok
 }
+
+// Has returns true if a special page handler is registered for the given name.
+func (r *Registry) Has(name string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	_, ok := r.handlers[name]
+	return ok
+}

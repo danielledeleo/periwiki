@@ -37,7 +37,12 @@ All URLs containing a colon (`Foo:Bar`) are routed to `NamespaceHandler`. Only r
 
 | URL | Description |
 |-----|-------------|
-| `/wiki/Periwiki:Syntax` | Built-in Markdown and WikiLink syntax reference |
+| `/wiki/Periwiki:Help_overview` | Help index — links to all help articles |
+| `/wiki/Periwiki:Writing_articles` | Writing articles guide |
+| `/wiki/Periwiki:Syntax` | Markdown and WikiLink syntax quick reference |
+| `/wiki/Periwiki:Installation` | Installation and configuration |
+| `/wiki/Periwiki:Security` | Passwords, sessions, and HTML sanitization |
+| `/wiki/Periwiki:Troubleshooting` | Common issues and fixes |
 
 Help articles are read-only and compiled into the binary from `help/`. They can be overridden by placing a file at the same path on disk. They cannot be edited through the wiki interface.
 

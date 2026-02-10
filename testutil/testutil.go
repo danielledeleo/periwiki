@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -178,14 +179,28 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 		t.Fatalf("failed to load wikilink templates: %v", err)
 	}
 
+	// Declare before the checker so the closure captures by reference.
+	var specialPages *special.Registry
+
 	// Create existence checker for wiki links
 	existenceChecker := func(url string) bool {
 		const prefix = "/wiki/"
 		if len(url) > len(prefix) {
 			url = url[len(prefix):]
 		}
+
+		// Check database
 		article, _ := db.SelectArticle(url)
-		return article != nil
+		if article != nil {
+			return true
+		}
+
+		// Check special pages (Special:* namespace)
+		if specialPages != nil && strings.HasPrefix(url, "Special:") {
+			return specialPages.Has(strings.TrimPrefix(url, "Special:"))
+		}
+
+		return false
 	}
 
 	// Create renderer with extension templates
@@ -211,7 +226,7 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 	// Create preference service
 	preferenceService := service.NewPreferenceService(db)
 
-	specialPages := special.NewRegistry()
+	specialPages = special.NewRegistry()
 	specialPages.Register("Random", special.NewRandomPage(articleService))
 
 	app := &TestApp{
