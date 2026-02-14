@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/danielledeleo/periwiki/extensions"
+	"github.com/danielledeleo/periwiki/internal/embedded"
 	"github.com/danielledeleo/periwiki/internal/storage"
 	"github.com/danielledeleo/periwiki/render"
 	"github.com/danielledeleo/periwiki/special"
@@ -227,15 +228,23 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 	// Create article service (nil queue for synchronous rendering in tests)
 	articleService := service.NewArticleService(db, renderingService, nil)
 
+	// Wrap with embedded article service for Periwiki:* namespace support
+	embeddedArticles, err := embedded.New(contentFS, renderingService.Render)
+	if err != nil {
+		dbCleanup()
+		t.Fatalf("failed to load embedded articles: %v", err)
+	}
+	articleServiceWrapped := service.NewEmbeddedArticleService(articleService, embeddedArticles)
+
 	// Create preference service
 	preferenceService := service.NewPreferenceService(db)
 
 	specialPages = special.NewRegistry()
-	specialPages.Register("Random", special.NewRandomPage(articleService))
+	specialPages.Register("Random", special.NewRandomPage(articleServiceWrapped))
 
 	app := &TestApp{
 		Templater:     tmpl,
-		Articles:      articleService,
+		Articles:      articleServiceWrapped,
 		Users:         userService,
 		Sessions:      sessionService,
 		Rendering:     renderingService,

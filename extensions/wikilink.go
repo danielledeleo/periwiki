@@ -17,6 +17,9 @@ import (
 	"regexp"
 )
 
+// wikiLinkRegexp matches [[link]] and [[link|display]] patterns.
+// Go's regexp package uses RE2, which guarantees linear-time matching
+// and prevents catastrophic backtracking by design.
 var wikiLinkRegexp = regexp.MustCompile(`\[\[\s*((?P<truelink>[^\[\]]+?)\s*(?:\\\||\|)\s*(?P<replacement>[^\[\]]+?)\s*|(?P<link>[^\[\]]+?))\s*\]\]`)
 
 const (
