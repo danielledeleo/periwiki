@@ -204,12 +204,16 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 	}
 
 	// Create renderer with extension templates
-	renderer := render.NewHTMLRenderer(
+	renderer, err := render.NewHTMLRenderer(
 		contentFS,
 		existenceChecker,
 		[]extensions.WikiLinkRendererOption{extensions.WithWikiLinkTemplates(wikiLinkTemplates)},
 		[]extensions.FootnoteOption{extensions.WithFootnoteTemplates(footnoteTemplates)},
 	)
+	if err != nil {
+		dbCleanup()
+		t.Fatalf("failed to create HTML renderer: %v", err)
+	}
 
 	// Create rendering service
 	renderingService := service.NewRenderingService(renderer, bm)
