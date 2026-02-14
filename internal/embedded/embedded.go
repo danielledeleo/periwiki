@@ -70,8 +70,14 @@ func New(fsys fs.FS, render RenderFunc) (*EmbeddedArticles, error) {
 }
 
 // Get returns an embedded article by URL, or nil if not found.
+// It returns a shallow copy so callers cannot mutate the shared article.
 func (ea *EmbeddedArticles) Get(url string) *wiki.Article {
-	return ea.articles[url]
+	a := ea.articles[url]
+	if a == nil {
+		return nil
+	}
+	copy := *a
+	return &copy
 }
 
 // RenderAll re-renders all embedded articles using the given render function.

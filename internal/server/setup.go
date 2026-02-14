@@ -229,7 +229,7 @@ func checkRenderTemplateStaleness(contentFS fs.FS, db *sql.DB, repo repository.A
 	// (not just template changes) also trigger a re-render.
 	currentHash := templateHash + ":" + embedded.BuildCommit
 
-	storedHash, err := getOrCreateSetting(db, wiki.SettingRenderTemplateHash, func() string {
+	storedHash, err := wiki.GetOrCreateSetting(db, wiki.SettingRenderTemplateHash, func() string {
 		return currentHash
 	})
 	if err != nil {
@@ -286,25 +286,6 @@ func checkRenderTemplateStaleness(contentFS fs.FS, db *sql.DB, repo repository.A
 	if err := wiki.UpdateSetting(db, wiki.SettingRenderTemplateHash, currentHash); err != nil {
 		slog.Error("failed to update render template hash setting", "error", err)
 	}
-}
-
-// getOrCreateSetting retrieves a setting or creates it with a default.
-// This is a local wrapper matching the pattern in wiki/runtime_config.go.
-func getOrCreateSetting(db *sql.DB, key string, defaultFn func() string) (string, error) {
-	var value string
-	err := db.QueryRow("SELECT value FROM Setting WHERE key = ?", key).Scan(&value)
-	if err == sql.ErrNoRows {
-		value = defaultFn()
-		_, err = db.Exec("INSERT INTO Setting (key, value) VALUES (?, ?)", key, value)
-		if err != nil {
-			return "", err
-		}
-		return value, nil
-	}
-	if err != nil {
-		return "", err
-	}
-	return value, nil
 }
 
 const currentSetupVersion = 1
