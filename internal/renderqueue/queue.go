@@ -134,8 +134,9 @@ func (q *Queue) Submit(ctx context.Context, job Job, waitCh chan Result) error {
 }
 
 // Shutdown gracefully shuts down the queue. It stops accepting new jobs,
-// waits for in-flight jobs to complete (up to context deadline), then returns.
-// Returns context error if the deadline is exceeded.
+// drains any pending jobs from the queue, waits for in-flight jobs to complete
+// (up to context deadline), then returns. Returns context error if the deadline
+// is exceeded.
 func (q *Queue) Shutdown(ctx context.Context) error {
 	q.mu.Lock()
 	if q.closed {
@@ -169,6 +170,9 @@ func (q *Queue) worker() {
 		// Wait for work or shutdown
 		select {
 		case <-q.closeCh:
+			// Drain remaining jobs before exiting
+			for q.processOneJob() {
+			}
 			return
 		case <-q.jobReady:
 			// Try to get and process a job
@@ -178,12 +182,13 @@ func (q *Queue) worker() {
 }
 
 // processOneJob attempts to pop and process one job from the queue.
-func (q *Queue) processOneJob() {
+// Returns true if a job was processed, false if the queue was empty.
+func (q *Queue) processOneJob() bool {
 	// Pop job under lock
 	q.mu.Lock()
 	if q.heap.Len() == 0 {
 		q.mu.Unlock()
-		return
+		return false
 	}
 
 	job := heap.Pop(q.heap).(*Job)
@@ -218,6 +223,8 @@ func (q *Queue) processOneJob() {
 			}
 		}
 	}
+
+	return true
 }
 
 // executeRender calls the render function with panic recovery.

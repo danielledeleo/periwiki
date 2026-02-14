@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -729,5 +730,95 @@ func TestHeap_FixAfterUpdate(t *testing.T) {
 
 	if (*h)[0].ArticleURL != "job1" {
 		t.Error("job1 should be at top after becoming interactive")
+	}
+}
+
+func TestQueue_ShutdownDrainsPendingJobs(t *testing.T) {
+	var processed sync.Map
+	started := make(chan struct{}) // signals when the blocker has started rendering
+
+	render := func(markdown string) (string, error) {
+		if markdown == "blocker" {
+			close(started)
+			time.Sleep(50 * time.Millisecond)
+		}
+		processed.Store(markdown, true)
+		return "<p>" + markdown + "</p>", nil
+	}
+
+	q := New(1, render)
+
+	// Submit a blocking job so subsequent jobs queue up
+	blockerWait := make(chan Result, 1)
+	blockerJob := Job{
+		ArticleURL:  "blocker",
+		RevisionID:  1,
+		Markdown:    "blocker",
+		Tier:        TierInteractive,
+		SubmittedAt: time.Now(),
+	}
+	if err := q.Submit(context.Background(), blockerJob, blockerWait); err != nil {
+		t.Fatalf("Submit blocker failed: %v", err)
+	}
+
+	// Wait for blocker to actually start rendering
+	<-started
+
+	// Submit several more jobs while blocker is in-flight
+	const pendingCount = 5
+	waiters := make([]chan Result, pendingCount)
+	for i := 0; i < pendingCount; i++ {
+		waiters[i] = make(chan Result, 1)
+		job := Job{
+			ArticleURL:  fmt.Sprintf("pending-%d", i),
+			RevisionID:  int64(i),
+			Markdown:    fmt.Sprintf("pending-%d", i),
+			Tier:        TierBackground,
+			SubmittedAt: time.Now().Add(time.Duration(i) * time.Millisecond),
+		}
+		if err := q.Submit(context.Background(), job, waiters[i]); err != nil {
+			t.Fatalf("Submit pending-%d failed: %v", i, err)
+		}
+	}
+
+	// Shutdown with generous timeout - should drain all pending jobs
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := q.Shutdown(ctx); err != nil {
+		t.Fatalf("Shutdown failed: %v", err)
+	}
+
+	// Verify blocker result was received
+	select {
+	case result := <-blockerWait:
+		if result.Err != nil {
+			t.Errorf("blocker: unexpected error: %v", result.Err)
+		}
+	default:
+		t.Error("blocker waiter did not receive result")
+	}
+
+	// Verify ALL pending jobs were processed and their waiters received results
+	for i := 0; i < pendingCount; i++ {
+		select {
+		case result := <-waiters[i]:
+			if result.Err != nil {
+				t.Errorf("pending-%d: unexpected error: %v", i, result.Err)
+			}
+			expected := fmt.Sprintf("<p>pending-%d</p>", i)
+			if result.HTML != expected {
+				t.Errorf("pending-%d: expected %q, got %q", i, expected, result.HTML)
+			}
+		default:
+			t.Errorf("pending-%d waiter did not receive result (job was not drained)", i)
+		}
+	}
+
+	// Double-check via the processed map
+	for i := 0; i < pendingCount; i++ {
+		key := fmt.Sprintf("pending-%d", i)
+		if _, ok := processed.Load(key); !ok {
+			t.Errorf("%s was never rendered", key)
+		}
 	}
 }
