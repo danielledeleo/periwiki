@@ -42,7 +42,11 @@ func RunMigrations(db *sqlx.DB) error {
 		return err
 	}
 	if titleColExists == 1 {
-		_, err = db.Exec(`
+		tx, err := db.Beginx()
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(`
 			-- Create new table without title column
 			CREATE TABLE Revision_new (
 				id INTEGER NOT NULL,
@@ -67,6 +71,10 @@ func RunMigrations(db *sqlx.DB) error {
 			ALTER TABLE Revision_new RENAME TO Revision;
 		`)
 		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err := tx.Commit(); err != nil {
 			return err
 		}
 	}
@@ -93,7 +101,11 @@ func RunMigrations(db *sqlx.DB) error {
 		return err
 	}
 	if htmlNotNull == 1 {
-		_, err = db.Exec(`
+		tx, err := db.Beginx()
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(`
 			CREATE TABLE Revision_new (
 				id INTEGER NOT NULL,
 				article_id INT NOT NULL,
@@ -115,6 +127,10 @@ func RunMigrations(db *sqlx.DB) error {
 			ALTER TABLE Revision_new RENAME TO Revision;
 		`)
 		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err := tx.Commit(); err != nil {
 			return err
 		}
 	}
@@ -164,7 +180,12 @@ func RunMigrations(db *sqlx.DB) error {
 		if err != nil {
 			return err
 		}
-		_, err = db.Exec(`
+		tx, err := db.Beginx()
+		if err != nil {
+			db.Exec(`PRAGMA foreign_keys = ON`)
+			return err
+		}
+		_, err = tx.Exec(`
 			CREATE TABLE User_new (
 				id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
 				email TEXT NOT NULL UNIQUE,
@@ -178,6 +199,11 @@ func RunMigrations(db *sqlx.DB) error {
 			ALTER TABLE User_new RENAME TO User;
 		`)
 		if err != nil {
+			tx.Rollback()
+			db.Exec(`PRAGMA foreign_keys = ON`)
+			return err
+		}
+		if err := tx.Commit(); err != nil {
 			db.Exec(`PRAGMA foreign_keys = ON`)
 			return err
 		}
