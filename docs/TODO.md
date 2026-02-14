@@ -38,11 +38,8 @@ Soon(ish)
 - Allow the binary to launch in the event of database errors/connectivity loss (at least display an error page)
 
 Architecture
-- embeddedArticleService doesn't always need to wrap
-  - only requests for Periwiki:x need the decorated service
 - Export `getOrCreateSetting` from `wiki` package, remove duplicate in `internal/server/setup.go`
 - `EmbeddedArticles.Get` returns shared pointer — return shallow copy to prevent mutation bugs
-- [BUG] POST to `Periwiki:` namespace silently returns 200 — should return 405
 - [BUG] Render queue `Shutdown` doesn't drain pending jobs — goroutines waiting on `waitCh` leak
 - Parse TOC template once at init instead of on every `Render()` call
 - Consider promoting orphan h4 headings (under h2, no h3) into the h2's children instead of dropping

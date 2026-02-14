@@ -9,6 +9,7 @@ internal/embedded/metadata_gen.go
 config.yaml
 
 .DS_Store
+.worktrees/
 
 # Test coverage
 coverage.out
