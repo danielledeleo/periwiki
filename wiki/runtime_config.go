@@ -44,7 +44,7 @@ func LoadRuntimeConfig(db *sql.DB) (*RuntimeConfig, error) {
 	config := &RuntimeConfig{}
 
 	// Load or create cookie_secret
-	cookieSecretB64, err := getOrCreateSetting(db, SettingCookieSecret, func() string {
+	cookieSecretB64, err := GetOrCreateSetting(db, SettingCookieSecret, func() string {
 		secret := securecookie.GenerateRandomKey(64)
 		if secret == nil {
 			slog.Error("failed to generate cookie secret")
@@ -61,7 +61,7 @@ func LoadRuntimeConfig(db *sql.DB) (*RuntimeConfig, error) {
 	}
 
 	// Load or create allow_anonymous_edits_global
-	allowAnonStr, err := getOrCreateSetting(db, SettingAllowAnonymousEditsGlobal, func() string {
+	allowAnonStr, err := GetOrCreateSetting(db, SettingAllowAnonymousEditsGlobal, func() string {
 		return strconv.FormatBool(DefaultAllowAnonymousEdits)
 	})
 	if err != nil {
@@ -73,7 +73,7 @@ func LoadRuntimeConfig(db *sql.DB) (*RuntimeConfig, error) {
 	}
 
 	// Load or create render_workers
-	renderWorkersStr, err := getOrCreateSetting(db, SettingRenderWorkers, func() string {
+	renderWorkersStr, err := GetOrCreateSetting(db, SettingRenderWorkers, func() string {
 		return strconv.Itoa(DefaultRenderWorkers)
 	})
 	if err != nil {
@@ -85,7 +85,7 @@ func LoadRuntimeConfig(db *sql.DB) (*RuntimeConfig, error) {
 	}
 
 	// Load or create cookie_expiry
-	cookieExpiryStr, err := getOrCreateSetting(db, SettingCookieExpiry, func() string {
+	cookieExpiryStr, err := GetOrCreateSetting(db, SettingCookieExpiry, func() string {
 		return strconv.Itoa(DefaultCookieExpiry)
 	})
 	if err != nil {
@@ -97,7 +97,7 @@ func LoadRuntimeConfig(db *sql.DB) (*RuntimeConfig, error) {
 	}
 
 	// Load or create min_password_length
-	minPwLengthStr, err := getOrCreateSetting(db, SettingMinPasswordLength, func() string {
+	minPwLengthStr, err := GetOrCreateSetting(db, SettingMinPasswordLength, func() string {
 		return strconv.Itoa(DefaultMinPasswordLength)
 	})
 	if err != nil {
@@ -112,9 +112,9 @@ func LoadRuntimeConfig(db *sql.DB) (*RuntimeConfig, error) {
 	return config, nil
 }
 
-// getOrCreateSetting retrieves a setting from the database, or creates it with
+// GetOrCreateSetting retrieves a setting from the database, or creates it with
 // the value returned by defaultFn if it doesn't exist.
-func getOrCreateSetting(db *sql.DB, key string, defaultFn func() string) (string, error) {
+func GetOrCreateSetting(db *sql.DB, key string, defaultFn func() string) (string, error) {
 	var value string
 	err := db.QueryRow("SELECT value FROM Setting WHERE key = ?", key).Scan(&value)
 	if err == sql.ErrNoRows {
