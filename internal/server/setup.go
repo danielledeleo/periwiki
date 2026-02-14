@@ -128,12 +128,16 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 	}
 
 	// Create renderer with extension templates
-	renderer := render.NewHTMLRenderer(
+	renderer, err := render.NewHTMLRenderer(
 		contentFS,
 		existenceChecker,
 		[]extensions.WikiLinkRendererOption{extensions.WithWikiLinkTemplates(wikiLinkTemplates)},
 		[]extensions.FootnoteOption{extensions.WithFootnoteTemplates(footnoteTemplates)},
 	)
+	if err != nil {
+		slog.Error("failed to create HTML renderer", "error", err)
+		os.Exit(1)
+	}
 
 	// Create rendering service
 	renderingService := service.NewRenderingService(renderer, bm)

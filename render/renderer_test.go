@@ -18,7 +18,10 @@ func TestMain(m *testing.M) {
 }
 
 func TestTOCNestedHeadings(t *testing.T) {
-	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	r, err := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	if err != nil {
+		t.Fatalf("NewHTMLRenderer failed: %v", err)
+	}
 
 	md := "## Section One\n\n### Sub One\n\n### Sub Two\n\n#### Deep\n\n## Section Two\n"
 
@@ -78,7 +81,10 @@ func TestTOCNestedHeadings(t *testing.T) {
 }
 
 func TestTOCFlatH2Only(t *testing.T) {
-	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	r, err := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	if err != nil {
+		t.Fatalf("NewHTMLRenderer failed: %v", err)
+	}
 
 	md := "## First\n\n## Second\n\n## Third\n"
 
@@ -96,7 +102,10 @@ func TestTOCFlatH2Only(t *testing.T) {
 }
 
 func TestTOCNoHeaders(t *testing.T) {
-	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	r, err := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	if err != nil {
+		t.Fatalf("NewHTMLRenderer failed: %v", err)
+	}
 
 	md := "Just a paragraph.\n"
 
@@ -111,7 +120,10 @@ func TestTOCNoHeaders(t *testing.T) {
 }
 
 func TestTOCOrphanH3BeforeH2(t *testing.T) {
-	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	r, err := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	if err != nil {
+		t.Fatalf("NewHTMLRenderer failed: %v", err)
+	}
 
 	md := "### Orphan\n\n## Section\n\n### Sub\n"
 
@@ -136,9 +148,12 @@ func TestTOCOrphanH3BeforeH2(t *testing.T) {
 }
 
 func TestTOCOrphanH4UnderH2(t *testing.T) {
-	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	r, err := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	if err != nil {
+		t.Fatalf("NewHTMLRenderer failed: %v", err)
+	}
 
-	// h4 directly under h2 with no h3 intermediary -- should be dropped
+	// h4 directly under h2 with no h3 intermediary -- should be promoted to h2's children
 	md := "## Section\n\n#### Deep\n\n### Normal Sub\n"
 
 	html, err := r.Render(md)
@@ -148,9 +163,9 @@ func TestTOCOrphanH4UnderH2(t *testing.T) {
 
 	tocContent := extractTOC(t, html)
 
-	// "Deep" h4 without an h3 parent should be dropped
-	if strings.Contains(tocContent, "Deep") {
-		t.Error("orphan h4 (no h3 parent) should not appear in the TOC")
+	// "Deep" h4 without an h3 parent should be promoted into h2's children
+	if !strings.Contains(tocContent, "Deep") {
+		t.Error("orphan h4 (no h3 parent) should be promoted into h2's children")
 	}
 	// "Normal Sub" h3 should appear
 	if !strings.Contains(tocContent, "Normal Sub") {
@@ -159,7 +174,10 @@ func TestTOCOrphanH4UnderH2(t *testing.T) {
 }
 
 func TestTOCOnlyH3H4NoH2(t *testing.T) {
-	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	r, err := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	if err != nil {
+		t.Fatalf("NewHTMLRenderer failed: %v", err)
+	}
 
 	md := "### A\n\n#### B\n"
 
@@ -175,7 +193,10 @@ func TestTOCOnlyH3H4NoH2(t *testing.T) {
 }
 
 func TestTOCHeadingWithInlineMarkup(t *testing.T) {
-	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	r, err := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	if err != nil {
+		t.Fatalf("NewHTMLRenderer failed: %v", err)
+	}
 
 	md := "## **Bold** heading\n\n## Normal\n"
 
@@ -216,7 +237,10 @@ func extractTOC(t *testing.T, html string) string {
 }
 
 func TestHeadingIDFormat(t *testing.T) {
-	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	r, err := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	if err != nil {
+		t.Fatalf("NewHTMLRenderer failed: %v", err)
+	}
 
 	tests := []struct {
 		name     string
@@ -245,7 +269,10 @@ func TestHeadingIDFormat(t *testing.T) {
 }
 
 func TestHeadingIDXSS(t *testing.T) {
-	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	r, err := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	if err != nil {
+		t.Fatalf("NewHTMLRenderer failed: %v", err)
+	}
 
 	tests := []struct {
 		name    string
@@ -295,7 +322,10 @@ func TestHeadingIDXSS(t *testing.T) {
 }
 
 func TestTOCH1Excluded(t *testing.T) {
-	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	r, err := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	if err != nil {
+		t.Fatalf("NewHTMLRenderer failed: %v", err)
+	}
 
 	md := "# Title\n\n## Section\n\n### Sub\n"
 
@@ -330,7 +360,10 @@ func TestTOCH1Excluded(t *testing.T) {
 }
 
 func TestTOCSkipped(t *testing.T) {
-	r := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	r, err := NewHTMLRenderer(os.DirFS("."), nil, nil, nil)
+	if err != nil {
+		t.Fatalf("NewHTMLRenderer failed: %v", err)
+	}
 
 	md := "## First\n\n## Second\n"
 

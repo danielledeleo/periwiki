@@ -19,8 +19,9 @@ import (
 )
 
 type HTMLRenderer struct {
-	fsys fs.FS
-	md   goldmark.Markdown
+	fsys    fs.FS
+	md      goldmark.Markdown
+	tocTmpl *template.Template
 }
 
 // TOCEntry represents a heading in the table of contents.
@@ -61,6 +62,9 @@ func buildTOCTree(nodes []*html.Node) []TOCEntry {
 				if len(parent.Children) > 0 {
 					parent.Children[len(parent.Children)-1].Children = append(
 						parent.Children[len(parent.Children)-1].Children, entry)
+				} else {
+					// Promote orphan h4 to h2's children when no h3 exists
+					parent.Children = append(parent.Children, entry)
 				}
 			}
 		}
@@ -110,12 +114,17 @@ func NewHTMLRenderer(
 	existenceChecker extensions.ExistenceChecker,
 	wikiLinkRendererOpts []extensions.WikiLinkRendererOption,
 	footnoteOpts []extensions.FootnoteOption,
-) *HTMLRenderer {
+) (*HTMLRenderer, error) {
 	var wikiLinkerParserOpts []extensions.WikiLinkerOption
 	if existenceChecker != nil {
 		wikiLinkerParserOpts = []extensions.WikiLinkerOption{extensions.WithExistenceAwareResolver(existenceChecker)}
 	} else {
 		wikiLinkerParserOpts = []extensions.WikiLinkerOption{extensions.WithUnderscoreResolver()}
+	}
+
+	tocTmpl, err := template.ParseFS(fsys, "templates/_render/toc.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse TOC template: %w", err)
 	}
 
 	r := &HTMLRenderer{
@@ -128,9 +137,10 @@ func NewHTMLRenderer(
 				extensions.NewFootnote(footnoteOpts...),
 			),
 		),
+		tocTmpl: tocTmpl,
 	}
 
-	return r
+	return r, nil
 }
 
 func (r *HTMLRenderer) Render(md string, skipTOC ...bool) (string, error) {
@@ -169,13 +179,8 @@ func (r *HTMLRenderer) Render(md string, skipTOC ...bool) (string, error) {
 		return string(rawhtml), nil
 	}
 
-	tmpl, err := template.ParseFS(r.fsys, "templates/_render/toc.html")
-	if err != nil {
-		return "", err
-	}
-
 	outbuf := &bytes.Buffer{}
-	err = tmpl.Execute(outbuf, map[string]any{"Entries": tocTree})
+	err = r.tocTmpl.Execute(outbuf, map[string]any{"Entries": tocTree})
 	if err != nil {
 		return "", err
 	}
