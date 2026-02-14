@@ -595,6 +595,49 @@ func TestSpecialPageRegistry(t *testing.T) {
 	}
 }
 
+func TestNamespaceHandler_PeriwikiNamespace(t *testing.T) {
+	router, _, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	t.Run("returns embedded help article", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/Periwiki:Syntax", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", rr.Code)
+		}
+
+		body := rr.Body.String()
+		if !strings.Contains(body, "Syntax") {
+			t.Error("expected body to contain 'Syntax'")
+		}
+	})
+
+	t.Run("returns 404 for nonexistent embedded page", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/Periwiki:Nonexistent", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusNotFound {
+			t.Errorf("expected status 404, got %d", rr.Code)
+		}
+	})
+
+	t.Run("returns 404 for unknown namespace", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/Unknown:Foo", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusNotFound {
+			t.Errorf("expected status 404, got %d", rr.Code)
+		}
+	})
+}
+
 type mockSpecialPage struct {
 	handler func(http.ResponseWriter, *http.Request)
 }

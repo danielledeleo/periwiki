@@ -72,6 +72,9 @@ func (s *embeddedArticleService) GetRandomArticleURL() (string, error) {
 	return s.base.GetRandomArticleURL()
 }
 
+// GetAllArticles returns only database-persisted articles. Embedded articles
+// (Periwiki:* namespace) are intentionally excluded as they are not stored
+// in the database and should not appear in article listings or sitemaps.
 func (s *embeddedArticleService) GetAllArticles() ([]*wiki.ArticleSummary, error) {
 	return s.base.GetAllArticles()
 }
