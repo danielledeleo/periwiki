@@ -183,7 +183,7 @@ a.pw-syntax-help {
 
 article {
     padding: 1.25rem 1.5rem 1.5rem 1.5rem;
-    margin: 0 -1px 0.5rem 0;
+    margin: 0 -1px 1.5rem 0;
     background-color: var(--pw-white);
     border: 1px solid var(--pw-purple);
     line-height: 1.6;

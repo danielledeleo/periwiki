@@ -50,6 +50,7 @@ Down the line
 - Custom goldmark table ParagraphTransformer that tracks [[/]] bracket depth, allowing unescaped pipes in wikilinks inside tables (currently requires \| escape)
 - Moderation tools?
 - Admin panel
+- print CSS
 - A theme system (custom templates)
 - Theme configurability (custom logo, custom colours)
 - Action rate limiting (saves per x time, anti-crawl, etc.)
