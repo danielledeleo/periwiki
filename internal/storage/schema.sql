@@ -86,3 +86,6 @@ CREATE TABLE IF NOT EXISTS Setting (
 );
 
 INSERT OR IGNORE INTO User(id, email, screenname) VALUES (0, "", "Anonymous");
+
+-- schema_version must match latestVersion in migrations.go
+INSERT OR IGNORE INTO Setting(key, value) VALUES ('schema_version', '7');

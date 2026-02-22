@@ -44,7 +44,7 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 	}
 
 	// Phase 3: Run migrations
-	if err := storage.RunMigrations(db); err != nil {
+	if err := storage.RunMigrations(db, storage.DialectSQLite); err != nil {
 		slog.Error("failed to run migrations", "error", err)
 		os.Exit(1)
 	}

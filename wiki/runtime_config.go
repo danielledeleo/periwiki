@@ -28,6 +28,7 @@ const (
 	SettingMinPasswordLength         = "min_password_length"
 	SettingRenderTemplateHash        = "render_template_hash"
 	SettingSetupVersion              = "setup_version"
+	SettingSchemaVersion             = "schema_version"
 )
 
 // Default values for runtime settings
