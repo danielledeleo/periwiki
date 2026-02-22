@@ -1,6 +1,6 @@
 # Refactor to Versioned Migration System
 
-**Status:** Proposal
+**Status:** Done
 **Phase:** 2 of 3 (Database Layer Refactoring)
 **Prerequisites:** Phase 1 — Remove SQLBoiler
 **Next:** Phase 3 — sqlc Migration

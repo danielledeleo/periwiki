@@ -1,5 +1,5 @@
 Soon(ish)
-- [MED] finish db refactor (see plans)
+- [MED] sqlc migration — Phase 3 of db refactor (see docs/plans/sqlc-migration.md)
 - [MED] Backlinks feature (will help trigger redlink re-renders)
   - any dep that causes a rerender
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
