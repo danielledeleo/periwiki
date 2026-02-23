@@ -37,9 +37,22 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 	modelConf := config.SetupConfig()
 
 	// Phase 2: Open database connection
-	db, err := sqlx.Open("sqlite3", modelConf.DatabaseFile)
+	db, err := sqlx.Open("sqlite", modelConf.DatabaseFile)
 	if err != nil {
 		slog.Error("failed to open database", "error", err)
+		os.Exit(1)
+	}
+
+	// Configure SQLite pragmas for the pure-Go driver (modernc.org/sqlite).
+	// busy_timeout avoids immediate SQLITE_BUSY errors under write contention
+	// (e.g. render queue workers). journal_mode=WAL allows concurrent readers
+	// and a single writer without blocking each other.
+	if _, err := db.Exec("PRAGMA busy_timeout = 5000"); err != nil {
+		slog.Error("failed to set busy_timeout", "error", err)
+		os.Exit(1)
+	}
+	if _, err := db.Exec("PRAGMA journal_mode = WAL"); err != nil {
+		slog.Error("failed to set journal_mode", "error", err)
 		os.Exit(1)
 	}
 

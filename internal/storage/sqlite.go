@@ -3,7 +3,6 @@ package storage
 import (
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/jmoiron/sqlx"
-	"github.com/michaeljs1990/sqlitestore"
 	_ "modernc.org/sqlite"
 )
 
@@ -64,9 +63,9 @@ func InitializeStatements(conn *sqlx.DB) (*PreparedStatements, error) {
 //   - user_repo.go: User operations
 //   - preference_repo.go: Preference operations
 //
-// Session operations are handled by the embedded SqliteStore.
+// Session operations are handled by the embedded SessionStore.
 type sqliteDb struct {
-	*sqlitestore.SqliteStore
+	*SessionStore
 	*PreparedStatements
 	conn *sqlx.DB
 }
@@ -77,10 +76,7 @@ func Init(db *sqlx.DB, runtimeConfig *wiki.RuntimeConfig) (*sqliteDb, error) {
 	var err error
 
 	store := &sqliteDb{conn: db}
-	store.SqliteStore, err = sqlitestore.NewSqliteStoreFromConnection(db, "sessions", "/", runtimeConfig.CookieExpiry, runtimeConfig.CookieSecret)
-	if err != nil {
-		return nil, err
-	}
+	store.SessionStore = NewSessionStore(db, "/", runtimeConfig.CookieExpiry, runtimeConfig.CookieSecret)
 
 	// Initialize prepared statements using shared function
 	store.PreparedStatements, err = InitializeStatements(db)

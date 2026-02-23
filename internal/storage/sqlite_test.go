@@ -11,7 +11,6 @@ import (
 
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/jmoiron/sqlx"
-	"github.com/michaeljs1990/sqlitestore"
 	_ "modernc.org/sqlite"
 )
 
@@ -26,7 +25,7 @@ func projectRoot() string {
 func setupTestDB(t *testing.T) (*sqliteDb, func()) {
 	t.Helper()
 
-	conn, err := sqlx.Open("sqlite3", ":memory:")
+	conn, err := sqlx.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open in-memory database: %v", err)
 	}
@@ -49,11 +48,7 @@ func setupTestDB(t *testing.T) (*sqliteDb, func()) {
 
 	// Initialize session store with test secret
 	testSecret := []byte("test-secret-key-for-sessions-32b")
-	db.SqliteStore, err = sqlitestore.NewSqliteStoreFromConnection(conn, "sessions", "/", 86400, testSecret)
-	if err != nil {
-		conn.Close()
-		t.Fatalf("failed to create session store: %v", err)
-	}
+	db.SessionStore = NewSessionStore(conn, "/", 86400, testSecret)
 
 	// Initialize prepared statements using shared function
 	db.PreparedStatements, err = InitializeStatements(conn)

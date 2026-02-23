@@ -85,7 +85,14 @@ CREATE TABLE IF NOT EXISTS Setting (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY,
+    session_data BLOB,
+    created_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_on TIMESTAMP NOT NULL DEFAULT 0
+);
+
 INSERT OR IGNORE INTO User(id, email, screenname) VALUES (0, "", "Anonymous");
 
 -- schema_version must match latestVersion in migrations.go
-INSERT OR IGNORE INTO Setting(key, value) VALUES ('schema_version', '7');
+INSERT OR IGNORE INTO Setting(key, value) VALUES ('schema_version', '8');

@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/danielledeleo/periwiki/internal/storage"
 	"github.com/danielledeleo/periwiki/testutil"
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"github.com/michaeljs1990/sqlitestore"
 )
 
 // setupAuthTestServer creates a test server with all routes configured.
@@ -687,14 +687,11 @@ func TestCookieSecretChange(t *testing.T) {
 
 	// Create a new TestDB with the new secret but same underlying database connection
 	// We need to create a fresh session store with the new secret
-	newSessionStore, err := sqlitestore.NewSqliteStoreFromConnection(
-		testApp.DB.Conn(), "sessions", "/", newRuntimeConfig.CookieExpiry, newRuntimeConfig.CookieSecret)
-	if err != nil {
-		t.Fatalf("failed to create new session store: %v", err)
-	}
+	newSessionStore := storage.NewSessionStore(
+		testApp.DB.Conn(), "/", newRuntimeConfig.CookieExpiry, newRuntimeConfig.CookieSecret)
 
 	// Create a wrapper that implements the SessionService interface
-	newSessionService := &testSessionStore{SqliteStore: newSessionStore}
+	newSessionService := &testSessionStore{SessionStore: newSessionStore}
 
 	// Create new app with the different cookie secret
 	appWithNewSecret := &App{
@@ -840,13 +837,10 @@ func TestLoginWithInvalidCookie(t *testing.T) {
 		RenderWorkers:             0,
 	}
 
-	newSessionStore, err := sqlitestore.NewSqliteStoreFromConnection(
-		testApp.DB.Conn(), "sessions", "/", newRuntimeConfig.CookieExpiry, newRuntimeConfig.CookieSecret)
-	if err != nil {
-		t.Fatalf("failed to create new session store: %v", err)
-	}
+	newSessionStore := storage.NewSessionStore(
+		testApp.DB.Conn(), "/", newRuntimeConfig.CookieExpiry, newRuntimeConfig.CookieSecret)
 
-	newSessionService := &testSessionStore{SqliteStore: newSessionStore}
+	newSessionService := &testSessionStore{SessionStore: newSessionStore}
 
 	appWithNewSecret := &App{
 		Templater:     testApp.Templater,
@@ -909,23 +903,23 @@ func TestLoginWithInvalidCookie(t *testing.T) {
 	}
 }
 
-// testSessionStore wraps SqliteStore to implement the SessionService interface
+// testSessionStore wraps SessionStore to implement the SessionService interface
 type testSessionStore struct {
-	*sqlitestore.SqliteStore
+	*storage.SessionStore
 }
 
 func (s *testSessionStore) GetCookie(r *http.Request, name string) (*sessions.Session, error) {
-	return s.SqliteStore.Get(r, name)
+	return s.SessionStore.Get(r, name)
 }
 
 func (s *testSessionStore) NewCookie(r *http.Request, name string) (*sessions.Session, error) {
-	return s.SqliteStore.New(r, name)
+	return s.SessionStore.New(r, name)
 }
 
 func (s *testSessionStore) SaveCookie(r *http.Request, w http.ResponseWriter, sess *sessions.Session) error {
-	return s.SqliteStore.Save(r, w, sess)
+	return s.SessionStore.Save(r, w, sess)
 }
 
 func (s *testSessionStore) DeleteCookie(r *http.Request, w http.ResponseWriter, sess *sessions.Session) error {
-	return s.SqliteStore.Delete(r, w, sess)
+	return s.SessionStore.Delete(r, w, sess)
 }

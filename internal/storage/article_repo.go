@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/danielledeleo/periwiki/wiki"
@@ -221,7 +222,7 @@ func (db *sqliteDb) InsertArticle(article *wiki.Article) (err error) {
 			article.Comment)
 
 		if err != nil {
-			if err.Error() == "UNIQUE constraint failed: Revision.id, Revision.article_id" {
+			if strings.Contains(err.Error(), "UNIQUE constraint failed: Revision.id, Revision.article_id") {
 				return wiki.ErrRevisionAlreadyExists
 			}
 		}
@@ -299,7 +300,7 @@ func (db *sqliteDb) InsertArticleQueued(article *wiki.Article) (revisionID int64
 			article.Comment)
 
 		if err != nil {
-			if err.Error() == "UNIQUE constraint failed: Revision.id, Revision.article_id" {
+			if strings.Contains(err.Error(), "UNIQUE constraint failed: Revision.id, Revision.article_id") {
 				return 0, wiki.ErrRevisionAlreadyExists
 			}
 			return 0, err

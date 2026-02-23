@@ -27,14 +27,13 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
-	"github.com/michaeljs1990/sqlitestore"
 	"github.com/microcosm-cc/bluemonday"
 	_ "modernc.org/sqlite"
 )
 
 // TestDB wraps the database for testing.
 type TestDB struct {
-	*sqlitestore.SqliteStore
+	*storage.SessionStore
 	*storage.PreparedStatements
 	conn *sqlx.DB
 }
@@ -76,7 +75,7 @@ func TestContentFS() fs.FS {
 func SetupTestDB(t testing.TB) (*TestDB, func()) {
 	t.Helper()
 
-	conn, err := sqlx.Open("sqlite3", ":memory:")
+	conn, err := sqlx.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open in-memory database: %v", err)
 	}
@@ -99,11 +98,7 @@ func SetupTestDB(t testing.TB) (*TestDB, func()) {
 
 	// Initialize session store with test secret
 	testSecret := []byte("test-secret-key-for-sessions-32b")
-	testDB.SqliteStore, err = sqlitestore.NewSqliteStoreFromConnection(conn, "sessions", "/", 86400, testSecret)
-	if err != nil {
-		conn.Close()
-		t.Fatalf("failed to create session store: %v", err)
-	}
+	testDB.SessionStore = storage.NewSessionStore(conn, "/", 86400, testSecret)
 
 	// Initialize prepared statements using shared function from db package
 	testDB.PreparedStatements, err = storage.InitializeStatements(conn)
@@ -525,7 +520,7 @@ func (tdb *TestDB) InsertArticle(article *wiki.Article) error {
 			article.PreviousID,
 			article.Comment)
 
-		if err != nil && err.Error() == "UNIQUE constraint failed: Revision.id, Revision.article_id" {
+		if err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed: Revision.id, Revision.article_id") {
 			return wiki.ErrRevisionAlreadyExists
 		}
 		return err
@@ -582,7 +577,7 @@ func (tdb *TestDB) InsertArticleQueued(article *wiki.Article) (revisionID int64,
 			article.PreviousID,
 			article.Comment)
 
-		if err != nil && err.Error() == "UNIQUE constraint failed: Revision.id, Revision.article_id" {
+		if err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed: Revision.id, Revision.article_id") {
 			return 0, wiki.ErrRevisionAlreadyExists
 		}
 		if err != nil {
@@ -644,9 +639,9 @@ func (tdb *TestDB) InsertUser(user *wiki.User) error {
 
 	result, err := tx.Exec(`INSERT INTO User(screenname, email) VALUES (?, ?)`, user.ScreenName, user.Email)
 	if err != nil {
-		if err.Error() == "UNIQUE constraint failed: User.screenname" {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed: User.screenname") {
 			return wiki.ErrUsernameTaken
-		} else if err.Error() == "UNIQUE constraint failed: User.email" {
+		} else if strings.Contains(err.Error(), "UNIQUE constraint failed: User.email") {
 			return wiki.ErrEmailTaken
 		}
 		return err
@@ -706,22 +701,22 @@ func (tdb *TestDB) SelectPreference(key string) (*wiki.Preference, error) {
 
 // Get implements sessions.Store
 func (tdb *TestDB) Get(r *http.Request, name string) (*sessions.Session, error) {
-	return tdb.SqliteStore.Get(r, name)
+	return tdb.SessionStore.Get(r, name)
 }
 
 // New implements sessions.Store
 func (tdb *TestDB) New(r *http.Request, name string) (*sessions.Session, error) {
-	return tdb.SqliteStore.New(r, name)
+	return tdb.SessionStore.New(r, name)
 }
 
 // Save implements sessions.Store
 func (tdb *TestDB) Save(r *http.Request, w http.ResponseWriter, s *sessions.Session) error {
-	return tdb.SqliteStore.Save(r, w, s)
+	return tdb.SessionStore.Save(r, w, s)
 }
 
 // Delete implements the delete method for session store
 func (tdb *TestDB) Delete(r *http.Request, w http.ResponseWriter, s *sessions.Session) error {
-	return tdb.SqliteStore.Delete(r, w, s)
+	return tdb.SessionStore.Delete(r, w, s)
 }
 
 // RequestWithUser creates a request with a user context attached.

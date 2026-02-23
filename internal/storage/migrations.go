@@ -40,6 +40,7 @@ var migrations = []migration{
 	{5, "backfill frontmatter", migrateBackfillFrontmatter},
 	{6, "add role to User", migrateAddRole},
 	{7, "add created_at to User", migrateAddCreatedAt},
+	{8, "add sessions table", migrateAddSessions},
 }
 
 // latestVersion is the highest migration version in the registry.
@@ -369,6 +370,18 @@ func migrateAddCreatedAt(db *sqlx.DB, _ Dialect) error {
 		)`,
 		insertSQL,
 	)
+}
+
+func migrateAddSessions(db *sqlx.DB, _ Dialect) error {
+	// No-op for databases where sqlitestore already auto-created the table
+	// (possibly with an extra modified_on column, which is harmless).
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS sessions (
+		id INTEGER PRIMARY KEY,
+		session_data BLOB,
+		created_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		expires_on TIMESTAMP NOT NULL DEFAULT 0
+	)`)
+	return err
 }
 
 // backfillFrontmatter populates the frontmatter column for articles where it's NULL.

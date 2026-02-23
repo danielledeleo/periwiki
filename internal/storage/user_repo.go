@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/jmoiron/sqlx"
@@ -30,9 +31,9 @@ func (db *sqliteDb) InsertUser(user *wiki.User) (err error) {
 	result, err := tx.Exec(`INSERT INTO User(screenname, email) VALUES (?, ?)`, user.ScreenName, user.Email)
 
 	if err != nil {
-		if err.Error() == "UNIQUE constraint failed: User.screenname" {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed: User.screenname") {
 			return wiki.ErrUsernameTaken
-		} else if err.Error() == "UNIQUE constraint failed: User.email" {
+		} else if strings.Contains(err.Error(), "UNIQUE constraint failed: User.email") {
 			return wiki.ErrEmailTaken
 		}
 		return

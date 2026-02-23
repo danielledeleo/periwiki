@@ -77,8 +77,5 @@ Depends on user-defined templates (see docs/plans/user-templates-design.md)
 - Rich customizable home page (featured articles, other custom widgets)
 
 Dependency Maintenance (January 2026)
-- [MEDIUM] Replace or fork michaeljs1990/sqlitestore
-  - No releases, last commit May 2021, uses CGO-based sqlite driver
-  - Consider implementing session store with modernc.org/sqlite instead
 - [LOW] Monitor jmoiron/sqlx - stable but minimal maintenance since v1.4.0 (April 2024)
 - [LOW] Monitor sergi/go-diff - functional but limited maintenance, issues unresolved for years

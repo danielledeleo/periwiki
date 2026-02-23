@@ -11,7 +11,7 @@ import (
 // openMemDB opens a fresh in-memory SQLite database.
 func openMemDB(t *testing.T) *sqlx.DB {
 	t.Helper()
-	db, err := sqlx.Open("sqlite3", ":memory:")
+	db, err := sqlx.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("open memory db: %v", err)
 	}
