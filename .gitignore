@@ -6,6 +6,8 @@ internal/embedded/metadata_gen.go
 
 /periwiki
 *.db
+*.db-wal
+*.db-shm
 config.yaml
 
 .DS_Store
