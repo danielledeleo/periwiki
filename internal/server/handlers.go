@@ -42,6 +42,7 @@ func (a *App) RegisterPostHandler(rw http.ResponseWriter, req *http.Request) {
 	render := map[string]interface{}{
 		"Page":           wiki.NewStaticPage("Register"),
 		"Article":        map[string]string{"Title": "Register"},
+		"AllowSignups":   a.RuntimeConfig.AllowSignups,
 		"calloutClasses": "pw-success",
 		"calloutMessage": "Successfully registered!",
 		"formClasses":    "hidden",
