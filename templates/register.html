@@ -3,10 +3,14 @@
     <article>
         <h1>Registration</h1>
         <div class="pw-article-content">
+            {{ if not .AllowSignups }}
+            <div class="pw-callout pw-neutral">New registrations are currently disabled.</div>
+            {{ end }}
             {{ if .calloutMessage }}
             <div class="pw-callout {{ .calloutClasses }}">{{ .calloutMessage }}</div>
             {{ end }}
-            <form class="pw-register-form {{ .formClasses }}" action="/user/register" method="POST">
+            <form class="pw-register-form {{ .formClasses }}{{ if not .AllowSignups }} pw-form-disabled{{ end }}" action="/user/register" method="POST">
+                <fieldset {{ if not .AllowSignups }}disabled{{ end }}>
                 <table>
                     <tr>
                         <td><label for="screenname">Username</label></td>
@@ -24,6 +28,7 @@
                         <td><button type="submit">Register</button></td>
                     </tr>
                 </table>
+                </fieldset>
             </form>
         </div>
     </article>

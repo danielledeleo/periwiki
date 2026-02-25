@@ -131,6 +131,7 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 		CookieExpiry:              86400,
 		MinimumPasswordLength:     8,
 		AllowAnonymousEditsGlobal: true,
+		AllowSignups:              true,
 		RenderWorkers:             0,
 	}
 

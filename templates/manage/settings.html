@@ -10,6 +10,10 @@
                 <table>
                     <tbody>
                         <tr>
+                            <td><label for="allow_signups">Allow new registrations</label></td>
+                            <td><input type="checkbox" id="allow_signups" name="allow_signups" {{ if .Settings.AllowSignups }}checked{{ end }}></td>
+                        </tr>
+                        <tr>
                             <td><label for="allow_anonymous_edits">Allow anonymous edits</label></td>
                             <td><input type="checkbox" id="allow_anonymous_edits" name="allow_anonymous_edits" {{ if .Settings.AllowAnonymousEdits }}checked{{ end }}></td>
                         </tr>

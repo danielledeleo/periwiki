@@ -20,13 +20,19 @@ import (
 func (a *App) RegisterHandler(rw http.ResponseWriter, req *http.Request) {
 	err := a.RenderTemplate(rw, "register.html", "index.html",
 		map[string]interface{}{
-			"Page":    wiki.NewStaticPage("Register"),
-			"Article": map[string]string{"Title": "Register"},
-			"Context": req.Context()})
+			"Page":         wiki.NewStaticPage("Register"),
+			"Article":      map[string]string{"Title": "Register"},
+			"AllowSignups": a.RuntimeConfig.AllowSignups,
+			"Context":      req.Context()})
 	check(err)
 }
 
 func (a *App) RegisterPostHandler(rw http.ResponseWriter, req *http.Request) {
+	if !a.RuntimeConfig.AllowSignups {
+		a.ErrorHandler(http.StatusForbidden, rw, req, fmt.Errorf("new registrations are currently disabled"))
+		return
+	}
+
 	user := &wiki.User{}
 
 	user.Email = req.PostFormValue("email")

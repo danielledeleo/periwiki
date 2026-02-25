@@ -16,6 +16,7 @@ type RuntimeConfig struct {
 	CookieExpiry              int
 	MinimumPasswordLength     int
 	AllowAnonymousEditsGlobal bool
+	AllowSignups              bool
 	RenderWorkers             int
 }
 
@@ -23,6 +24,7 @@ type RuntimeConfig struct {
 const (
 	SettingCookieSecret              = "cookie_secret"
 	SettingAllowAnonymousEditsGlobal = "allow_anonymous_edits_global"
+	SettingAllowSignups              = "allow_signups"
 	SettingRenderWorkers             = "render_workers"
 	SettingCookieExpiry              = "cookie_expiry"
 	SettingMinPasswordLength         = "min_password_length"
@@ -35,7 +37,8 @@ const (
 const (
 	DefaultCookieExpiry          = 604800 // 7 days
 	DefaultMinPasswordLength     = 8
-	DefaultAllowAnonymousEdits   = true
+	DefaultAllowAnonymousEdits   = false
+	DefaultAllowSignups          = true
 	DefaultRenderWorkers         = 0 // 0 = auto-detect
 )
 
@@ -69,6 +72,18 @@ func LoadRuntimeConfig(db *sql.DB) (*RuntimeConfig, error) {
 		return nil, err
 	}
 	config.AllowAnonymousEditsGlobal, err = strconv.ParseBool(allowAnonStr)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load or create allow_signups
+	allowSignupsStr, err := GetOrCreateSetting(db, SettingAllowSignups, func() string {
+		return strconv.FormatBool(DefaultAllowSignups)
+	})
+	if err != nil {
+		return nil, err
+	}
+	config.AllowSignups, err = strconv.ParseBool(allowSignupsStr)
 	if err != nil {
 		return nil, err
 	}

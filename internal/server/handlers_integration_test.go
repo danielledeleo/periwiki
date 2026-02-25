@@ -438,6 +438,48 @@ func TestRegisterHandlerGET(t *testing.T) {
 	}
 }
 
+func TestRegisterHandlerGET_SignupsDisabled(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	testApp.RuntimeConfig.AllowSignups = false
+
+	req := httptest.NewRequest("GET", "/user/register", nil)
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", rr.Code)
+	}
+
+	body := rr.Body.String()
+	if !strings.Contains(body, "registrations are currently disabled") {
+		t.Error("expected body to contain disabled message")
+	}
+	if !strings.Contains(body, "disabled") {
+		t.Error("expected body to contain disabled attribute on fieldset")
+	}
+}
+
+func TestRegisterPostHandler_SignupsDisabled(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	testApp.RuntimeConfig.AllowSignups = false
+
+	form := strings.NewReader("screenname=newuser&email=new@example.com&password=password123")
+	req := httptest.NewRequest("POST", "/user/register", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Errorf("expected status 403, got %d", rr.Code)
+	}
+}
+
 func TestLoginHandlerGET(t *testing.T) {
 	router, _, cleanup := setupHandlerTestRouter(t)
 	defer cleanup()

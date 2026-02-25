@@ -82,7 +82,8 @@ func (a *App) ManageSettingsHandler(rw http.ResponseWriter, req *http.Request) {
 		"Page":    wiki.NewStaticPage("Settings"),
 		"Context": req.Context(),
 		"Settings": map[string]any{
-			"AllowAnonymousEdits":  a.RuntimeConfig.AllowAnonymousEditsGlobal,
+			"AllowAnonymousEdits":   a.RuntimeConfig.AllowAnonymousEditsGlobal,
+			"AllowSignups":          a.RuntimeConfig.AllowSignups,
 			"MinimumPasswordLength": a.RuntimeConfig.MinimumPasswordLength,
 			"CookieExpiry":          a.RuntimeConfig.CookieExpiry,
 			"RenderWorkers":         a.RuntimeConfig.RenderWorkers,
@@ -109,8 +110,9 @@ func (a *App) ManageSettingsPostHandler(rw http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	// Parse allow_anonymous_edits (checkbox: present = true, absent = false)
+	// Parse checkboxes (present = true, absent = false)
 	allowAnon := req.PostFormValue("allow_anonymous_edits") == "on"
+	allowSignups := req.PostFormValue("allow_signups") == "on"
 
 	// Parse and validate minimum_password_length
 	minPwLen, err := strconv.Atoi(req.PostFormValue("minimum_password_length"))
@@ -139,6 +141,7 @@ func (a *App) ManageSettingsPostHandler(rw http.ResponseWriter, req *http.Reques
 		value string
 	}{
 		{wiki.SettingAllowAnonymousEditsGlobal, strconv.FormatBool(allowAnon)},
+		{wiki.SettingAllowSignups, strconv.FormatBool(allowSignups)},
 		{wiki.SettingMinPasswordLength, strconv.Itoa(minPwLen)},
 		{wiki.SettingCookieExpiry, strconv.Itoa(cookieExpiry)},
 		{wiki.SettingRenderWorkers, strconv.Itoa(renderWorkers)},
@@ -154,6 +157,7 @@ func (a *App) ManageSettingsPostHandler(rw http.ResponseWriter, req *http.Reques
 
 	// Update in-memory config
 	a.RuntimeConfig.AllowAnonymousEditsGlobal = allowAnon
+	a.RuntimeConfig.AllowSignups = allowSignups
 	a.RuntimeConfig.MinimumPasswordLength = minPwLen
 	a.RuntimeConfig.CookieExpiry = cookieExpiry
 	a.RuntimeConfig.RenderWorkers = renderWorkers

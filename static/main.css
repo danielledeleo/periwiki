@@ -531,6 +531,16 @@ article.pw-preview {
     color: var(--pw-link-color);
 }
 
+.pw-form-disabled fieldset {
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pw-form-disabled fieldset[disabled] {
+    opacity: 0.5;
+}
+
 .hidden {
     display: none;
 }
