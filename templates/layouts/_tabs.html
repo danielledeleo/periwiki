@@ -12,7 +12,7 @@
     {{- end}}
     {{- end}}
     {{- if not .Article.ReadOnly}}
-    {{- if .Article.ID}}
+    {{- if or .Article.ID (eq .ActiveTab "history")}}
     <li class="pw-tab-right{{if eq .ActiveTab "history"}} pw-active{{end}}"><a href="{{historyURL .Article.URL}}">History</a></li>
     <li{{if eq .ActiveTab "edit"}} class="pw-active"{{end}}><a href="{{editURL .Article.URL .Article.ID}}">Edit</a></li>
     {{- else}}
