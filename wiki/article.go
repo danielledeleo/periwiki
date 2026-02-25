@@ -2,6 +2,7 @@ package wiki
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -36,6 +37,21 @@ func (a *Article) DisplayTitle() string {
 func (a *Article) Layout() string {
 	fm, _ := ParseFrontmatter(a.Markdown)
 	return fm.Layout
+}
+
+// IsTalkPage returns true if the URL is in the Talk namespace.
+func IsTalkPage(url string) bool {
+	return strings.HasPrefix(url, "Talk:")
+}
+
+// TalkPageURL returns the Talk namespace URL for a given article URL.
+func TalkPageURL(url string) string {
+	return "Talk:" + url
+}
+
+// SubjectPageURL returns the subject article URL for a given Talk page URL.
+func SubjectPageURL(url string) string {
+	return strings.TrimPrefix(url, "Talk:")
 }
 
 // ArticleSummary represents minimal article info for sitemaps.

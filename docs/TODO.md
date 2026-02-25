@@ -3,6 +3,7 @@ Soon(ish)
   - any dep that causes a rerender
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - [MED] Talk:pages, User:pages
+- Disable/enable signups, anon edits disabled by default
 - Decide on case sensitivity in URLs
 - Page alias and redirect system (design TBD)
 - Article visibility settings

@@ -1,11 +1,7 @@
 {{define "content"}}
 <div id="article-area">
     {{with .Article }}
-    <ul class="pw-tabs">
-        <li><a href="{{articleURL .URL}}">Article</a></li>
-        <li><a href="{{editURL .URL .ID}}">Edit</a></li>
-        <li class="pw-active"><a href="{{historyURL .URL}}">History</a></li>
-    </ul>
+    {{template "tabs" $}}
     <article>
         <h1>Diff of {{.DisplayTitle}}</h1>
         <div class="pw-diff-info">

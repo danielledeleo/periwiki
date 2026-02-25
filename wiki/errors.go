@@ -19,4 +19,5 @@ var (
 	ErrReadOnlyArticle       = errors.New("article is read-only")
 	ErrForbidden             = errors.New("you do not have permission to perform this action")
 	ErrAdminRequired         = errors.New("administrator access required")
+	ErrSubjectPageNotFound   = errors.New("subject article does not exist")
 )

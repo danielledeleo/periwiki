@@ -638,6 +638,65 @@ func TestNamespaceHandler_PeriwikiNamespace(t *testing.T) {
 	})
 }
 
+func TestTalkNamespace_DispatchesToArticle(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "Test_Article", "Content here", user)
+	testutil.CreateTestArticle(t, testApp, "Talk:Test_Article", "Discussion here", user)
+
+	req := httptest.NewRequest("GET", "/wiki/Talk:Test_Article", nil)
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", rr.Code)
+	}
+
+	body := rr.Body.String()
+	if !strings.Contains(body, "Discussion here") {
+		t.Error("expected body to contain talk page content")
+	}
+}
+
+func TestTalkNamespace_NotFound(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "Test_Article", "Content here", user)
+
+	req := httptest.NewRequest("GET", "/wiki/Talk:Test_Article", nil)
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d", rr.Code)
+	}
+}
+
+func TestTalkNamespace_EditBlockedWhenSubjectMissing(t *testing.T) {
+	router, _, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	req := httptest.NewRequest("GET", "/wiki/Talk:Nonexistent?edit", nil)
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d", rr.Code)
+	}
+
+	body := rr.Body.String()
+	if !strings.Contains(body, "does not exist") {
+		t.Error("expected error message about subject article not existing")
+	}
+}
+
 type mockSpecialPage struct {
 	handler func(http.ResponseWriter, *http.Request)
 }

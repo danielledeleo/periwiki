@@ -12,15 +12,7 @@
         This is a built-in help article.
     </div>
     {{end}}
-    <ul class="pw-tabs">
-        <li class="pw-active"><a href="{{articleURL .URL}}">{{if eq .Layout "mainpage"}}Main page{{else}}Article{{end}}</a></li>
-        {{if not .ReadOnly}}
-        <li><a href="{{editURL .URL .ID}}">Edit</a></li>
-        <li><a href="{{historyURL .URL}}">History</a></li>
-        {{else if $.EmbeddedSourceURL}}
-        <li><a href="{{$.EmbeddedSourceURL}}" target="_blank">View source</a></li>
-        {{end}}
-    </ul>
+    {{template "tabs" $}}
     <article>
         <h1>{{.DisplayTitle}}</h1>
         <div class="pw-article-content">

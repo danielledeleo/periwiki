@@ -125,6 +125,10 @@ func (t *Templater) Load(baseGlob string, mainGlobs ...string) error {
 		"editURL":     editURL,
 		"historyURL":  historyURL,
 		"diffURL":     diffURL,
+		// Talk page helpers
+		"isTalkPage":  isTalkPage,
+		"talkPageURL": talkPageURL,
+		"subjectURL":  subjectURL,
 	}
 
 	// Generate our templates map from our layouts/ and includes/ directories

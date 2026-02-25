@@ -156,6 +156,15 @@ ul#login-bar {
     border-bottom: 1px solid var(--pw-white);
 }
 
+#article-area ul.pw-tabs li.pw-tab-right {
+    margin-left: auto;
+    border-left: 1px solid var(--pw-purple);
+}
+
+#article-area ul.pw-tabs li:last-child {
+    border-right: none;
+}
+
 #article-area textarea#body-edit {
     display: block;
     width: 80%;

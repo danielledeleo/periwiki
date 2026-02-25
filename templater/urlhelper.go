@@ -3,6 +3,8 @@ package templater
 import (
 	"fmt"
 	"net/url"
+
+	"github.com/danielledeleo/periwiki/wiki"
 )
 
 // URL helper functions for templates.
@@ -46,4 +48,19 @@ func diffURL(urlPath string, oldRevision, newRevision int) string {
 		return fmt.Sprintf("/wiki/%s?diff&old=%d&new=%d", url.PathEscape(urlPath), oldRevision, newRevision)
 	}
 	return fmt.Sprintf("/wiki/%s?diff&old=%d", url.PathEscape(urlPath), oldRevision)
+}
+
+// isTalkPage returns true if the URL is in the Talk namespace.
+func isTalkPage(urlPath string) bool {
+	return wiki.IsTalkPage(urlPath)
+}
+
+// talkPageURL returns the Talk namespace URL for a given article URL.
+func talkPageURL(urlPath string) string {
+	return wiki.TalkPageURL(urlPath)
+}
+
+// subjectURL returns the subject article URL for a given Talk page URL.
+func subjectURL(urlPath string) string {
+	return wiki.SubjectPageURL(urlPath)
 }

@@ -1,0 +1,25 @@
+{{define "tabs"}}
+<ul class="pw-tabs">
+    {{- if isTalkPage .Article.URL}}
+    <li><a href="{{articleURL (subjectURL .Article.URL)}}">Article</a></li>
+    <li class="pw-active"><a href="{{articleURL .Article.URL}}">Talk</a></li>
+    {{- else}}
+    <li class="pw-active"><a href="{{articleURL .Article.URL}}">
+        {{- if and .Article.Layout (eq .Article.Layout "mainpage")}}Main page{{else}}Article{{end -}}
+    </a></li>
+    {{- if not .Article.ReadOnly}}
+    <li><a href="{{articleURL (talkPageURL .Article.URL)}}">Talk</a></li>
+    {{- end}}
+    {{- end}}
+    {{- if not .Article.ReadOnly}}
+    {{- if .Article.ID}}
+    <li class="pw-tab-right{{if eq .ActiveTab "history"}} pw-active{{end}}"><a href="{{historyURL .Article.URL}}">History</a></li>
+    <li{{if eq .ActiveTab "edit"}} class="pw-active"{{end}}><a href="{{editURL .Article.URL .Article.ID}}">Edit</a></li>
+    {{- else}}
+    <li class="pw-tab-right{{if eq .ActiveTab "edit"}} pw-active{{end}}"><a href="{{editURL .Article.URL .Article.ID}}">Edit</a></li>
+    {{- end}}
+    {{- else if .EmbeddedSourceURL}}
+    <li class="pw-tab-right"><a href="{{.EmbeddedSourceURL}}" target="_blank">View source</a></li>
+    {{- end}}
+</ul>
+{{end}}

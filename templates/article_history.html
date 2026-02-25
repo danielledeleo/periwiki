@@ -1,10 +1,7 @@
 {{define "content"}}
 <div id="article-area">
     {{with .Article}}
-    <ul class="pw-tabs">
-        <li><a href="{{articleURL .URL}}">Article</a></li>
-        <li class="pw-active"><a href="{{historyURL .URL}}">History</a></li>
-    </ul>
+    {{template "tabs" $}}
     <article>
         <h1>{{.DisplayTitle}}</h1>
         {{end}}

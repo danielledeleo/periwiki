@@ -203,6 +203,7 @@ func (a *App) ArticleHandler(rw http.ResponseWriter, req *http.Request) {
 	render["Page"] = article
 	render["Article"] = article
 	render["Context"] = req.Context()
+	render["ActiveTab"] = "article"
 
 	if !found {
 		slog.Debug("article not found", "category", "article", "action", "view", "article", vars["article"])
@@ -232,40 +233,47 @@ func (a *App) ArticleHandler(rw http.ResponseWriter, req *http.Request) {
 //   - /wiki/{article}?rerender&revision=N - force re-render revision N
 func (a *App) ArticleDispatcher(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
+	a.dispatchArticle(rw, req, vars["article"])
+}
+
+// dispatchArticle contains the dispatch logic for article requests.
+// It is called by ArticleDispatcher (for /wiki/{article} routes) and
+// by NamespaceHandler (for Talk: namespace routes).
+func (a *App) dispatchArticle(rw http.ResponseWriter, req *http.Request, articleURL string) {
 	params := req.URL.Query()
 
 	// Handle POST requests
 	if req.Method == "POST" {
-		a.handleArticlePost(rw, req, vars["article"])
+		a.handleArticlePost(rw, req, articleURL)
 		return
 	}
 
 	// Handle diff requests
 	if params.Has("diff") {
-		a.handleDiff(rw, req, vars["article"], params)
+		a.handleDiff(rw, req, articleURL, params)
 		return
 	}
 
 	// Handle history
 	if params.Has("history") {
-		a.handleHistory(rw, req, vars["article"])
+		a.handleHistory(rw, req, articleURL)
 		return
 	}
 
 	// Handle edit
 	if params.Has("edit") {
-		a.handleEdit(rw, req, vars["article"], params)
+		a.handleEdit(rw, req, articleURL, params)
 		return
 	}
 
 	// Handle rerender
 	if params.Has("rerender") {
-		a.handleRerender(rw, req, vars["article"], params)
+		a.handleRerender(rw, req, articleURL, params)
 		return
 	}
 
 	// Default: view article
-	a.handleView(rw, req, vars["article"], params)
+	a.handleView(rw, req, articleURL, params)
 }
 
 // handleView handles viewing an article or specific revision.
@@ -285,9 +293,10 @@ func (a *App) handleView(rw http.ResponseWriter, req *http.Request, articleURL s
 
 		// Check if this is an old revision by comparing with current
 		templateData := map[string]interface{}{
-			"Page":    article,
-			"Article": article,
-			"Context": req.Context(),
+			"Page":      article,
+			"Article":   article,
+			"Context":   req.Context(),
+			"ActiveTab": "article",
 		}
 		if current, err := a.Articles.GetArticle(articleURL); err == nil && current.ID != article.ID {
 			templateData["IsOldRevision"] = true
@@ -300,8 +309,43 @@ func (a *App) handleView(rw http.ResponseWriter, req *http.Request, articleURL s
 		return
 	}
 
-	// View current revision (delegate to existing handler logic)
-	a.ArticleHandler(rw, req)
+	// View current revision
+	render := map[string]interface{}{}
+	article, err := a.Articles.GetArticle(articleURL)
+
+	if err != wiki.ErrGenericNotFound && err != nil {
+		a.ErrorHandler(http.StatusInternalServerError, rw, req, err)
+		return
+	}
+	user, ok := req.Context().Value(wiki.UserKey).(*wiki.User)
+	if !ok || user == nil {
+		a.ErrorHandler(http.StatusInternalServerError, rw, req, fmt.Errorf("user context not set"))
+		return
+	}
+
+	found := article != nil
+
+	if !found {
+		article = wiki.NewArticle(articleURL, "")
+		article.Hash = "new"
+	}
+
+	render["Page"] = article
+	render["Article"] = article
+	render["Context"] = req.Context()
+	render["ActiveTab"] = "article"
+
+	if !found {
+		slog.Debug("article not found", "category", "article", "action", "view", "article", articleURL)
+		rw.WriteHeader(http.StatusNotFound)
+		err = a.RenderTemplate(rw, "article_notfound.html", "index.html", render)
+		check(err)
+		return
+	}
+
+	slog.Debug("article viewed", "category", "article", "action", "view", "article", articleURL)
+	err = a.RenderTemplate(rw, "article.html", "index.html", render)
+	check(err)
 }
 
 // handleRerender handles re-rendering an article revision.
@@ -361,9 +405,12 @@ func (a *App) handleHistory(rw http.ResponseWriter, req *http.Request, articleUR
 	err = a.RenderTemplate(rw, "article_history.html", "index.html", map[string]interface{}{
 		"Page": wiki.NewStaticPage("History of " + articleURL),
 		"Article": map[string]interface{}{
-			"URL":   articleURL,
-			"Title": "History of " + articleURL},
+			"URL":          articleURL,
+			"ID":           0,
+			"Title":        "History of " + articleURL,
+			"DisplayTitle": wiki.InferTitle(articleURL)},
 		"Context":           req.Context(),
+		"ActiveTab":         "history",
 		"Revisions":         revisions,
 		"CurrentRevisionID": currentRevisionID})
 	check(err)
@@ -375,6 +422,15 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 	if embedded.IsEmbeddedURL(articleURL) {
 		http.Redirect(rw, req, "/wiki/"+articleURL, http.StatusSeeOther)
 		return
+	}
+
+	// Block editing talk pages when the subject article doesn't exist
+	if wiki.IsTalkPage(articleURL) {
+		if _, err := a.Articles.GetArticle(wiki.SubjectPageURL(articleURL)); err != nil {
+			a.ErrorHandler(http.StatusNotFound, rw, req,
+				fmt.Errorf("cannot create talk page: article %q does not exist", wiki.SubjectPageURL(articleURL)))
+			return
+		}
 	}
 
 	// Check if anonymous editing is allowed
@@ -426,10 +482,11 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 	}
 
 	err = a.RenderTemplate(rw, "article_edit.html", "index.html", map[string]interface{}{
-		"Page":    article,
-		"Article": article,
-		"Context": req.Context(),
-		"Other":   other})
+		"Page":      article,
+		"Article":   article,
+		"Context":   req.Context(),
+		"ActiveTab": "edit",
+		"Other":     other})
 	check(err)
 }
 
@@ -530,6 +587,7 @@ func (a *App) handleDiff(rw http.ResponseWriter, req *http.Request, articleURL s
 		"NewRevision":       newArticle,
 		"DiffString":        template.HTML(buff.String()),
 		"Context":           req.Context(),
+		"ActiveTab":         "history",
 		"CurrentRevisionID": currentRevisionID,
 	})
 	check(err)
@@ -593,10 +651,11 @@ func (a *App) articlePreviewHandler(article *wiki.Article, rw http.ResponseWrite
 
 	err = a.RenderTemplate(rw, "article_edit.html", "index.html",
 		map[string]interface{}{
-			"Page":    article,
-			"Article": article,
-			"Context": req.Context(),
-			"Other":   other})
+			"Page":      article,
+			"Article":   article,
+			"Context":   req.Context(),
+			"ActiveTab": "edit",
+			"Other":     other})
 	check(err)
 }
 func (a *App) articlePostHandler(article *wiki.Article, rw http.ResponseWriter, req *http.Request) {
@@ -659,6 +718,12 @@ func (a *App) NamespaceHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Talk namespace: discussion pages for articles
+	if strings.EqualFold(namespace, "talk") {
+		a.dispatchArticle(rw, req, "Talk:"+page)
+		return
+	}
+
 	// Periwiki namespace: embedded help articles
 	if strings.EqualFold(namespace, "periwiki") {
 		articleURL := "Periwiki:" + page // Canonical case for lookup
@@ -668,9 +733,10 @@ func (a *App) NamespaceHandler(rw http.ResponseWriter, req *http.Request) {
 			return
 		}
 		err = a.RenderTemplate(rw, "article.html", "index.html", map[string]interface{}{
-			"Page":      article,
-			"Article":   article,
-			"Context":   req.Context(),
+			"Page":              article,
+			"Article":           article,
+			"Context":           req.Context(),
+			"ActiveTab":         "article",
 			"EmbeddedSourceURL": embedded.SourceURL(articleURL),
 		})
 		check(err)

@@ -94,6 +94,14 @@ func (s *articleService) PostArticle(article *wiki.Article) error {
 
 // PostArticleWithContext creates or updates an article with context for cancellation.
 func (s *articleService) PostArticleWithContext(ctx context.Context, article *wiki.Article) error {
+	// Talk pages require the subject article to exist
+	if wiki.IsTalkPage(article.URL) {
+		subjectURL := wiki.SubjectPageURL(article.URL)
+		if _, err := s.repo.SelectArticle(subjectURL); err != nil {
+			return wiki.ErrSubjectPageNotFound
+		}
+	}
+
 	// Hash based on markdown only - title is deprecated
 	x := sha512.Sum384([]byte(article.Markdown))
 	article.Hash = base64.URLEncoding.EncodeToString(x[:])

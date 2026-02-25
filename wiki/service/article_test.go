@@ -477,3 +477,44 @@ func TestLazyRerenderingMultipleArticles(t *testing.T) {
 		}
 	}
 }
+
+func TestPostArticle_TalkPage(t *testing.T) {
+	app, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
+
+	t.Run("rejects talk page when subject does not exist", func(t *testing.T) {
+		article := wiki.NewArticle("Talk:Nonexistent", "Discussion content")
+		article.Creator = user
+		article.PreviousID = 0
+
+		err := app.Articles.PostArticle(article)
+		if err != wiki.ErrSubjectPageNotFound {
+			t.Errorf("expected ErrSubjectPageNotFound, got: %v", err)
+		}
+	})
+
+	t.Run("accepts talk page when subject exists", func(t *testing.T) {
+		// Create the subject article first
+		testutil.CreateTestArticle(t, app, "Subject_Article", "Subject content", user)
+
+		article := wiki.NewArticle("Talk:Subject_Article", "Discussion about subject")
+		article.Creator = user
+		article.PreviousID = 0
+
+		err := app.Articles.PostArticle(article)
+		if err != nil {
+			t.Fatalf("PostArticle failed: %v", err)
+		}
+
+		// Verify the talk page was created
+		created, err := app.Articles.GetArticle("Talk:Subject_Article")
+		if err != nil {
+			t.Fatalf("GetArticle failed: %v", err)
+		}
+		if created.URL != "Talk:Subject_Article" {
+			t.Errorf("expected URL 'Talk:Subject_Article', got %q", created.URL)
+		}
+	})
+}
