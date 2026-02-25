@@ -40,10 +40,35 @@ test-coverage-html: generate
 test-race: generate
 	go test -race ./...
 
+demo: generate demo/periwiki.wasm demo/wasm_exec.js
+
+demo/periwiki.wasm: $(gosources) $(templates) $(embedded) $(statics)
+	GOOS=js GOARCH=wasm go build -o demo/periwiki.wasm ./cmd/demo
+
+demo/wasm_exec.js:
+	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" demo/wasm_exec.js
+
+define DEMO_SERVER
+import http.server
+class H(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header("Service-Worker-Allowed", "/")
+        super().end_headers()
+http.server.HTTPServer(("", 9090), H).serve_forever()
+endef
+export DEMO_SERVER
+
+demo-serve: demo
+	@echo "Serving demo at http://localhost:9090/demo/"
+	@python3 -c "$$DEMO_SERVER"
+
 clean:
 	rm -f periwiki
 	rm -f internal/embedded/metadata_gen.go
 	rm -f coverage.out coverage.html
+
+demo-clean:
+	rm -f demo/periwiki.wasm demo/wasm_exec.js
 
 help:
 	@echo "Usage: make [target]"
@@ -58,6 +83,9 @@ help:
 	@echo "  test-coverage-html Run tests and generate HTML coverage report"
 	@echo "  test-race          Run tests with race detector"
 	@echo "  clean              Remove build artifacts and generated files"
+	@echo "  demo               Build the WASM demo"
+	@echo "  demo-serve         Build and serve the demo at localhost:9090"
+	@echo "  demo-clean         Remove demo build artifacts"
 	@echo "  help               Show this help"
 
-.PHONY: all run watch generate test test-verbose test-coverage test-coverage-html test-race clean help
+.PHONY: all run watch generate test test-verbose test-coverage test-coverage-html test-race clean help demo demo-serve demo-clean

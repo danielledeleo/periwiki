@@ -195,7 +195,7 @@ func (db *sqliteDb) InsertArticle(article *wiki.Article) (err error) {
 		}
 
 		_, err = tx.Exec(`INSERT INTO Revision (id, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
-			VALUES (?, ?, ?, ?, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
+			VALUES (?, ?, ?, ?, last_insert_rowid(), ?, strftime('%Y-%m-%d %H:%M:%f', 'now'), ?, ?)`,
 			article.PreviousID+1,
 			article.Hash,
 			article.Markdown,
@@ -211,7 +211,7 @@ func (db *sqliteDb) InsertArticle(article *wiki.Article) (err error) {
 	} else if insertErr == nil && testArticle != nil { // New revision to article
 
 		_, err = tx.Exec(`INSERT INTO Revision (id, hashval, markdown, html, article_id, user_id, created, previous_id, comment)
-			VALUES (?, ?, ?, ?, (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?)`,
+			VALUES (?, ?, ?, ?, (SELECT Article.id FROM Article WHERE url = ?), ?, strftime('%Y-%m-%d %H:%M:%f', 'now'), ?, ?)`,
 			article.PreviousID+1,
 			article.Hash,
 			article.Markdown,
@@ -275,7 +275,7 @@ func (db *sqliteDb) InsertArticleQueued(article *wiki.Article) (revisionID int64
 		}
 
 		_, err = tx.Exec(`INSERT INTO Revision (id, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
-			VALUES (?, ?, ?, NULL, last_insert_rowid(), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
+			VALUES (?, ?, ?, NULL, last_insert_rowid(), ?, strftime('%Y-%m-%d %H:%M:%f', 'now'), ?, ?, 'queued')`,
 			newRevisionID,
 			article.Hash,
 			article.Markdown,
@@ -290,7 +290,7 @@ func (db *sqliteDb) InsertArticleQueued(article *wiki.Article) (revisionID int64
 	} else if insertErr == nil && testArticle != nil { // New revision to article
 
 		_, err = tx.Exec(`INSERT INTO Revision (id, hashval, markdown, html, article_id, user_id, created, previous_id, comment, render_status)
-			VALUES (?, ?, ?, NULL, (SELECT Article.id FROM Article WHERE url = ?), ?, strftime("%Y-%m-%d %H:%M:%f", "now"), ?, ?, 'queued')`,
+			VALUES (?, ?, ?, NULL, (SELECT Article.id FROM Article WHERE url = ?), ?, strftime('%Y-%m-%d %H:%M:%f', 'now'), ?, ?, 'queued')`,
 			newRevisionID,
 			article.Hash,
 			article.Markdown,

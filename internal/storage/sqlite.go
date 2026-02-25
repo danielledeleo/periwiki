@@ -3,7 +3,6 @@ package storage
 import (
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/jmoiron/sqlx"
-	_ "modernc.org/sqlite"
 )
 
 // PreparedStatements holds the prepared SQL statements used for database queries.
