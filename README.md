@@ -2,6 +2,8 @@
 
 A self-hosted wiki for people who miss the old web.
 
+**[→ Try the live demo](https://demo.peri.wiki)** — runs entirely in your browser via WebAssembly.
+
 MediaWiki-inspired, [Goldmark](https://github.com/yuin/goldmark)-powered wiki written in Go with SQLite. No JavaScript, cache-friendly server-rendered HTML, no fuss. Built for passion projects, small teams, and personal knowledge bases.
 
 ## Features
@@ -9,6 +11,7 @@ MediaWiki-inspired, [Goldmark](https://github.com/yuin/goldmark)-powered wiki wr
 - **CommonMark extended with WikiLinks** — Standard Markdown plus `[[Wikilink]]` syntax to connect articles
 - **Full revision history** — Every edit is saved, with diffs between any two versions
 - **User accounts with optional anonymous editing** — Authentication if you need it, open contribution if you don't
+- **Self-contained binary** — Runs from a single binary, get started instantly
 
 ## Quick Start
 

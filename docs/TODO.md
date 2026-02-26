@@ -4,9 +4,6 @@ Soon(ish)
   - any dep that causes a rerender
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - [MED] User:pages
-- Create GHA workflow for publishing the WASM/service worker demo to GitHub Pages
-- Disable/enable signups, anon edits disabled by default
-- Decide on case sensitivity in URLs
 - Page alias and redirect system (design TBD)
 - Article visibility settings
   - draft
@@ -27,7 +24,6 @@ Soon(ish)
   - They should have distinct names
 - Create Markdown templates for default pages (admin pages, etc.)
 - User settings?
-- Management UI for runtime config (anonymous editing toggle, password policy, render workers, etc.)
 - Password recovery, 2FA, Login providers
 - Backup/data export mechanism
 - Tagging system (frontmatter-based, with tag pages)
@@ -43,7 +39,6 @@ Architecture
 
 Configuration and Runtime
 - First run/setup mode
-  - Auto populate new databases with an Admin user with id 1 as the owner of all the default pages
 - Improve "server failed to start" error message with specific reason (port in use, permission denied, etc.)
 - CLI flags to override config file path, database file, host, log level, etc.
 
