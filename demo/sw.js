@@ -7,6 +7,69 @@
 importScripts('wasm_exec.js');
 console.log('[sw] wasm_exec.js loaded');
 
+const LOADING_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Periwiki Demo</title>
+<style>
+body {
+    font-family: "Helvetica", sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+.loading {
+    text-align: center;
+    max-width: 420px;
+    padding: 2em;
+}
+.loading h1 {
+    font-size: 1.4em;
+    margin: 0 0 1.5em;
+}
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #ccc;
+    border-top-color: #333;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 1.5em;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#status {
+    color: #555;
+    font-size: 0.9em;
+    min-height: 1.5em;
+}
+</style>
+</head>
+<body>
+<div class="loading">
+    <h1>Periwiki Demo</h1>
+    <div class="spinner"></div>
+    <div id="status">Loading wiki engine...</div>
+</div>
+<script>
+navigator.serviceWorker.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'wasm-ready') {
+        document.getElementById('status').textContent = 'Ready!';
+        location.reload();
+    }
+});
+// Ask for status in case WASM loaded between SW response and page render
+if (navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'status' });
+}
+</script>
+</body>
+</html>`;
+
 let wasmReady = false;
 let wasmLoading = false;
 let wasmError = null;
@@ -122,13 +185,15 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
     // Let boot assets pass through to the real server
-    if (['/index.html', '/sw.js', '/wasm_exec.js', '/periwiki.wasm'].includes(url.pathname)) {
+    if (['/sw.js', '/wasm_exec.js', '/periwiki.wasm'].includes(url.pathname)) {
         return;
     }
 
     if (!wasmReady) {
         if (event.request.mode === 'navigate') {
-            event.respondWith(Response.redirect('/', 302));
+            event.respondWith(new Response(LOADING_HTML, {
+                headers: { 'Content-Type': 'text/html' },
+            }));
         } else {
             event.respondWith(new Response('', { status: 503 }));
         }
