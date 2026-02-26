@@ -1,8 +1,10 @@
+
 Soon(ish)
 - [MED] Backlinks feature (will help trigger redlink re-renders)
   - any dep that causes a rerender
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
-- [MED] Talk:pages, User:pages
+- [MED] User:pages
+- Create GHA workflow for publishing the WASM/service worker demo to GitHub Pages
 - Disable/enable signups, anon edits disabled by default
 - Decide on case sensitivity in URLs
 - Page alias and redirect system (design TBD)

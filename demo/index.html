@@ -86,7 +86,7 @@
                 }
 
                 console.log('[demo] registering SW');
-                const reg = await navigator.serviceWorker.register('/demo/sw.js', { scope: '/' });
+                const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
                 console.log('[demo] SW registered, waiting for ready');
 
                 // Wait for an active SW

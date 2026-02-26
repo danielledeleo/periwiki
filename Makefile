@@ -48,19 +48,9 @@ demo/periwiki.wasm: $(gosources) $(templates) $(embedded) $(statics)
 demo/wasm_exec.js:
 	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" demo/wasm_exec.js
 
-define DEMO_SERVER
-import http.server
-class H(http.server.SimpleHTTPRequestHandler):
-    def end_headers(self):
-        self.send_header("Service-Worker-Allowed", "/")
-        super().end_headers()
-http.server.HTTPServer(("", 9090), H).serve_forever()
-endef
-export DEMO_SERVER
-
 demo-serve: demo
-	@echo "Serving demo at http://localhost:9090/demo/"
-	@python3 -c "$$DEMO_SERVER"
+	@echo "Serving demo at http://localhost:9090/"
+	@python3 -m http.server -d demo 9090
 
 clean:
 	rm -f periwiki

@@ -4,7 +4,7 @@
 
 // importScripts can only be called during initial evaluation or install —
 // NOT in message/fetch handlers. Load wasm_exec.js up front.
-importScripts('/demo/wasm_exec.js');
+importScripts('wasm_exec.js');
 console.log('[sw] wasm_exec.js loaded');
 
 let wasmReady = false;
@@ -74,7 +74,7 @@ async function loadWasm() {
     });
 
     console.log('[sw] loadWasm: fetching periwiki.wasm');
-    const response = await fetch('/demo/periwiki.wasm');
+    const response = await fetch('periwiki.wasm');
     if (!response.ok) throw new Error('Failed to fetch WASM: ' + response.status);
 
     console.log('[sw] loadWasm: instantiating WASM (' + response.headers.get('content-length') + ' bytes)');
@@ -121,14 +121,14 @@ function getCookieHeader() {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Let /demo/* requests pass through to the real server
-    if (url.pathname.startsWith('/demo/')) {
+    // Let boot assets pass through to the real server
+    if (['/index.html', '/sw.js', '/wasm_exec.js', '/periwiki.wasm'].includes(url.pathname)) {
         return;
     }
 
     if (!wasmReady) {
         if (event.request.mode === 'navigate') {
-            event.respondWith(Response.redirect('/demo/', 302));
+            event.respondWith(Response.redirect('/', 302));
         } else {
             event.respondWith(new Response('', { status: 503 }));
         }
