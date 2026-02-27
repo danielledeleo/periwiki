@@ -117,7 +117,7 @@ func main() {
 	renderingService := service.NewRenderingService(renderer, bm)
 	sessionService := service.NewSessionService(database)
 	userService := service.NewUserService(database, runtimeConfig.MinimumPasswordLength)
-	articleService := service.NewArticleService(database, renderingService, nil) // nil queue = synchronous
+	articleService := service.NewArticleService(database, renderingService, nil, database, render.NewLinkExtractor()) // nil queue = synchronous
 
 	embeddedArticles, err = embedded.New(contentFS, renderingService.Render)
 	if err != nil {

@@ -184,6 +184,11 @@ ul#login-bar {
     display: block;
 }
 
+#article-area .pw-what-links-here {
+    font-size: 0.75rem;
+    color: var(--pw-grey);
+}
+
 /* Syntax help link on edit page */
 a.pw-syntax-help {
     margin-left: 1rem;
@@ -585,7 +590,8 @@ article.pw-preview {
     }
 
     /* Last edited timestamp: add padding on mobile */
-    #article-area .pw-last-edited {
+    #article-area .pw-last-edited,
+    #article-area .pw-what-links-here {
         padding: 0 1rem;
     }
 
@@ -663,7 +669,8 @@ article.pw-preview {
     }
 
     /* Match tighter padding for last-edited */
-    #article-area .pw-last-edited {
+    #article-area .pw-last-edited,
+    #article-area .pw-what-links-here {
         padding: 0 0.75rem;
     }
 

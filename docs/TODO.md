@@ -1,10 +1,11 @@
 
 Soon(ish)
-- [MED] Backlinks feature (will help trigger redlink re-renders)
-  - any dep that causes a rerender
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - [MED] User:pages
 - Page alias and redirect system (design TBD)
+- Page renaming tool e.g., move foo to Foobar_(Computing)
+  - this is separate from but related to from the alias/redirect system
+  - watch out for interactions with the backlink invalidation system
 - Article visibility settings
   - draft
   - private

@@ -221,8 +221,11 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 	// Create user service
 	userService := service.NewUserService(db, runtimeConfig.MinimumPasswordLength)
 
+	// Create link extractor for article link graph
+	linkExtractor := render.NewLinkExtractor()
+
 	// Create article service (nil queue for synchronous rendering in tests)
-	articleService := service.NewArticleService(db, renderingService, nil)
+	articleService := service.NewArticleService(db, renderingService, nil, db, linkExtractor)
 
 	// Wrap with embedded article service for Periwiki:* namespace support
 	embeddedArticles, err := embedded.New(contentFS, renderingService.Render)
@@ -698,6 +701,73 @@ func (tdb *TestDB) SelectPreference(key string) (*wiki.Preference, error) {
 		return nil, err
 	}
 	return pref, nil
+}
+
+// LinkRepository methods
+
+func (tdb *TestDB) ReplaceArticleLinks(sourceURL string, targetSlugs []string) error {
+	tx, err := tdb.conn.Beginx()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if _, err = tx.Exec(`DELETE FROM ArticleLink WHERE source_url = ?`, sourceURL); err != nil {
+		return err
+	}
+
+	for _, slug := range targetSlugs {
+		if _, err = tx.Exec(`INSERT INTO ArticleLink (source_url, target_slug) VALUES (?, ?)`, sourceURL, slug); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (tdb *TestDB) SelectBacklinks(targetSlug string) ([]*wiki.ArticleSummary, error) {
+	rows, err := tdb.conn.Queryx(`
+		SELECT a.url, MAX(r.created) AS last_modified,
+		       COALESCE(json_extract(a.frontmatter, '$.display_title'), '') AS title
+		FROM ArticleLink al
+		JOIN Article a ON al.source_url = a.url
+		JOIN Revision r ON a.id = r.article_id
+		WHERE al.target_slug = ?
+		GROUP BY a.url
+		ORDER BY a.url ASC
+	`, targetSlug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var articles []*wiki.ArticleSummary
+	for rows.Next() {
+		var url, lastModStr, title string
+		if err := rows.Scan(&url, &lastModStr, &title); err != nil {
+			return nil, err
+		}
+		lastMod, err := time.Parse("2006-01-02 15:04:05.000", lastModStr)
+		if err != nil {
+			return nil, err
+		}
+		articles = append(articles, &wiki.ArticleSummary{
+			URL:          url,
+			LastModified: lastMod,
+			Title:        title,
+		})
+	}
+	return articles, rows.Err()
+}
+
+func (tdb *TestDB) CountLinks() (int, error) {
+	var count int
+	err := tdb.conn.Get(&count, `SELECT COUNT(*) FROM ArticleLink`)
+	return count, err
 }
 
 // Get implements sessions.Store

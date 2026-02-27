@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	"github.com/danielledeleo/periwiki/internal/renderqueue"
+	"github.com/danielledeleo/periwiki/render"
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/danielledeleo/periwiki/wiki/repository"
 	"github.com/microcosm-cc/bluemonday"
@@ -51,22 +52,36 @@ type ArticleService interface {
 	// Returns a channel that receives the result when the render and DB update complete.
 	// If revisionID is 0, re-renders the current (latest) revision.
 	QueueRerenderRevision(ctx context.Context, url string, revisionID int) (<-chan RerenderResult, error)
+
+	// GetBacklinks returns articles that link to the given slug.
+	GetBacklinks(slug string) ([]*wiki.ArticleSummary, error)
 }
 
 // articleService is the default implementation of ArticleService.
 type articleService struct {
-	repo      repository.ArticleRepository
-	rendering RenderingService
-	queue     *renderqueue.Queue
+	repo          repository.ArticleRepository
+	rendering     RenderingService
+	queue         *renderqueue.Queue
+	linkRepo      repository.LinkRepository
+	linkExtractor *render.LinkExtractor
 }
 
 // NewArticleService creates a new ArticleService.
 // If queue is nil, rendering is done synchronously (useful for tests).
-func NewArticleService(repo repository.ArticleRepository, rendering RenderingService, queue *renderqueue.Queue) ArticleService {
+// linkRepo and linkExtractor are optional; if nil, link tracking is disabled.
+func NewArticleService(
+	repo repository.ArticleRepository,
+	rendering RenderingService,
+	queue *renderqueue.Queue,
+	linkRepo repository.LinkRepository,
+	linkExtractor *render.LinkExtractor,
+) ArticleService {
 	return &articleService{
-		repo:      repo,
-		rendering: rendering,
-		queue:     queue,
+		repo:          repo,
+		rendering:     rendering,
+		queue:         queue,
+		linkRepo:      linkRepo,
+		linkExtractor: linkExtractor,
 	}
 }
 
@@ -130,6 +145,7 @@ func (s *articleService) PostArticleWithContext(ctx context.Context, article *wi
 		}
 		// Update article.ID to match the queued path behavior
 		article.ID = article.PreviousID + 1
+		s.updateLinks(article)
 		return nil
 	}
 
@@ -168,6 +184,7 @@ func (s *articleService) PostArticleWithContext(ctx context.Context, article *wi
 		}
 		article.HTML = result.HTML
 		article.ID = int(revisionID)
+		s.updateLinks(article)
 		return nil
 
 	case <-ctx.Done():
@@ -389,4 +406,48 @@ func (s *articleService) QueueRerenderRevision(ctx context.Context, url string, 
 	}()
 
 	return resultCh, nil
+}
+
+// GetBacklinks returns articles that link to the given slug.
+func (s *articleService) GetBacklinks(slug string) ([]*wiki.ArticleSummary, error) {
+	if s.linkRepo == nil {
+		return nil, nil
+	}
+	return s.linkRepo.SelectBacklinks(slug)
+}
+
+// updateLinks persists the outgoing link graph for the saved article and,
+// if this is a newly created article, queues re-renders for articles that
+// previously had redlinks pointing here.
+func (s *articleService) updateLinks(article *wiki.Article) {
+	if s.linkRepo == nil || s.linkExtractor == nil {
+		return
+	}
+
+	links := s.linkExtractor.ExtractLinks(article.Markdown)
+	if err := s.linkRepo.ReplaceArticleLinks(article.URL, links); err != nil {
+		slog.Error("failed to persist article links", "url", article.URL, "error", err)
+		return
+	}
+
+	// First revision of a new article — re-render backlinkers so redlinks turn blue.
+	if article.PreviousID == 0 {
+		s.invalidateBacklinkers(article.URL)
+	}
+}
+
+// invalidateBacklinkers queues re-renders for all articles that link to the
+// given slug, so their wikilink styling is updated (e.g. redlinks turn blue).
+func (s *articleService) invalidateBacklinkers(slug string) {
+	backlinks, err := s.linkRepo.SelectBacklinks(slug)
+	if err != nil {
+		slog.Error("failed to query backlinks for invalidation", "slug", slug, "error", err)
+		return
+	}
+
+	for _, bl := range backlinks {
+		if _, err := s.QueueRerenderRevision(context.Background(), bl.URL, 0); err != nil {
+			slog.Error("failed to queue backlink rerender", "source", bl.URL, "target", slug, "error", err)
+		}
+	}
 }

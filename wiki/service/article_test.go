@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/danielledeleo/periwiki/testutil"
@@ -475,6 +476,166 @@ func TestLazyRerenderingMultipleArticles(t *testing.T) {
 		if v1.HTML == "" {
 			t.Errorf("%s: old revision should have been lazily re-rendered", url)
 		}
+	}
+}
+
+func TestPostArticle_PersistsLinks(t *testing.T) {
+	app, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
+
+	t.Run("extracts and persists wikilinks", func(t *testing.T) {
+		article := wiki.NewArticle("Source_Page", "Links to [[Target_A]] and [[Target B]].")
+		article.Creator = user
+		article.PreviousID = 0
+
+		if err := app.Articles.PostArticle(article); err != nil {
+			t.Fatalf("PostArticle failed: %v", err)
+		}
+
+		// Verify links were persisted in the database
+		count, err := app.DB.CountLinks()
+		if err != nil {
+			t.Fatalf("CountLinks failed: %v", err)
+		}
+		if count != 2 {
+			t.Errorf("expected 2 links, got %d", count)
+		}
+
+		// Verify backlinks from Target_A's perspective
+		backlinks, err := app.DB.SelectBacklinks("Target_A")
+		if err != nil {
+			t.Fatalf("SelectBacklinks failed: %v", err)
+		}
+		if len(backlinks) != 1 || backlinks[0].URL != "Source_Page" {
+			t.Errorf("expected backlink from Source_Page, got %v", backlinks)
+		}
+
+		// Verify Target_B (space -> underscore normalization)
+		backlinks, err = app.DB.SelectBacklinks("Target_B")
+		if err != nil {
+			t.Fatalf("SelectBacklinks failed: %v", err)
+		}
+		if len(backlinks) != 1 || backlinks[0].URL != "Source_Page" {
+			t.Errorf("expected backlink from Source_Page to Target_B, got %v", backlinks)
+		}
+	})
+
+	t.Run("updates links on article edit", func(t *testing.T) {
+		// Edit Source_Page to change links
+		edited := wiki.NewArticle("Source_Page", "Now links to [[New_Target]] only.")
+		edited.Creator = user
+		edited.PreviousID = 1
+
+		if err := app.Articles.PostArticle(edited); err != nil {
+			t.Fatalf("PostArticle (edit) failed: %v", err)
+		}
+
+		// Old targets should no longer have backlinks from Source_Page
+		backlinks, err := app.DB.SelectBacklinks("Target_A")
+		if err != nil {
+			t.Fatalf("SelectBacklinks failed: %v", err)
+		}
+		if len(backlinks) != 0 {
+			t.Errorf("expected no backlinks to Target_A after edit, got %v", backlinks)
+		}
+
+		// New target should have the backlink
+		backlinks, err = app.DB.SelectBacklinks("New_Target")
+		if err != nil {
+			t.Fatalf("SelectBacklinks failed: %v", err)
+		}
+		if len(backlinks) != 1 || backlinks[0].URL != "Source_Page" {
+			t.Errorf("expected backlink from Source_Page to New_Target, got %v", backlinks)
+		}
+	})
+}
+
+func TestGetBacklinks(t *testing.T) {
+	app, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
+
+	// Create several articles linking to the same target
+	testutil.CreateTestArticle(t, app, "Linker_A", "See [[Common_Target]].", user)
+	testutil.CreateTestArticle(t, app, "Linker_B", "Also links to [[Common_Target]].", user)
+	testutil.CreateTestArticle(t, app, "Unrelated", "No links here.", user)
+
+	t.Run("returns all backlinks", func(t *testing.T) {
+		backlinks, err := app.Articles.GetBacklinks("Common_Target")
+		if err != nil {
+			t.Fatalf("GetBacklinks failed: %v", err)
+		}
+		if len(backlinks) != 2 {
+			t.Fatalf("expected 2 backlinks, got %d", len(backlinks))
+		}
+
+		// Should be ordered by URL
+		if backlinks[0].URL != "Linker_A" || backlinks[1].URL != "Linker_B" {
+			t.Errorf("expected [Linker_A, Linker_B], got [%s, %s]", backlinks[0].URL, backlinks[1].URL)
+		}
+	})
+
+	t.Run("returns empty for page with no backlinks", func(t *testing.T) {
+		backlinks, err := app.Articles.GetBacklinks("Nonexistent_Target")
+		if err != nil {
+			t.Fatalf("GetBacklinks failed: %v", err)
+		}
+		if len(backlinks) != 0 {
+			t.Errorf("expected no backlinks, got %d", len(backlinks))
+		}
+	})
+}
+
+func TestPostArticle_InvalidatesBacklinkers(t *testing.T) {
+	app, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
+
+	// Create article A linking to nonexistent B — should produce a deadlink.
+	testutil.CreateTestArticle(t, app, "Article_A", "Links to [[Article_B]].", user)
+
+	a, err := app.Articles.GetArticle("Article_A")
+	if err != nil {
+		t.Fatalf("GetArticle(A) failed: %v", err)
+	}
+	if !strings.Contains(a.HTML, "pw-deadlink") {
+		t.Fatalf("expected pw-deadlink in HTML before target exists, got: %s", a.HTML)
+	}
+
+	// Create article B — this should trigger invalidateBacklinkers, re-rendering A.
+	testutil.CreateTestArticle(t, app, "Article_B", "I exist now.", user)
+
+	// Re-fetch A — its HTML should no longer have the deadlink class.
+	a, err = app.Articles.GetArticle("Article_A")
+	if err != nil {
+		t.Fatalf("GetArticle(A) after B created failed: %v", err)
+	}
+	if strings.Contains(a.HTML, "pw-deadlink") {
+		t.Errorf("expected pw-deadlink to be gone after target was created, got: %s", a.HTML)
+	}
+}
+
+func TestPostArticle_SelfLink(t *testing.T) {
+	app, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
+
+	// Create article that links to itself. On creation (PreviousID=0),
+	// invalidateBacklinkers will find this article in its own backlinks
+	// and re-render it. This should not error or loop.
+	testutil.CreateTestArticle(t, app, "Self_Link", "See [[Self Link]] for more.", user)
+
+	backlinks, err := app.Articles.GetBacklinks("Self_Link")
+	if err != nil {
+		t.Fatalf("GetBacklinks failed: %v", err)
+	}
+	if len(backlinks) != 1 || backlinks[0].URL != "Self_Link" {
+		t.Errorf("expected self-backlink, got %v", backlinks)
 	}
 }
 

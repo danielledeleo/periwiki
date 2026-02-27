@@ -1,0 +1,27 @@
+{{define "content"}}
+<div id="article-area">
+    <article>
+        <h1>What links here?</h1>
+        <div class="pw-article-content">
+            {{if .TargetTitle}}
+            <p>The following pages link to <a href="{{articleURL .TargetSlug}}"{{if not .TargetExists}} class="pw-deadlink"{{end}}>{{.TargetTitle}}</a>:</p>
+            {{if .Backlinks}}
+            <ul>
+                {{range .Backlinks}}
+                <li><a href="{{articleURL .URL}}">{{.DisplayTitle}}</a></li>
+                {{end}}
+            </ul>
+            {{else}}
+            <p>No pages link to this article.</p>
+            {{end}}
+            {{else}}
+            <form method="get" action="">
+                <label for="page">Article name:</label>
+                <input type="text" id="page" name="page" required>
+                <button type="submit">Search</button>
+            </form>
+            {{end}}
+        </div>
+    </article>
+</div>
+{{end}}

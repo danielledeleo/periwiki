@@ -169,8 +169,11 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 	// Create user service
 	userService := service.NewUserService(database, runtimeConfig.MinimumPasswordLength)
 
+	// Create link extractor for article link graph
+	linkExtractor := render.NewLinkExtractor()
+
 	// Create article service
-	articleService := service.NewArticleService(database, renderingService, renderQueue)
+	articleService := service.NewArticleService(database, renderingService, renderQueue, database, linkExtractor)
 
 	// Create embedded articles and wrap the article service.
 	// contentFS has help/ at the root, which is what embedded.New expects.
@@ -183,6 +186,10 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 
 	// Run first-time setup tasks (e.g. seed Main_Page)
 	runFirstTimeSetup(db.DB, articleService)
+
+	// Backfill article link graph before template staleness check, which queues
+	// concurrent render workers that would cause SQLITE_BUSY contention.
+	backfillArticleLinks(db.DB, database, database, linkExtractor)
 
 	// Check for stale render templates and invalidate cached HTML if needed
 	checkRenderTemplateStaleness(contentFS, db.DB, database, articleService)
@@ -197,6 +204,7 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 	specialPages.Register("Sitemap", sitemapHandler)
 	specialPages.Register("Sitemap.xml", sitemapHandler)
 	specialPages.Register("RerenderAll", special.NewRerenderAllPage(articleService, t))
+	specialPages.Register("WhatLinksHere", special.NewWhatLinksHerePage(articleService, t))
 
 	// Re-render embedded articles now that the existence checker can see
 	// embeddedArticles and specialPages (they were nil during initial render).
@@ -302,6 +310,54 @@ func checkRenderTemplateStaleness(contentFS fs.FS, db *sql.DB, repo repository.A
 	// Update the stored hash
 	if err := wiki.UpdateSetting(db, wiki.SettingRenderTemplateHash, currentHash); err != nil {
 		slog.Error("failed to update render template hash setting", "error", err)
+	}
+}
+
+// backfillArticleLinks populates the ArticleLink table on first startup after
+// the migration. Uses a Setting key to track completion, so partial backfills
+// are retried on the next startup.
+func backfillArticleLinks(db *sql.DB, linkRepo repository.LinkRepository, articleRepo repository.ArticleRepository, extractor *render.LinkExtractor) {
+	done, _ := wiki.GetOrCreateSetting(db, wiki.SettingLinkBackfillDone, func() string { return "" })
+	if done == "1" {
+		return
+	}
+
+	articles, err := articleRepo.SelectAllArticles()
+	if err != nil {
+		slog.Error("failed to list articles for link backfill", "error", err)
+		return
+	}
+	if len(articles) == 0 {
+		// No articles yet — mark as done so we don't re-check every startup.
+		_ = wiki.UpdateSetting(db, wiki.SettingLinkBackfillDone, "1")
+		return
+	}
+
+	slog.Info("backfilling article link graph", "articles", len(articles))
+
+	var filled int
+	for _, summary := range articles {
+		article, err := articleRepo.SelectArticle(summary.URL)
+		if err != nil {
+			slog.Error("failed to fetch article for link backfill", "url", summary.URL, "error", err)
+			continue
+		}
+
+		links := extractor.ExtractLinks(article.Markdown)
+		if len(links) == 0 {
+			continue
+		}
+
+		if err := linkRepo.ReplaceArticleLinks(article.URL, links); err != nil {
+			slog.Error("failed to persist links during backfill", "url", article.URL, "error", err)
+			continue
+		}
+		filled++
+	}
+
+	slog.Info("article link graph backfill complete", "articlesWithLinks", filled)
+	if err := wiki.UpdateSetting(db, wiki.SettingLinkBackfillDone, "1"); err != nil {
+		slog.Error("failed to mark link backfill as done", "error", err)
 	}
 }
 

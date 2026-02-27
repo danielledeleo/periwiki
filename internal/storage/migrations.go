@@ -41,6 +41,7 @@ var migrations = []migration{
 	{6, "add role to User", migrateAddRole},
 	{7, "add created_at to User", migrateAddCreatedAt},
 	{8, "add sessions table", migrateAddSessions},
+	{9, "add article link table", migrateAddArticleLink},
 }
 
 // latestVersion is the highest migration version in the registry.
@@ -381,6 +382,35 @@ func migrateAddSessions(db *sqlx.DB, _ Dialect) error {
 		created_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		expires_on TIMESTAMP NOT NULL DEFAULT 0
 	)`)
+	return err
+}
+
+func migrateAddArticleLink(db *sqlx.DB, _ Dialect) error {
+	// Drop any pre-existing table from earlier iterations of this feature
+	// (different column layout). The backfill will repopulate on next startup.
+	if _, err := db.Exec(`DROP INDEX IF EXISTS idx_articlelink_target`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`DROP TABLE IF EXISTS ArticleLink`); err != nil {
+		return err
+	}
+
+	_, err := db.Exec(`
+		CREATE TABLE ArticleLink (
+			source_url TEXT NOT NULL,
+			target_slug TEXT NOT NULL,
+			PRIMARY KEY (source_url, target_slug),
+			FOREIGN KEY (source_url) REFERENCES Article(url) ON DELETE CASCADE
+		)`)
+	if err != nil {
+		return err
+	}
+	if _, err = db.Exec(`CREATE INDEX idx_articlelink_target ON ArticleLink(target_slug)`); err != nil {
+		return err
+	}
+
+	// Clean up stale settings from prior iterations of this feature.
+	_, err = db.Exec(`DELETE FROM Setting WHERE key IN ('links_migration_v1', 'link_backfill_done')`)
 	return err
 }
 

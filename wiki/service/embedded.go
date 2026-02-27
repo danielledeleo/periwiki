@@ -92,3 +92,7 @@ func (s *embeddedArticleService) QueueRerenderRevision(ctx context.Context, url 
 	}
 	return s.base.QueueRerenderRevision(ctx, url, revisionID)
 }
+
+func (s *embeddedArticleService) GetBacklinks(slug string) ([]*wiki.ArticleSummary, error) {
+	return s.base.GetBacklinks(slug)
+}

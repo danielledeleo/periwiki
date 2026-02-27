@@ -92,7 +92,15 @@ CREATE TABLE IF NOT EXISTS sessions (
     expires_on TIMESTAMP NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS ArticleLink (
+    source_url TEXT NOT NULL,
+    target_slug TEXT NOT NULL,
+    PRIMARY KEY (source_url, target_slug),
+    FOREIGN KEY (source_url) REFERENCES Article(url) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_articlelink_target ON ArticleLink(target_slug);
+
 INSERT OR IGNORE INTO User(id, email, screenname) VALUES (0, '', 'Anonymous');
 
 -- schema_version must match latestVersion in migrations.go
-INSERT OR IGNORE INTO Setting(key, value) VALUES ('schema_version', '8');
+INSERT OR IGNORE INTO Setting(key, value) VALUES ('schema_version', '9');

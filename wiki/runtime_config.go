@@ -31,6 +31,7 @@ const (
 	SettingRenderTemplateHash        = "render_template_hash"
 	SettingSetupVersion              = "setup_version"
 	SettingSchemaVersion             = "schema_version"
+	SettingLinkBackfillDone          = "link_backfill_done"
 )
 
 // Default values for runtime settings
