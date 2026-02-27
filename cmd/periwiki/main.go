@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -37,37 +36,9 @@ func main() {
 
 	app, renderQueue := server.Setup(periwiki.ContentFS, contentInfo)
 
-	router := mux.NewRouter().StrictSlash(true)
-
-	router.Use(app.SessionMiddleware)
-
 	// Routes are documented in docs/urls.md — update it when adding or changing routes.
-	staticSub, _ := fs.Sub(periwiki.ContentFS, "static")
-	staticFS := http.FileServer(http.FS(staticSub))
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", staticFS))
-	router.HandleFunc("/source.tar.gz", func(rw http.ResponseWriter, req *http.Request) {
-		rw.Header().Set("Content-Type", "application/gzip")
-		rw.Header().Set("Content-Disposition", "attachment; filename=periwiki-source.tar.gz")
-		rw.Write(embedded.SourceTarball)
-	}).Methods("GET")
-	router.HandleFunc("/", app.HomeHandler).Methods("GET")
-
-	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", app.NamespaceHandler).Methods("GET", "POST")
-
-	router.HandleFunc("/wiki/{article}", app.ArticleDispatcher).Methods("GET", "POST")
-
-	router.HandleFunc("/user/register", app.RegisterHandler).Methods("GET")
-	router.HandleFunc("/user/register", app.RegisterPostHandler).Methods("POST")
-	router.HandleFunc("/user/login", app.LoginHandler).Methods("GET")
-	router.HandleFunc("/user/login", app.LoginPostHandler).Methods("POST")
-	router.HandleFunc("/user/logout", app.LogoutPostHandler).Methods("POST")
-
-	router.HandleFunc("/manage/users", app.ManageUsersHandler).Methods("GET")
-	router.HandleFunc("/manage/users/{id:[0-9]+}", app.ManageUserRoleHandler).Methods("POST")
-	router.HandleFunc("/manage/settings", app.ManageSettingsHandler).Methods("GET")
-	router.HandleFunc("/manage/settings", app.ManageSettingsPostHandler).Methods("POST")
-	router.HandleFunc("/manage/settings/reset-main-page", app.ResetMainPageHandler).Methods("POST")
-	router.HandleFunc("/manage/content", app.ManageContentHandler).Methods("GET")
+	router := mux.NewRouter().StrictSlash(true)
+	app.RegisterRoutes(router, periwiki.ContentFS)
 
 	handler := server.SlogLoggingMiddleware(router)
 

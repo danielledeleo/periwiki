@@ -74,7 +74,6 @@ func handleRequest(router http.Handler, reqObj js.Value) any {
 
 	result := rec.Result()
 	respBody, _ := io.ReadAll(result.Body)
-	bodyStr := string(respBody)
 
 	// httptest.ResponseRecorder doesn't auto-detect Content-Type like
 	// the real http.ResponseWriter does. Replicate that behavior.
@@ -85,7 +84,8 @@ func handleRequest(router http.Handler, reqObj js.Value) any {
 	// Inject demo banner into HTML responses
 	ct := result.Header.Get("Content-Type")
 	if strings.Contains(ct, "text/html") {
-		bodyStr = strings.Replace(bodyStr, `<nav id="navbar">`, demoBanner+`<nav id="navbar">`, 1)
+		bodyStr := strings.Replace(string(respBody), `<nav id="navbar">`, demoBanner+`<nav id="navbar">`, 1)
+		respBody = []byte(bodyStr)
 	}
 
 	// Build response headers
@@ -100,10 +100,14 @@ func handleRequest(router http.Handler, reqObj js.Value) any {
 		setCookies.SetIndex(i, c)
 	}
 
+	// Pass body as Uint8Array to avoid UTF-8 → UTF-16 corruption of binary data.
+	jsBody := js.Global().Get("Uint8Array").New(len(respBody))
+	js.CopyBytesToJS(jsBody, respBody)
+
 	resp := js.Global().Get("Object").New()
 	resp.Set("status", result.StatusCode)
 	resp.Set("headers", respHeaders)
-	resp.Set("body", bodyStr)
+	resp.Set("body", jsBody)
 	resp.Set("setCookies", setCookies)
 	return resp
 }

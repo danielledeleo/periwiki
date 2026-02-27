@@ -3,9 +3,7 @@
 package main
 
 import (
-	"io/fs"
 	"log/slog"
-	"net/http"
 	"regexp"
 	"strings"
 	"syscall/js"
@@ -153,27 +151,8 @@ func main() {
 		DB:            db.DB,
 	}
 
-	// Build router (mirrors cmd/periwiki/main.go)
 	router := mux.NewRouter().StrictSlash(true)
-	router.Use(app.SessionMiddleware)
-
-	staticSub, _ := fs.Sub(contentFS, "static")
-	staticFS := http.FileServer(http.FS(staticSub))
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", staticFS))
-	router.HandleFunc("/", app.HomeHandler).Methods("GET")
-	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", app.NamespaceHandler).Methods("GET", "POST")
-	router.HandleFunc("/wiki/{article}", app.ArticleDispatcher).Methods("GET", "POST")
-	router.HandleFunc("/user/register", app.RegisterHandler).Methods("GET")
-	router.HandleFunc("/user/register", app.RegisterPostHandler).Methods("POST")
-	router.HandleFunc("/user/login", app.LoginHandler).Methods("GET")
-	router.HandleFunc("/user/login", app.LoginPostHandler).Methods("POST")
-	router.HandleFunc("/user/logout", app.LogoutPostHandler).Methods("POST")
-	router.HandleFunc("/manage/users", app.ManageUsersHandler).Methods("GET")
-	router.HandleFunc("/manage/users/{id:[0-9]+}", app.ManageUserRoleHandler).Methods("POST")
-	router.HandleFunc("/manage/settings", app.ManageSettingsHandler).Methods("GET")
-	router.HandleFunc("/manage/settings", app.ManageSettingsPostHandler).Methods("POST")
-	router.HandleFunc("/manage/settings/reset-main-page", app.ResetMainPageHandler).Methods("POST")
-	router.HandleFunc("/manage/content", app.ManageContentHandler).Methods("GET")
+	app.RegisterRoutes(router, contentFS)
 
 	// Expose request handler to JS
 	js.Global().Set("__periwikiHandleRequest", js.FuncOf(func(this js.Value, args []js.Value) any {
