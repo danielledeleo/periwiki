@@ -33,6 +33,14 @@ Edit forms POST to `/wiki/{article}` with form data including:
 
 All URLs containing a colon (`Foo:Bar`) are routed to `NamespaceHandler`. Only recognized namespaces are served; unrecognized namespaces return 404. This reserves the colon as a system-controlled namespace delimiter.
 
+### Talk pages (Talk: namespace)
+
+| URL | Description |
+|-----|-------------|
+| `/wiki/Talk:{article}` | Discussion page for an article |
+
+Talk pages use the same query parameters as articles (`?edit`, `?history`, `?diff`, etc.). A talk page can only be created if its subject article exists.
+
 ### Help pages (Periwiki: namespace)
 
 | URL | Description |
@@ -54,6 +62,7 @@ Help articles are read-only and compiled into the binary from `help/`. They can 
 | `/wiki/Special:RerenderAll` | Rerender all articles (admin only) |
 | `/wiki/Special:Sitemap` | HTML sitemap |
 | `/wiki/Special:Sitemap.xml` | XML sitemap |
+| `/wiki/Special:WhatLinksHere?page={slug}` | Articles that link to the given page |
 
 The `Special` namespace is case-insensitive (`special:Random` also works).
 
@@ -76,6 +85,7 @@ The `Special` namespace is case-insensitive (`special:Random` also works).
 | `/manage/settings` | GET | Runtime settings (admin only) |
 | `/manage/settings` | POST | Update runtime settings (admin only) |
 | `/manage/content` | GET | Content files tree (admin only) |
+| `/manage/settings/reset-main-page` | POST | Reset Main_Page to default (admin only) |
 
 ## Other
 
@@ -83,6 +93,7 @@ The `Special` namespace is case-insensitive (`special:Random` also works).
 |-----|-------------|
 | `/` | Redirects to `/wiki/Main_Page` (302) |
 | `/static/*` | Static assets |
+| `/source.tar.gz` | Download source tarball (AGPL compliance) |
 
 ## WikiLinks
 
@@ -96,7 +107,7 @@ WikiLinks resolve to `/wiki/` URLs:
 Spaces become underscores. Leading/trailing whitespace is trimmed.
 
 **Key files:**
-- `cmd/periwiki/main.go` — route definitions
+- `internal/server/app.go` — route definitions (`RegisterRoutes`)
 - `internal/server/handlers.go` — `ArticleDispatcher`, `NamespaceHandler`, and all article handlers
 - `templater/urlhelper.go` — URL generation helpers for templates
 - `extensions/wikilink_underscore.go` — WikiLink URL resolution
