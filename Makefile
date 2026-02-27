@@ -55,6 +55,8 @@ demo-serve: demo
 clean:
 	rm -f periwiki
 	rm -f internal/embedded/metadata_gen.go
+	rm -f internal/embedded/source_gen.go
+	rm -f internal/embedded/source-*.tar.gz
 	rm -f coverage.out coverage.html
 
 demo-clean:

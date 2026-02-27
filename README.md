@@ -33,7 +33,7 @@ make && ./periwiki
 
 That is not an accident. It is what a wiki should look like. 
 
-[<img src="docs/screenshot_thumbnail.png" width=200>](https://raw.githubusercontent.com/danielledeleo/periwiki/refs/heads/main/docs/screenshot.png)
+[<img src="docs/screenshot_thumbnail.webp" width=200>](https://raw.githubusercontent.com/danielledeleo/periwiki/refs/heads/main/docs/screenshot.webp)
 
 _Click to enlarge_
 

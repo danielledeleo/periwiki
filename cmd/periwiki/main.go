@@ -45,6 +45,11 @@ func main() {
 	staticSub, _ := fs.Sub(periwiki.ContentFS, "static")
 	staticFS := http.FileServer(http.FS(staticSub))
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", staticFS))
+	router.HandleFunc("/source.tar.gz", func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "application/gzip")
+		rw.Header().Set("Content-Disposition", "attachment; filename=periwiki-source.tar.gz")
+		rw.Write(embedded.SourceTarball)
+	}).Methods("GET")
 	router.HandleFunc("/", app.HomeHandler).Methods("GET")
 
 	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", app.NamespaceHandler).Methods("GET", "POST")

@@ -2,6 +2,8 @@ vendor/
 tmp/
 static/images
 internal/embedded/metadata_gen.go
+internal/embedded/source_gen.go
+internal/embedded/source-*.tar.gz
 .serena/
 
 /periwiki

@@ -1,0 +1,2 @@
+# Exclude non-essential files from git archive (source tarball).
+assets/*.ai export-ignore
