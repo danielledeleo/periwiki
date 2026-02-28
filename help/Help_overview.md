@@ -15,3 +15,7 @@ Welcome to Periwiki's built-in help. These articles cover everything from writin
 - **[[Periwiki:Installation|Installation and configuration]]** — Building from source, configuration, and first run
 - **[[Periwiki:Security|Security]]** — Passwords, sessions, and HTML sanitization
 - **[[Periwiki:Troubleshooting|Troubleshooting]]** — Common issues and how to fix them
+
+## Legal
+
+- **[[Periwiki:License|License]]** — GNU Affero General Public License v3.0

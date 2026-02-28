@@ -93,12 +93,6 @@ func (a *App) RegisterRoutes(router *mux.Router, contentFS fs.FS) {
 	staticFS := http.FileServer(http.FS(staticSub))
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", staticFS))
 
-	router.HandleFunc("/source.tar.gz", func(rw http.ResponseWriter, req *http.Request) {
-		rw.Header().Set("Content-Type", "application/gzip")
-		rw.Header().Set("Content-Disposition", "attachment; filename=periwiki-source.tar.gz")
-		rw.Write(embedded.SourceTarball)
-	}).Methods("GET")
-
 	router.HandleFunc("/", a.HomeHandler).Methods("GET")
 	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", a.NamespaceHandler).Methods("GET", "POST")
 	router.HandleFunc("/wiki/{article}", a.ArticleDispatcher).Methods("GET", "POST")
@@ -143,6 +137,7 @@ func RegisterSpecialPages(articles service.ArticleService, t *templater.Template
 
 	registry.Register("RerenderAll", special.NewRerenderAllPage(articles, t))
 	registry.Register("WhatLinksHere", special.NewWhatLinksHerePage(articles, t))
+	registry.Register("SourceCode", special.NewSourceCodePage())
 	return registry
 }
 

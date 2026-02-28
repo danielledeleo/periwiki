@@ -63,6 +63,7 @@ Help articles are read-only and compiled into the binary from `help/`. They can 
 | `/wiki/Special:Sitemap` | HTML sitemap |
 | `/wiki/Special:Sitemap.xml` | XML sitemap |
 | `/wiki/Special:WhatLinksHere?page={slug}` | Articles that link to the given page |
+| `/wiki/Special:SourceCode` | Download source tarball (AGPL compliance) |
 
 The `Special` namespace is case-insensitive (`special:Random` also works).
 
@@ -93,7 +94,6 @@ The `Special` namespace is case-insensitive (`special:Random` also works).
 |-----|-------------|
 | `/` | Redirects to `/wiki/Main_Page` (302) |
 | `/static/*` | Static assets |
-| `/source.tar.gz` | Download source tarball (AGPL compliance) |
 
 ## WikiLinks
 
