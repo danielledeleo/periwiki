@@ -2,6 +2,7 @@ package special
 
 import (
 	"encoding/xml"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -48,6 +49,8 @@ func (p *SitemapPage) Handle(rw http.ResponseWriter, req *http.Request) {
 	// Detect format from URL path
 	if strings.HasSuffix(req.URL.Path, ".xml") {
 		p.handleXML(rw, articles)
+	} else if strings.HasSuffix(req.URL.Path, ".md") {
+		p.handleMarkdown(rw, articles)
 	} else {
 		p.handleHTML(rw, req, articles)
 	}
@@ -125,5 +128,18 @@ func (p *SitemapPage) handleHTML(rw http.ResponseWriter, req *http.Request, arti
 	if err := p.templater.RenderTemplate(rw, "sitemap.html", "index.html", data); err != nil {
 		slog.Error("failed to render sitemap template", "category", "special", "error", err)
 		http.Error(rw, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+func (p *SitemapPage) handleMarkdown(rw http.ResponseWriter, articles []*wiki.ArticleSummary) {
+	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+	fmt.Fprintln(rw, "# Sitemap")
+	fmt.Fprintln(rw)
+	for _, a := range articles {
+		if strings.HasPrefix(a.URL, "Talk:") {
+			continue
+		}
+		fmt.Fprintf(rw, "- [%s](%s/wiki/%s)\n", a.DisplayTitle(), p.baseURL, a.URL)
 	}
 }

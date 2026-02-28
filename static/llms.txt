@@ -1,0 +1,25 @@
+# Periwiki
+
+> This is a wiki powered by Periwiki. Content is user-generated.
+
+## Accessing content
+
+- Articles: /wiki/{article_name}
+- Raw Markdown: /wiki/{article_name}.md (plain text, no HTML wrapping)
+- Sitemap (Markdown): /sitemap.md
+- Sitemap (HTML): /wiki/Special:Sitemap
+- Sitemap (XML): /sitemap.xml
+
+Article names use underscores for spaces (e.g. Main_Page).
+
+## Namespaces
+
+- Talk:  — discussion pages (e.g. /wiki/Talk:Main_Page)
+- Periwiki:  — built-in help articles (e.g. /wiki/Periwiki:Syntax)
+- Special:  — dynamic pages (Random, Sitemap, WhatLinksHere)
+
+## Recommended approach
+
+1. Start with /sitemap.md to discover all articles.
+2. Fetch raw Markdown via /wiki/{article}.md for clean, parseable content.
+3. Use /wiki/Special:WhatLinksHere?page={article} to explore link relationships.

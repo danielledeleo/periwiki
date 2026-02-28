@@ -98,7 +98,9 @@ The `Special` namespace is case-insensitive (`special:Random` also works).
 | `/` | Redirects to `/wiki/Main_Page` (302) |
 | `/favicon.ico` | Favicon (served from static/) |
 | `/robots.txt` | Crawler rules (served from static/) |
+| `/llms.txt` | LLM navigation guide (served from static/) |
 | `/sitemap.xml` | XML sitemap (rewrite to Special:Sitemap.xml) |
+| `/sitemap.md` | Markdown sitemap (rewrite to Special:Sitemap.md) |
 | `/static/*` | Static assets |
 
 ## WikiLinks

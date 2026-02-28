@@ -202,6 +202,81 @@ func TestSitemapHTML(t *testing.T) {
 	})
 }
 
+func TestSitemapMarkdown(t *testing.T) {
+	t.Run("returns markdown list of articles", func(t *testing.T) {
+		articles := []*wiki.ArticleSummary{
+			{URL: "Main_Page", LastModified: time.Now()},
+			{URL: "Test_Article", Title: "Custom Title", LastModified: time.Now()},
+		}
+		mock := &mockArticleLister{articles: articles}
+		handler := NewSitemapPage(mock, nil, "https://example.com")
+
+		req := httptest.NewRequest("GET", "/wiki/Special:Sitemap.md", nil)
+		rr := httptest.NewRecorder()
+
+		handler.Handle(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %d, got %d", http.StatusOK, rr.Code)
+		}
+
+		contentType := rr.Header().Get("Content-Type")
+		if contentType != "text/plain; charset=utf-8" {
+			t.Errorf("expected Content-Type text/plain; charset=utf-8, got %q", contentType)
+		}
+
+		body := rr.Body.String()
+
+		if !strings.Contains(body, "# Sitemap") {
+			t.Error("expected markdown heading")
+		}
+		if !strings.Contains(body, "[Main Page](https://example.com/wiki/Main_Page)") {
+			t.Errorf("expected Main_Page link with inferred title, got %q", body)
+		}
+		if !strings.Contains(body, "[Custom Title](https://example.com/wiki/Test_Article)") {
+			t.Errorf("expected Test_Article link with custom title, got %q", body)
+		}
+	})
+
+	t.Run("excludes talk pages", func(t *testing.T) {
+		articles := []*wiki.ArticleSummary{
+			{URL: "Main_Page", LastModified: time.Now()},
+			{URL: "Talk:Main_Page", LastModified: time.Now()},
+		}
+		mock := &mockArticleLister{articles: articles}
+		handler := NewSitemapPage(mock, nil, "https://example.com")
+
+		req := httptest.NewRequest("GET", "/wiki/Special:Sitemap.md", nil)
+		rr := httptest.NewRecorder()
+
+		handler.Handle(rr, req)
+
+		body := rr.Body.String()
+		if strings.Contains(body, "Talk:") {
+			t.Errorf("expected talk pages to be excluded, got %q", body)
+		}
+	})
+
+	t.Run("handles empty article list", func(t *testing.T) {
+		mock := &mockArticleLister{articles: []*wiki.ArticleSummary{}}
+		handler := NewSitemapPage(mock, nil, "https://example.com")
+
+		req := httptest.NewRequest("GET", "/wiki/Special:Sitemap.md", nil)
+		rr := httptest.NewRecorder()
+
+		handler.Handle(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %d, got %d", http.StatusOK, rr.Code)
+		}
+
+		body := rr.Body.String()
+		if !strings.Contains(body, "# Sitemap") {
+			t.Error("expected markdown heading even with no articles")
+		}
+	})
+}
+
 func TestSitemapErrors(t *testing.T) {
 	t.Run("returns 500 on database error", func(t *testing.T) {
 		mock := &mockArticleLister{err: errors.New("database error")}

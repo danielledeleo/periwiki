@@ -95,6 +95,7 @@ func (a *App) RegisterRoutes(router *mux.Router, contentFS fs.FS) {
 
 	router.HandleFunc("/favicon.ico", serveFile(contentFS, "static/favicon.ico", "image/x-icon"))
 	router.HandleFunc("/robots.txt", serveFile(contentFS, "static/robots.txt", "text/plain; charset=utf-8"))
+	router.HandleFunc("/llms.txt", serveFile(contentFS, "static/llms.txt", "text/plain; charset=utf-8"))
 	router.HandleFunc("/sitemap.xml", func(w http.ResponseWriter, r *http.Request) {
 		handler, ok := a.SpecialPages.Get("Sitemap.xml")
 		if !ok {
@@ -103,10 +104,18 @@ func (a *App) RegisterRoutes(router *mux.Router, contentFS fs.FS) {
 		}
 		handler.Handle(w, r)
 	})
+	router.HandleFunc("/sitemap.md", func(w http.ResponseWriter, r *http.Request) {
+		handler, ok := a.SpecialPages.Get("Sitemap.md")
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		handler.Handle(w, r)
+	})
 
 	router.HandleFunc("/", a.HomeHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}.md", a.ArticleMarkdownHandler).Methods("GET")
 	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", a.NamespaceHandler).Methods("GET", "POST")
+	router.HandleFunc("/wiki/{article}.md", a.ArticleMarkdownHandler).Methods("GET")
 	router.HandleFunc("/wiki/{article}", a.ArticleDispatcher).Methods("GET", "POST")
 
 	router.HandleFunc("/user/register", a.RegisterHandler).Methods("GET")
@@ -148,6 +157,7 @@ func RegisterSpecialPages(articles service.ArticleService, t *templater.Template
 	sitemapHandler := special.NewSitemapPage(articles, t, baseURL)
 	registry.Register("Sitemap", sitemapHandler)
 	registry.Register("Sitemap.xml", sitemapHandler)
+	registry.Register("Sitemap.md", sitemapHandler)
 
 	registry.Register("RerenderAll", special.NewRerenderAllPage(articles, t))
 	registry.Register("WhatLinksHere", special.NewWhatLinksHerePage(articles, t))
