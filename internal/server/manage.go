@@ -184,12 +184,55 @@ func (a *App) ResetMainPageHandler(rw http.ResponseWriter, req *http.Request) {
 
 	if err := a.Articles.PostArticle(article); err != nil {
 		slog.Error("failed to reset Main_Page", "error", err)
-		http.Redirect(rw, req, "/manage/settings?err=Failed+to+reset+main+page:+"+err.Error(), http.StatusSeeOther)
+		http.Redirect(rw, req, "/manage/tools?err=Failed+to+reset+main+page:+"+err.Error(), http.StatusSeeOther)
 		return
 	}
 
 	slog.Info("Main_Page reset to default", "acting_user", user.ScreenName)
-	http.Redirect(rw, req, "/manage/settings?msg=Main+page+reset+to+default", http.StatusSeeOther)
+	http.Redirect(rw, req, "/manage/tools?msg=Main+page+reset+to+default", http.StatusSeeOther)
+}
+
+// ManageToolsHandler displays the admin tools page.
+func (a *App) ManageToolsHandler(rw http.ResponseWriter, req *http.Request) {
+	user := a.RequireAdmin(rw, req)
+	if user == nil {
+		return
+	}
+
+	data := map[string]any{
+		"Page":    wiki.NewStaticPage("Tools"),
+		"Context": req.Context(),
+	}
+
+	if msg := req.URL.Query().Get("msg"); msg != "" {
+		data["calloutMessage"] = msg
+		data["calloutClasses"] = "pw-success"
+	}
+	if errMsg := req.URL.Query().Get("err"); errMsg != "" {
+		data["calloutMessage"] = errMsg
+		data["calloutClasses"] = "pw-error"
+	}
+
+	err := a.RenderTemplate(rw, "tools.html", "index.html", data)
+	check(err)
+}
+
+// BackfillLinksHandler triggers a full link graph rebuild.
+func (a *App) BackfillLinksHandler(rw http.ResponseWriter, req *http.Request) {
+	user := a.RequireAdmin(rw, req)
+	if user == nil {
+		return
+	}
+
+	count, err := a.Articles.BackfillLinks()
+	if err != nil {
+		slog.Error("link graph backfill failed", "error", err)
+		http.Redirect(rw, req, "/manage/tools?err=Backfill+failed:+"+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	slog.Info("link graph backfilled", "acting_user", user.ScreenName, "articles_with_links", count)
+	http.Redirect(rw, req, fmt.Sprintf("/manage/tools?msg=Link+graph+rebuilt.+%d+articles+had+links.", count), http.StatusSeeOther)
 }
 
 // contentTreeNode represents a file or directory in the content tree.

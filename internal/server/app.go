@@ -107,7 +107,9 @@ func (a *App) RegisterRoutes(router *mux.Router, contentFS fs.FS) {
 	router.HandleFunc("/manage/users/{id:[0-9]+}", a.ManageUserRoleHandler).Methods("POST")
 	router.HandleFunc("/manage/settings", a.ManageSettingsHandler).Methods("GET")
 	router.HandleFunc("/manage/settings", a.ManageSettingsPostHandler).Methods("POST")
-	router.HandleFunc("/manage/settings/reset-main-page", a.ResetMainPageHandler).Methods("POST")
+	router.HandleFunc("/manage/tools", a.ManageToolsHandler).Methods("GET")
+	router.HandleFunc("/manage/tools/reset-main-page", a.ResetMainPageHandler).Methods("POST")
+	router.HandleFunc("/manage/tools/backfill-links", a.BackfillLinksHandler).Methods("POST")
 	router.HandleFunc("/manage/content", a.ManageContentHandler).Methods("GET")
 }
 

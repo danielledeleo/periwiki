@@ -1,0 +1,34 @@
+{{define "content"}}
+<div id="article-area">
+    <article>
+        <h1>Tools</h1>
+        <div class="pw-article-content">
+            {{ if .calloutMessage }}
+            <div class="pw-callout {{ .calloutClasses }}">{{ .calloutMessage }}</div>
+            {{ end }}
+
+            <details>
+                <summary>Reset Main Page</summary>
+                <form method="POST" action="/manage/tools/reset-main-page">
+                    <p>Replace the <a href="/wiki/Main_Page">Main Page</a> article with the built-in default content.</p>
+                    <button type="submit">Reset main page</button>
+                </form>
+            </details>
+
+            <details>
+                <summary>Re-render All Articles</summary>
+                <p>Re-render every article using the current rendering pipeline. Useful after upgrading Periwiki or changing render templates.</p>
+                <p><a href="/wiki/Special:RerenderAll">Go to Special:RerenderAll</a></p>
+            </details>
+
+            <details>
+                <summary>Rebuild Link Graph</summary>
+                <form method="POST" action="/manage/tools/backfill-links">
+                    <p>Re-extract outgoing wikilinks from all articles and rebuild the link graph. Useful if backlink data is missing or out of sync.</p>
+                    <button type="submit">Rebuild link graph</button>
+                </form>
+            </details>
+        </div>
+    </article>
+</div>
+{{end}}

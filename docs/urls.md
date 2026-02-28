@@ -86,7 +86,9 @@ The `Special` namespace is case-insensitive (`special:Random` also works).
 | `/manage/settings` | GET | Runtime settings (admin only) |
 | `/manage/settings` | POST | Update runtime settings (admin only) |
 | `/manage/content` | GET | Content files tree (admin only) |
-| `/manage/settings/reset-main-page` | POST | Reset Main_Page to default (admin only) |
+| `/manage/tools` | GET | Admin tools (admin only) |
+| `/manage/tools/reset-main-page` | POST | Reset Main_Page to default (admin only) |
+| `/manage/tools/backfill-links` | POST | Rebuild link graph (admin only) |
 
 ## Other
 

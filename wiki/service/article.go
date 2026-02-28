@@ -55,6 +55,10 @@ type ArticleService interface {
 
 	// GetBacklinks returns articles that link to the given slug.
 	GetBacklinks(slug string) ([]*wiki.ArticleSummary, error)
+
+	// BackfillLinks re-extracts and persists outgoing links for all articles.
+	// Returns the number of articles that had links.
+	BackfillLinks() (int, error)
 }
 
 // articleService is the default implementation of ArticleService.
@@ -414,6 +418,39 @@ func (s *articleService) GetBacklinks(slug string) ([]*wiki.ArticleSummary, erro
 		return nil, nil
 	}
 	return s.linkRepo.SelectBacklinks(slug)
+}
+
+// BackfillLinks re-extracts and persists outgoing links for all articles.
+func (s *articleService) BackfillLinks() (int, error) {
+	if s.linkRepo == nil || s.linkExtractor == nil {
+		return 0, nil
+	}
+
+	articles, err := s.repo.SelectAllArticles()
+	if err != nil {
+		return 0, err
+	}
+
+	count := 0
+	for _, summary := range articles {
+		article, err := s.repo.SelectArticle(summary.URL)
+		if err != nil {
+			slog.Warn("backfill: failed to fetch article", "url", summary.URL, "error", err)
+			continue
+		}
+
+		links := s.linkExtractor.ExtractLinks(article.Markdown)
+		if err := s.linkRepo.ReplaceArticleLinks(article.URL, links); err != nil {
+			slog.Error("backfill: failed to persist links", "url", article.URL, "error", err)
+			continue
+		}
+
+		if len(links) > 0 {
+			count++
+		}
+	}
+
+	return count, nil
 }
 
 // updateLinks persists the outgoing link graph for the saved article and,
