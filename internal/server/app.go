@@ -93,6 +93,17 @@ func (a *App) RegisterRoutes(router *mux.Router, contentFS fs.FS) {
 	staticFS := http.FileServer(http.FS(staticSub))
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", staticFS))
 
+	router.HandleFunc("/favicon.ico", serveFile(contentFS, "static/favicon.ico", "image/x-icon"))
+	router.HandleFunc("/robots.txt", serveFile(contentFS, "static/robots.txt", "text/plain; charset=utf-8"))
+	router.HandleFunc("/sitemap.xml", func(w http.ResponseWriter, r *http.Request) {
+		handler, ok := a.SpecialPages.Get("Sitemap.xml")
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		handler.Handle(w, r)
+	})
+
 	router.HandleFunc("/", a.HomeHandler).Methods("GET")
 	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", a.NamespaceHandler).Methods("GET", "POST")
 	router.HandleFunc("/wiki/{article}", a.ArticleDispatcher).Methods("GET", "POST")
@@ -179,6 +190,18 @@ func (s *ExistenceState) check(url string) bool {
 	}
 
 	return false
+}
+
+func serveFile(fsys fs.FS, path string, contentType string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := fs.ReadFile(fsys, path)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", contentType)
+		w.Write(data)
+	}
 }
 
 func check(err error) {
