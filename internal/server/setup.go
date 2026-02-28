@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -18,13 +17,11 @@ import (
 	"github.com/danielledeleo/periwiki/internal/renderqueue"
 	"github.com/danielledeleo/periwiki/internal/storage"
 	"github.com/danielledeleo/periwiki/render"
-	"github.com/danielledeleo/periwiki/special"
 	"github.com/danielledeleo/periwiki/templater"
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/danielledeleo/periwiki/wiki/repository"
 	"github.com/danielledeleo/periwiki/wiki/service"
 	"github.com/jmoiron/sqlx"
-	"github.com/microcosm-cc/bluemonday"
 )
 
 //go:embed default_main_page.md
@@ -65,17 +62,7 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 	database, err := storage.Init(db, runtimeConfig)
 	check(err)
 
-	bm := bluemonday.UGCPolicy()
-
-	bm.AllowAttrs("class").Globally()
-	bm.AllowAttrs("data-line-number").Matching(regexp.MustCompile("^[0-9]+$")).OnElements("a")
-	bm.AllowAttrs("style").OnElements("ins", "del")
-	bm.AllowAttrs("style").Matching(regexp.MustCompile(`^text-align:\s+(left|right|center);$`)).OnElements("td", "th")
-
-	// Allow checkbox and label for TOC toggle
-	bm.AllowElements("input", "label")
-	bm.AllowAttrs("type", "id", "class", "checked").OnElements("input")
-	bm.AllowAttrs("for").OnElements("label")
+	bm := NewSanitizer()
 
 	t := templater.New(contentFS)
 
@@ -101,36 +88,9 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 		os.Exit(1)
 	}
 
-	// Declare these before the checker so the closure captures them by reference.
-	// They are assigned real values later in this function.
-	var embeddedArticles *embedded.EmbeddedArticles
-	var specialPages *special.Registry
-
-	// Create existence checker for wiki links
-	existenceChecker := func(url string) bool {
-		const prefix = "/wiki/"
-		if len(url) > len(prefix) {
-			url = url[len(prefix):]
-		}
-
-		// Check database
-		article, _ := database.SelectArticle(url)
-		if article != nil {
-			return true
-		}
-
-		// Check embedded articles (Periwiki:* namespace)
-		if embeddedArticles != nil && embedded.IsEmbeddedURL(url) {
-			return embeddedArticles.Get(url) != nil
-		}
-
-		// Check special pages (Special:* namespace)
-		if specialPages != nil && strings.HasPrefix(url, "Special:") {
-			return specialPages.Has(strings.TrimPrefix(url, "Special:"))
-		}
-
-		return false
-	}
+	// Create existence checker for wiki links.
+	// Embedded and SpecialPages are set after creation (circular dependency).
+	existenceChecker, existenceState := NewExistenceChecker(database)
 
 	// Create renderer with extension templates
 	renderer, err := render.NewHTMLRenderer(
@@ -169,11 +129,12 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 
 	// Create embedded articles and wrap the article service.
 	// contentFS has help/ at the root, which is what embedded.New expects.
-	embeddedArticles, err = embedded.New(contentFS, renderingService.Render)
+	embeddedArticles, err := embedded.New(contentFS, renderingService.Render)
 	if err != nil {
 		slog.Error("failed to load embedded articles", "error", err)
 		os.Exit(1)
 	}
+	existenceState.Embedded = embeddedArticles
 	articleService = service.NewEmbeddedArticleService(articleService, embeddedArticles)
 
 	// Run first-time setup tasks (e.g. seed Main_Page)
@@ -189,17 +150,11 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 	// Create preference service
 	preferenceService := service.NewPreferenceService(database)
 
-	specialPages = special.NewRegistry()
-	specialPages.Register("Random", special.NewRandomPage(articleService))
-
-	sitemapHandler := special.NewSitemapPage(articleService, t, modelConf.BaseURL)
-	specialPages.Register("Sitemap", sitemapHandler)
-	specialPages.Register("Sitemap.xml", sitemapHandler)
-	specialPages.Register("RerenderAll", special.NewRerenderAllPage(articleService, t))
-	specialPages.Register("WhatLinksHere", special.NewWhatLinksHerePage(articleService, t))
+	specialPages := RegisterSpecialPages(articleService, t, modelConf.BaseURL)
+	existenceState.SpecialPages = specialPages
 
 	// Re-render embedded articles now that the existence checker can see
-	// embeddedArticles and specialPages (they were nil during initial render).
+	// embeddedArticles and specialPages (they were nil during initial creation).
 	if err := embeddedArticles.RenderAll(renderingService.Render); err != nil {
 		slog.Error("failed to re-render embedded articles", "error", err)
 		os.Exit(1)

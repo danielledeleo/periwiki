@@ -4,8 +4,6 @@ package main
 
 import (
 	"log/slog"
-	"regexp"
-	"strings"
 	"syscall/js"
 
 	periwiki "github.com/danielledeleo/periwiki"
@@ -14,13 +12,11 @@ import (
 	"github.com/danielledeleo/periwiki/internal/server"
 	"github.com/danielledeleo/periwiki/internal/storage"
 	"github.com/danielledeleo/periwiki/render"
-	"github.com/danielledeleo/periwiki/special"
 	"github.com/danielledeleo/periwiki/templater"
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/danielledeleo/periwiki/wiki/service"
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
-	"github.com/microcosm-cc/bluemonday"
 )
 
 func main() {
@@ -51,15 +47,7 @@ func main() {
 		panic("failed to init storage: " + err.Error())
 	}
 
-	// Bluemonday sanitizer (matches production setup.go)
-	bm := bluemonday.UGCPolicy()
-	bm.AllowAttrs("class").Globally()
-	bm.AllowAttrs("data-line-number").Matching(regexp.MustCompile("^[0-9]+$")).OnElements("a")
-	bm.AllowAttrs("style").OnElements("ins", "del")
-	bm.AllowAttrs("style").Matching(regexp.MustCompile(`^text-align:\s+(left|right|center);$`)).OnElements("td", "th")
-	bm.AllowElements("input", "label")
-	bm.AllowAttrs("type", "id", "class", "checked").OnElements("input")
-	bm.AllowAttrs("for").OnElements("label")
+	bm := server.NewSanitizer()
 
 	// Load templates
 	t := templater.New(contentFS)
@@ -81,26 +69,9 @@ func main() {
 		panic("failed to load wikilink templates: " + err.Error())
 	}
 
-	var embeddedArticles *embedded.EmbeddedArticles
-	var specialPages *special.Registry
-
-	existenceChecker := func(url string) bool {
-		const prefix = "/wiki/"
-		if len(url) > len(prefix) {
-			url = url[len(prefix):]
-		}
-		article, _ := database.SelectArticle(url)
-		if article != nil {
-			return true
-		}
-		if embeddedArticles != nil && embedded.IsEmbeddedURL(url) {
-			return embeddedArticles.Get(url) != nil
-		}
-		if specialPages != nil && strings.HasPrefix(url, "Special:") {
-			return specialPages.Has(strings.TrimPrefix(url, "Special:"))
-		}
-		return false
-	}
+	// Create existence checker for wiki links.
+	// Embedded and SpecialPages are set after creation (circular dependency).
+	existenceChecker, existenceState := server.NewExistenceChecker(database)
 
 	renderer, err := render.NewHTMLRenderer(
 		contentFS,
@@ -117,10 +88,11 @@ func main() {
 	userService := service.NewUserService(database, runtimeConfig.MinimumPasswordLength)
 	articleService := service.NewArticleService(database, renderingService, nil, database, render.NewLinkExtractor()) // nil queue = synchronous
 
-	embeddedArticles, err = embedded.New(contentFS, renderingService.Render)
+	embeddedArticles, err := embedded.New(contentFS, renderingService.Render)
 	if err != nil {
 		panic("failed to load embedded articles: " + err.Error())
 	}
+	existenceState.Embedded = embeddedArticles
 	articleServiceWrapped := service.NewEmbeddedArticleService(articleService, embeddedArticles)
 
 	// Run first-time setup (creates demo admin + seeds Main_Page)
@@ -128,10 +100,8 @@ func main() {
 
 	preferenceService := service.NewPreferenceService(database)
 
-	specialPages = special.NewRegistry()
-	specialPages.Register("Random", special.NewRandomPage(articleServiceWrapped))
-	specialPages.Register("Sitemap", special.NewSitemapPage(articleServiceWrapped, t, ""))
-	specialPages.Register("RerenderAll", special.NewRerenderAllPage(articleServiceWrapped, t))
+	specialPages := server.RegisterSpecialPages(articleServiceWrapped, t, "")
+	existenceState.SpecialPages = specialPages
 
 	// Re-render embedded articles so the existence checker can see everything
 	if err := embeddedArticles.RenderAll(renderingService.Render); err != nil {

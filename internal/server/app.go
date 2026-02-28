@@ -5,14 +5,18 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/danielledeleo/periwiki/internal/embedded"
 	"github.com/danielledeleo/periwiki/special"
 	"github.com/danielledeleo/periwiki/templater"
 	"github.com/danielledeleo/periwiki/wiki"
+	"github.com/danielledeleo/periwiki/wiki/repository"
 	"github.com/danielledeleo/periwiki/wiki/service"
 	"github.com/gorilla/mux"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 // ContentInfo holds metadata about embedded content files for the admin UI.
@@ -111,6 +115,73 @@ func (a *App) RegisterRoutes(router *mux.Router, contentFS fs.FS) {
 	router.HandleFunc("/manage/settings", a.ManageSettingsPostHandler).Methods("POST")
 	router.HandleFunc("/manage/settings/reset-main-page", a.ResetMainPageHandler).Methods("POST")
 	router.HandleFunc("/manage/content", a.ManageContentHandler).Methods("GET")
+}
+
+// NewSanitizer creates the bluemonday HTML sanitizer with the standard policy.
+// Used by both the main server and the WASM demo.
+func NewSanitizer() *bluemonday.Policy {
+	bm := bluemonday.UGCPolicy()
+	bm.AllowAttrs("class").Globally()
+	bm.AllowAttrs("data-line-number").Matching(regexp.MustCompile("^[0-9]+$")).OnElements("a")
+	bm.AllowAttrs("style").OnElements("ins", "del")
+	bm.AllowAttrs("style").Matching(regexp.MustCompile(`^text-align:\s+(left|right|center);$`)).OnElements("td", "th")
+	bm.AllowElements("input", "label")
+	bm.AllowAttrs("type", "id", "class", "checked").OnElements("input")
+	bm.AllowAttrs("for").OnElements("label")
+	return bm
+}
+
+// RegisterSpecialPages creates and populates a special page registry.
+// Used by both the main server and the WASM demo.
+func RegisterSpecialPages(articles service.ArticleService, t *templater.Templater, baseURL string) *special.Registry {
+	registry := special.NewRegistry()
+	registry.Register("Random", special.NewRandomPage(articles))
+
+	sitemapHandler := special.NewSitemapPage(articles, t, baseURL)
+	registry.Register("Sitemap", sitemapHandler)
+	registry.Register("Sitemap.xml", sitemapHandler)
+
+	registry.Register("RerenderAll", special.NewRerenderAllPage(articles, t))
+	registry.Register("WhatLinksHere", special.NewWhatLinksHerePage(articles, t))
+	return registry
+}
+
+// NewExistenceChecker creates the wikilink existence checker function.
+// The returned ExistenceState must have its Embedded and SpecialPages fields
+// set after creation (they are nil initially due to circular dependencies).
+func NewExistenceChecker(db repository.ArticleRepository) (func(string) bool, *ExistenceState) {
+	state := &ExistenceState{db: db}
+	return state.check, state
+}
+
+// ExistenceState holds the mutable dependencies for the existence checker.
+// Embedded and SpecialPages are set after initial creation.
+type ExistenceState struct {
+	db           repository.ArticleRepository
+	Embedded     *embedded.EmbeddedArticles
+	SpecialPages *special.Registry
+}
+
+func (s *ExistenceState) check(url string) bool {
+	const prefix = "/wiki/"
+	if len(url) > len(prefix) {
+		url = url[len(prefix):]
+	}
+
+	article, _ := s.db.SelectArticle(url)
+	if article != nil {
+		return true
+	}
+
+	if s.Embedded != nil && embedded.IsEmbeddedURL(url) {
+		return s.Embedded.Get(url) != nil
+	}
+
+	if s.SpecialPages != nil && strings.HasPrefix(url, "Special:") {
+		return s.SpecialPages.Has(strings.TrimPrefix(url, "Special:"))
+	}
+
+	return false
 }
 
 func check(err error) {
