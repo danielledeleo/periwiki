@@ -209,7 +209,6 @@ func NewWikiLinker(parserOpts []WikiLinkerOption, rendererOpts []WikiLinkRendere
 type wikiLinkerHTMLRenderer struct {
 	html.Config
 	WikiLinkRendererConfig
-	buf bytes.Buffer
 }
 
 // NewWikiLinkerHTMLRenderer returns a new WikiLinkerHTMLRenderer.
@@ -263,11 +262,11 @@ func (r *wikiLinkerHTMLRenderer) renderWikiLinker(w util.BufWriter, source []byt
 		IsDeadlink:   isDeadlink,
 	}
 
-	r.buf.Reset()
-	if err := r.Templates.Link.Execute(&r.buf, data); err != nil {
+	var buf bytes.Buffer
+	if err := r.Templates.Link.Execute(&buf, data); err != nil {
 		return gast.WalkStop, err
 	}
-	_, _ = w.Write(r.buf.Bytes())
+	_, _ = w.Write(buf.Bytes())
 
 	return gast.WalkContinue, nil
 }

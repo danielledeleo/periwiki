@@ -88,7 +88,6 @@ func defaultFootnoteConfig() FootnoteConfig {
 // footnoteRenderer renders footnote nodes to HTML.
 type footnoteRenderer struct {
 	FootnoteConfig
-	buf bytes.Buffer
 }
 
 // NewFootnoteRenderer creates a new footnote renderer.
@@ -121,11 +120,11 @@ func (r *footnoteRenderer) renderFootnoteLink(w util.BufWriter, source []byte, n
 		ID:       r.footnoteID(n.Index),
 		RefID:    r.footnoteRefID(n.Index, n.RefIndex),
 	}
-	r.buf.Reset()
-	if err := r.Templates.Link.Execute(&r.buf, data); err != nil {
+	var buf bytes.Buffer
+	if err := r.Templates.Link.Execute(&buf, data); err != nil {
 		return ast.WalkStop, err
 	}
-	_, _ = w.Write(r.buf.Bytes())
+	_, _ = w.Write(buf.Bytes())
 	return ast.WalkContinue, nil
 }
 
@@ -141,21 +140,21 @@ func (r *footnoteRenderer) renderFootnoteBacklink(w util.BufWriter, source []byt
 		RefIndex: n.RefIndex,
 		RefID:    r.footnoteRefID(n.Index, n.RefIndex),
 	}
-	r.buf.Reset()
-	if err := r.Templates.Backlink.Execute(&r.buf, data); err != nil {
+	var buf bytes.Buffer
+	if err := r.Templates.Backlink.Execute(&buf, data); err != nil {
 		return ast.WalkStop, err
 	}
-	_, _ = w.Write(r.buf.Bytes())
+	_, _ = w.Write(buf.Bytes())
 	return ast.WalkContinue, nil
 }
 
 func (r *footnoteRenderer) renderFootnoteList(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	r.buf.Reset()
+	var buf bytes.Buffer
 	data := FootnoteListData{Entering: entering}
-	if err := r.Templates.List.Execute(&r.buf, data); err != nil {
+	if err := r.Templates.List.Execute(&buf, data); err != nil {
 		return ast.WalkStop, err
 	}
-	_, _ = w.Write(r.buf.Bytes())
+	_, _ = w.Write(buf.Bytes())
 	return ast.WalkContinue, nil
 }
 
@@ -167,11 +166,11 @@ func (r *footnoteRenderer) renderFootnote(w util.BufWriter, source []byte, node 
 		Ref:      string(n.Ref),
 		ID:       r.footnoteID(n.Index),
 	}
-	r.buf.Reset()
-	if err := r.Templates.Item.Execute(&r.buf, data); err != nil {
+	var buf bytes.Buffer
+	if err := r.Templates.Item.Execute(&buf, data); err != nil {
 		return ast.WalkStop, err
 	}
-	_, _ = w.Write(r.buf.Bytes())
+	_, _ = w.Write(buf.Bytes())
 	return ast.WalkContinue, nil
 }
 
