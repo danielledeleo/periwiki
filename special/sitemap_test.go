@@ -147,8 +147,42 @@ func TestSitemapHTML(t *testing.T) {
 			t.Error("expected template to be rendered")
 		}
 
-		if templater.data["Articles"] == nil {
-			t.Error("expected Articles in template data")
+		entries, ok := templater.data["Entries"].([]SitemapEntry)
+		if !ok {
+			t.Fatal("expected Entries in template data")
+		}
+		if len(entries) != 1 || entries[0].Article.URL != "Main_Page" {
+			t.Errorf("expected 1 entry for Main_Page, got %v", entries)
+		}
+	})
+
+	t.Run("pairs talk pages with their subject article", func(t *testing.T) {
+		articles := []*wiki.ArticleSummary{
+			{URL: "Main_Page", LastModified: time.Now()},
+			{URL: "Talk:Main_Page", LastModified: time.Now()},
+			{URL: "Test_Article", LastModified: time.Now()},
+		}
+		mock := &mockArticleLister{articles: articles}
+		templater := &mockSitemapTemplater{}
+		handler := NewSitemapPage(mock, templater, "https://example.com")
+
+		req := httptest.NewRequest("GET", "/wiki/Special:Sitemap", nil)
+		rr := httptest.NewRecorder()
+
+		handler.Handle(rr, req)
+
+		entries, ok := templater.data["Entries"].([]SitemapEntry)
+		if !ok {
+			t.Fatal("expected Entries in template data")
+		}
+		if len(entries) != 2 {
+			t.Fatalf("expected 2 entries (Talk pages excluded), got %d", len(entries))
+		}
+		if entries[0].Article.URL != "Main_Page" || entries[0].TalkURL != "Talk:Main_Page" {
+			t.Errorf("expected Main_Page with Talk:Main_Page, got %q with talk %q", entries[0].Article.URL, entries[0].TalkURL)
+		}
+		if entries[1].Article.URL != "Test_Article" || entries[1].TalkURL != "" {
+			t.Errorf("expected Test_Article with no talk page, got %q with talk %q", entries[1].Article.URL, entries[1].TalkURL)
 		}
 	})
 

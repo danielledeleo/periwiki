@@ -3,10 +3,10 @@
     <article>
         <h1>Sitemap</h1>
         <div class="pw-article-content">
-            {{if .Articles}}
+            {{if .Entries}}
             <ul>
-                {{range .Articles}}
-                <li><a href="{{articleURL .URL}}">{{.DisplayTitle}}</a></li>
+                {{range .Entries}}
+                <li><a href="{{articleURL .Article.URL}}">{{.Article.DisplayTitle}}</a>{{if .TalkURL}} (<a href="{{articleURL .TalkURL}}">talk</a>){{end}}</li>
                 {{end}}
             </ul>
             {{else}}

@@ -88,11 +88,38 @@ func (p *SitemapPage) handleXML(rw http.ResponseWriter, articles []*wiki.Article
 	}
 }
 
+// SitemapEntry pairs an article with its talk page (if any) for the HTML sitemap.
+type SitemapEntry struct {
+	Article  *wiki.ArticleSummary
+	TalkURL  string // empty if no talk page exists
+}
+
 func (p *SitemapPage) handleHTML(rw http.ResponseWriter, req *http.Request, articles []*wiki.ArticleSummary) {
+	// Build a set of talk page URLs keyed by their subject slug.
+	talkPages := make(map[string]string) // subject slug -> Talk:slug
+	for _, a := range articles {
+		if strings.HasPrefix(a.URL, "Talk:") {
+			subject := strings.TrimPrefix(a.URL, "Talk:")
+			talkPages[subject] = a.URL
+		}
+	}
+
+	// Build entries: non-Talk articles paired with their talk page.
+	var entries []SitemapEntry
+	for _, a := range articles {
+		if strings.HasPrefix(a.URL, "Talk:") {
+			continue
+		}
+		entries = append(entries, SitemapEntry{
+			Article: a,
+			TalkURL: talkPages[a.URL],
+		})
+	}
+
 	data := map[string]interface{}{
-		"Page":     wiki.NewStaticPage("Sitemap"),
-		"Articles": articles,
-		"Context":  req.Context(),
+		"Page":    wiki.NewStaticPage("Sitemap"),
+		"Entries": entries,
+		"Context": req.Context(),
 	}
 
 	if err := p.templater.RenderTemplate(rw, "sitemap.html", "index.html", data); err != nil {
