@@ -172,6 +172,17 @@ func (a *App) LogoutPostHandler(rw http.ResponseWriter, req *http.Request) {
 	http.Redirect(rw, req, "/", http.StatusSeeOther)
 }
 
+func (a *App) ArticleMarkdownHandler(rw http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	article, err := a.Articles.GetArticle(vars["article"])
+	if err != nil {
+		http.NotFound(rw, req)
+		return
+	}
+	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	rw.Write([]byte(article.Markdown))
+}
+
 func (a *App) HomeHandler(rw http.ResponseWriter, req *http.Request) {
 	http.Redirect(rw, req, "/wiki/Main_Page", http.StatusFound)
 }

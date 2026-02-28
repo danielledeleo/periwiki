@@ -23,6 +23,7 @@
     <span class="pw-last-edited">Last edited on {{.Created.Format "January 2, 2006 at 3:04 pm"}}</span>
     <a class="pw-what-links-here" href="/wiki/Special:WhatLinksHere?page={{.URL | urlquery}}">What links here?</a>
     {{end}}
+    <a class="pw-what-links-here" href="{{articleURL .URL}}.md">View as Markdown</a>
     {{end}}
 </div>
 {{end}}

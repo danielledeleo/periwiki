@@ -35,6 +35,7 @@ func setupHandlerTestRouter(t *testing.T) (*mux.Router, *testutil.TestApp, func(
 	router.Use(app.SessionMiddleware)
 
 	router.HandleFunc("/", app.HomeHandler).Methods("GET")
+	router.HandleFunc("/wiki/{article}.md", app.ArticleMarkdownHandler).Methods("GET")
 	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", app.NamespaceHandler).Methods("GET")
 	router.HandleFunc("/wiki/{article}", app.ArticleDispatcher).Methods("GET", "POST")
 
@@ -737,6 +738,83 @@ func TestTalkNamespace_EditBlockedWhenSubjectMissing(t *testing.T) {
 	if !strings.Contains(body, "does not exist") {
 		t.Error("expected error message about subject article not existing")
 	}
+}
+
+func TestArticleMarkdownHandler(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "Foo", "# Hello\n\nThis is **bold** text.", user)
+
+	t.Run("existing article", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/Foo.md", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", rr.Code)
+		}
+
+		ct := rr.Header().Get("Content-Type")
+		if ct != "text/plain; charset=utf-8" {
+			t.Errorf("expected Content-Type text/plain; charset=utf-8, got %q", ct)
+		}
+
+		body := rr.Body.String()
+		if body != "# Hello\n\nThis is **bold** text." {
+			t.Errorf("expected raw markdown, got %q", body)
+		}
+	})
+
+	t.Run("nonexistent article", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/Nonexistent.md", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusNotFound {
+			t.Errorf("expected status 404, got %d", rr.Code)
+		}
+	})
+
+	t.Run("embedded help article", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/Periwiki:Syntax.md", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", rr.Code)
+		}
+
+		ct := rr.Header().Get("Content-Type")
+		if ct != "text/plain; charset=utf-8" {
+			t.Errorf("expected Content-Type text/plain; charset=utf-8, got %q", ct)
+		}
+
+		body := rr.Body.String()
+		if !strings.Contains(body, "Syntax") {
+			t.Errorf("expected markdown to contain 'Syntax', got %q", body)
+		}
+	})
+
+	t.Run("does not interfere with normal route", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/Foo", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", rr.Code)
+		}
+
+		body := rr.Body.String()
+		if !strings.Contains(body, "<") {
+			t.Error("expected HTML response for normal route")
+		}
+	})
 }
 
 type mockSpecialPage struct {

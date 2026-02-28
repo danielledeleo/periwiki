@@ -105,6 +105,7 @@ func (a *App) RegisterRoutes(router *mux.Router, contentFS fs.FS) {
 	})
 
 	router.HandleFunc("/", a.HomeHandler).Methods("GET")
+	router.HandleFunc("/wiki/{article}.md", a.ArticleMarkdownHandler).Methods("GET")
 	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", a.NamespaceHandler).Methods("GET", "POST")
 	router.HandleFunc("/wiki/{article}", a.ArticleDispatcher).Methods("GET", "POST")
 

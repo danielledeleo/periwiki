@@ -17,6 +17,7 @@ All article actions use query parameters on the base article URL:
 | `/wiki/{article}?diff` | Compare two most recent revisions |
 | `/wiki/{article}?rerender` | Force re-render current revision |
 | `/wiki/{article}?rerender&revision={id}` | Force re-render specific revision |
+| `/wiki/{article}.md` | Raw Markdown source |
 
 Article URLs use underscores for spaces (`Main_Page`). URLs are case-sensitive.
 
