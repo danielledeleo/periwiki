@@ -108,6 +108,19 @@ func main() {
 		slog.Error("failed to re-render embedded articles", "error", err)
 	}
 
+	// Build content info from the embedded filesystem
+	files, err := periwiki.ListContentFiles()
+	if err != nil {
+		slog.Error("failed to list content files", "error", err)
+	}
+	contentInfo := &server.ContentInfo{}
+	for _, f := range files {
+		contentInfo.Files = append(contentInfo.Files, server.ContentFileEntry{
+			Path:   f.Path,
+			Source: f.Source,
+		})
+	}
+
 	app := &server.App{
 		Templater:     t,
 		Articles:      articleServiceWrapped,
@@ -118,6 +131,7 @@ func main() {
 		SpecialPages:  specialPages,
 		Config:        &wiki.Config{Host: "localhost", BaseURL: ""},
 		RuntimeConfig: runtimeConfig,
+		ContentInfo:   contentInfo,
 		DB:            db.DB,
 	}
 
