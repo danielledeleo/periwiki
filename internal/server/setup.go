@@ -37,22 +37,14 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 	modelConf := config.SetupConfig()
 
 	// Phase 2: Open database connection
-	db, err := sqlx.Open("sqlite", modelConf.DatabaseFile)
-	if err != nil {
-		slog.Error("failed to open database", "error", err)
-		os.Exit(1)
-	}
-
-	// Configure SQLite pragmas for the pure-Go driver (modernc.org/sqlite).
+	// Pragmas are set via DSN so they apply to every connection in the pool.
 	// busy_timeout avoids immediate SQLITE_BUSY errors under write contention
 	// (e.g. render queue workers). journal_mode=WAL allows concurrent readers
 	// and a single writer without blocking each other.
-	if _, err := db.Exec("PRAGMA busy_timeout = 5000"); err != nil {
-		slog.Error("failed to set busy_timeout", "error", err)
-		os.Exit(1)
-	}
-	if _, err := db.Exec("PRAGMA journal_mode = WAL"); err != nil {
-		slog.Error("failed to set journal_mode", "error", err)
+	dsn := "file:" + modelConf.DatabaseFile + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
+	db, err := sqlx.Open("sqlite", dsn)
+	if err != nil {
+		slog.Error("failed to open database", "error", err)
 		os.Exit(1)
 	}
 
@@ -281,6 +273,12 @@ func checkRenderTemplateStaleness(contentFS fs.FS, db *sql.DB, repo repository.A
 
 	slog.Info("invalidating cached HTML")
 
+	// Update the stored hash before queuing re-renders to avoid SQLITE_BUSY
+	// contention with render queue workers.
+	if err := wiki.UpdateSetting(db, wiki.SettingRenderTemplateHash, currentHash); err != nil {
+		slog.Error("failed to update render template hash setting", "error", err)
+	}
+
 	// Null out HTML for all non-head revisions
 	invalidated, err := repo.InvalidateNonHeadRevisionHTML()
 	if err != nil {
@@ -306,11 +304,6 @@ func checkRenderTemplateStaleness(contentFS fs.FS, db *sql.DB, repo repository.A
 		queued++
 	}
 	slog.Info("queued head revision re-renders", "count", queued)
-
-	// Update the stored hash
-	if err := wiki.UpdateSetting(db, wiki.SettingRenderTemplateHash, currentHash); err != nil {
-		slog.Error("failed to update render template hash setting", "error", err)
-	}
 }
 
 // backfillArticleLinks populates the ArticleLink table on first startup after
