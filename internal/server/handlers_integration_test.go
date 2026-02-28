@@ -32,18 +32,7 @@ func setupHandlerTestRouter(t *testing.T) (*mux.Router, *testutil.TestApp, func(
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
-	router.Use(app.SessionMiddleware)
-
-	router.HandleFunc("/", app.HomeHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}.md", app.ArticleMarkdownHandler).Methods("GET")
-	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", app.NamespaceHandler).Methods("GET")
-	router.HandleFunc("/wiki/{article}", app.ArticleDispatcher).Methods("GET", "POST")
-
-	router.HandleFunc("/user/register", app.RegisterHandler).Methods("GET")
-	router.HandleFunc("/user/register", app.RegisterPostHandler).Methods("POST")
-	router.HandleFunc("/user/login", app.LoginHandler).Methods("GET")
-	router.HandleFunc("/user/login", app.LoginPostHandler).Methods("POST")
-	router.HandleFunc("/user/logout", app.LogoutPostHandler).Methods("POST")
+	app.RegisterRoutes(router, testutil.TestContentFS())
 
 	return router, testApp, cleanup
 }

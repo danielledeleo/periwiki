@@ -173,8 +173,11 @@ func (a *App) LogoutPostHandler(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (a *App) ArticleMarkdownHandler(rw http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	article, err := a.Articles.GetArticle(vars["article"])
+	a.serveArticleMarkdown(rw, req, mux.Vars(req)["article"])
+}
+
+func (a *App) serveArticleMarkdown(rw http.ResponseWriter, req *http.Request, articleURL string) {
+	article, err := a.Articles.GetArticle(articleURL)
 	if err != nil {
 		http.NotFound(rw, req)
 		return
@@ -738,12 +741,20 @@ func (a *App) NamespaceHandler(rw http.ResponseWriter, req *http.Request) {
 
 	// Talk namespace: discussion pages for articles
 	if strings.EqualFold(namespace, "talk") {
+		if mdPage, ok := strings.CutSuffix(page, ".md"); ok {
+			a.serveArticleMarkdown(rw, req, "Talk:"+mdPage)
+			return
+		}
 		a.dispatchArticle(rw, req, "Talk:"+page)
 		return
 	}
 
 	// Periwiki namespace: embedded help articles
 	if strings.EqualFold(namespace, "periwiki") {
+		if mdPage, ok := strings.CutSuffix(page, ".md"); ok {
+			a.serveArticleMarkdown(rw, req, "Periwiki:"+mdPage)
+			return
+		}
 		articleURL := "Periwiki:" + page // Canonical case for lookup
 		article, err := a.Articles.GetArticle(articleURL)
 		if err != nil {
