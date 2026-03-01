@@ -561,6 +561,26 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 		}
 	}
 
+	// Block editing User: pages unless the current user is the owner or admin
+	if wiki.IsUserPage(articleURL) {
+		user := req.Context().Value(wiki.UserKey).(*wiki.User)
+		ownerName := wiki.UserPageScreenName(articleURL)
+		if user.IsAnonymous() || (user.ScreenName != ownerName && !user.IsAdmin()) {
+			a.ErrorHandler(http.StatusForbidden, rw, req, wiki.ErrForbidden)
+			return
+		}
+	}
+
+	// Block editing User_talk: pages when the target user doesn't exist
+	if wiki.IsUserTalkPage(articleURL) {
+		ownerName := wiki.UserPageScreenName(articleURL)
+		if _, err := a.Users.GetUserByScreenName(ownerName); err != nil {
+			a.ErrorHandler(http.StatusNotFound, rw, req,
+				fmt.Errorf("cannot create user talk page: user %q does not exist", ownerName))
+			return
+		}
+	}
+
 	rw.Header().Set("Cache-Control", "no-store")
 
 	// Check if anonymous editing is allowed
@@ -748,6 +768,15 @@ func (a *App) handleArticlePost(rw http.ResponseWriter, req *http.Request, artic
 	if !a.RuntimeConfig.AllowAnonymousEditsGlobal && user.IsAnonymous() {
 		a.ErrorHandler(http.StatusForbidden, rw, req, fmt.Errorf("anonymous editing is disabled"))
 		return
+	}
+
+	// Block saving User: pages unless the current user is the owner or admin
+	if wiki.IsUserPage(articleURL) {
+		ownerName := wiki.UserPageScreenName(articleURL)
+		if user.IsAnonymous() || (user.ScreenName != ownerName && !user.IsAdmin()) {
+			a.ErrorHandler(http.StatusForbidden, rw, req, wiki.ErrForbidden)
+			return
+		}
 	}
 
 	article.Creator = user
