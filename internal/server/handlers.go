@@ -177,7 +177,20 @@ func (a *App) ArticleMarkdownHandler(rw http.ResponseWriter, req *http.Request) 
 }
 
 func (a *App) serveArticleMarkdown(rw http.ResponseWriter, req *http.Request, articleURL string) {
-	article, err := a.Articles.GetArticle(articleURL)
+	var article *wiki.Article
+	var err error
+
+	if revisionStr := req.URL.Query().Get("revision"); revisionStr != "" {
+		revisionID, convErr := strconv.Atoi(revisionStr)
+		if convErr != nil {
+			a.ErrorHandler(http.StatusBadRequest, rw, req, convErr)
+			return
+		}
+		article, err = a.Articles.GetArticleByRevisionID(articleURL, revisionID)
+	} else {
+		article, err = a.Articles.GetArticle(articleURL)
+	}
+
 	if err != nil {
 		http.NotFound(rw, req)
 		return

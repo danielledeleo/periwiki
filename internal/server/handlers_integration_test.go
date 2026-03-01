@@ -805,6 +805,55 @@ func TestArticleMarkdownHandler(t *testing.T) {
 			t.Error("expected HTML response for normal route")
 		}
 	})
+
+	t.Run("old revision", func(t *testing.T) {
+		v1, _ := testApp.Articles.GetArticle("Foo")
+
+		// Create a second revision
+		article := wiki.NewArticle("Foo", "Updated content.")
+		article.Creator = user
+		article.PreviousID = v1.ID
+		article.Comment = "Second version"
+		if err := testApp.Articles.PostArticle(article); err != nil {
+			t.Fatalf("PostArticle failed: %v", err)
+		}
+
+		req := httptest.NewRequest("GET", fmt.Sprintf("/wiki/Foo.md?revision=%d", v1.ID), nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", rr.Code)
+		}
+
+		body := rr.Body.String()
+		if body != "# Hello\n\nThis is **bold** text." {
+			t.Errorf("expected old revision markdown, got %q", body)
+		}
+	})
+
+	t.Run("invalid revision", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/Foo.md?revision=abc", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", rr.Code)
+		}
+	})
+
+	t.Run("nonexistent revision", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/wiki/Foo.md?revision=99999", nil)
+		rr := httptest.NewRecorder()
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusNotFound {
+			t.Errorf("expected status 404, got %d", rr.Code)
+		}
+	})
 }
 
 func TestArticleCaching_CurrentRevision(t *testing.T) {
