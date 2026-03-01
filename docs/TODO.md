@@ -1,5 +1,6 @@
 
 Soon(ish)
+- [MED] Whole-site cache busting on deploy — after a binary or template update, browsers can serve stale page HTML because ETags/Last-Modified only track article content, not the surrounding templates or CSS. Need a mechanism (e.g. mixing BuildCommit into ETags, or similar) so deploying a new binary invalidates all browser caches via normal HTTP conditional request handling.
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
 - [MED] User:pages
 - Page alias and redirect system (design TBD)
@@ -11,12 +12,14 @@ Soon(ish)
   - private
   - internal-only
 - e2e database migration tests (old test databases as part of testing)
+- [MED] Pagination for potentially large queries (page history, user contributions)
+  - establish a general pattern
 - Improve editing request flow
   - unmodified content submissions should still re-render
   - submission errors should appear above editor window, not a new page (unmodified, conflicts)
 - Include better sample pages
 - Move .go files out of root directory (note: `content.go` added for overlay FS embed)
-- User-defined templates system (see docs/plans/user-templates-design.md)
+- [MED] User-defined templates system (see docs/plans/user-templates-design.md)
   - Prerequisites: content re-render queue, article type field
   - Subsumes: widgets, tagging/frontmatter, rich homepage, some special page customization
   - See: wikipedia {Navbar} + {Template that calls navbar}
@@ -67,12 +70,12 @@ Down the line
 - Rate limiting
 - Language locales!
   - UI locale strings
-  - maybe copy wikipedia's subdomain approach
+  - maybe copy wikipedia's subdomain approach?
 - Locked/featured pages
 - Search
 - Postgres/MySQL support
 - Better editor experience
-- Richer diffs, talk pages
+- Richer diffs
 - [LOW] extending.md (documenting how to add special pages and WikiLink resolvers)
 
 Depends on user-defined templates (see docs/plans/user-templates-design.md)
