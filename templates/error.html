@@ -1,12 +1,6 @@
 {{define "content"}}
 <div id="article-area">
-    {{with .Article }}
-
-    <ul class="pw-tabs">
-        <li><a href="/">Home</a></li>
-    </ul>
     <article>
-    {{end}}
     {{with .Error }}
         <h1>{{.Code}} {{statusText .Code}}</h1>
         <div class="pw-article-content">
