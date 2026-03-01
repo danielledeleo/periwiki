@@ -66,23 +66,19 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 
 	t := templater.New(contentFS)
 
-	if err := t.Load("templates/layouts/*.html", "templates/*.html", "templates/special/*.html", "templates/manage/*.html"); err != nil {
+	if err := t.Load(templater.LayoutGlob, templater.ContentGlobs...); err != nil {
 		slog.Error("failed to load templates", "error", err)
 		os.Exit(1)
 	}
 
 	// Load extension templates
-	footnoteTemplates, err := t.LoadExtensionTemplates("templates", "footnote", []string{
-		"link", "backlink", "list", "item",
-	})
+	footnoteTemplates, err := t.LoadExtensionTemplates("templates", "footnote", templater.FootnoteTemplateNames)
 	if err != nil {
 		slog.Error("failed to load footnote templates", "error", err)
 		os.Exit(1)
 	}
 
-	wikiLinkTemplates, err := t.LoadExtensionTemplates("templates", "wikilink", []string{
-		"link",
-	})
+	wikiLinkTemplates, err := t.LoadExtensionTemplates("templates", "wikilink", templater.WikiLinkTemplateNames)
 	if err != nil {
 		slog.Error("failed to load wikilink templates", "error", err)
 		os.Exit(1)

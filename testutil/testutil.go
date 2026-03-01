@@ -147,30 +147,21 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 
 	// Create templater and load templates
 	tmpl := templater.New(contentFS)
-	err := tmpl.Load(
-		"templates/layouts/*.html",
-		"templates/*.html",
-		"templates/special/*.html",
-		"templates/manage/*.html",
-	)
+	err := tmpl.Load(templater.LayoutGlob, templater.ContentGlobs...)
 	if err != nil {
 		dbCleanup()
 		t.Fatalf("failed to load templates: %v", err)
 	}
 
 	// Load footnote templates
-	footnoteTemplates, err := tmpl.LoadExtensionTemplates("templates", "footnote", []string{
-		"link", "backlink", "list", "item",
-	})
+	footnoteTemplates, err := tmpl.LoadExtensionTemplates("templates", "footnote", templater.FootnoteTemplateNames)
 	if err != nil {
 		dbCleanup()
 		t.Fatalf("failed to load footnote templates: %v", err)
 	}
 
 	// Load wikilink templates
-	wikiLinkTemplates, err := tmpl.LoadExtensionTemplates("templates", "wikilink", []string{
-		"link",
-	})
+	wikiLinkTemplates, err := tmpl.LoadExtensionTemplates("templates", "wikilink", templater.WikiLinkTemplateNames)
 	if err != nil {
 		dbCleanup()
 		t.Fatalf("failed to load wikilink templates: %v", err)

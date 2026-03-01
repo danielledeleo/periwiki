@@ -1,6 +1,7 @@
 package wiki
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -155,3 +156,121 @@ func TestParseFrontmatter(t *testing.T) {
 		})
 	}
 }
+
+// TestFrontmatterMarshalJSON tests the JSON serialization used for the DB
+// frontmatter cache. MarshalJSON flattens Extra fields to the top level so
+// SQLite's json_extract can query them (e.g. json_extract(frontmatter, '$.display_title')).
+func TestFrontmatterMarshalJSON(t *testing.T) {
+	fm := Frontmatter{
+		DisplayTitle: "Title",
+		Layout:       "wide",
+		TOC:          boolPtr(true),
+		Extra:        map[string]string{"custom": "value"},
+	}
+
+	data, err := fm.MarshalJSON()
+	if err != nil {
+		t.Fatalf("MarshalJSON() error: %v", err)
+	}
+
+	// Unmarshal into raw map to verify flattened structure
+	var m map[string]string
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("Unmarshal to map: %v", err)
+	}
+
+	if m["display_title"] != "Title" {
+		t.Errorf("display_title = %q, want %q", m["display_title"], "Title")
+	}
+	if m["layout"] != "wide" {
+		t.Errorf("layout = %q, want %q", m["layout"], "wide")
+	}
+	if m["toc"] != "true" {
+		t.Errorf("toc = %q, want %q", m["toc"], "true")
+	}
+	if m["custom"] != "value" {
+		t.Errorf("custom = %q, want %q", m["custom"], "value")
+	}
+}
+
+func TestFrontmatterMarshalJSON_Empty(t *testing.T) {
+	fm := Frontmatter{}
+	data, err := fm.MarshalJSON()
+	if err != nil {
+		t.Fatalf("MarshalJSON() error: %v", err)
+	}
+	if string(data) != "{}" {
+		t.Errorf("empty frontmatter should marshal to {}, got %s", data)
+	}
+}
+
+func TestFrontmatterMarshalJSON_TOCFalse(t *testing.T) {
+	fm := Frontmatter{TOC: boolPtr(false)}
+	data, err := fm.MarshalJSON()
+	if err != nil {
+		t.Fatalf("MarshalJSON() error: %v", err)
+	}
+	var m map[string]string
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("Unmarshal to map: %v", err)
+	}
+	if m["toc"] != "false" {
+		t.Errorf("toc = %q, want %q", m["toc"], "false")
+	}
+}
+
+func TestFrontmatterUnmarshalJSON(t *testing.T) {
+	input := []byte(`{"display_title":"Title","layout":"wide","toc":"true","custom":"value"}`)
+
+	var fm Frontmatter
+	if err := fm.UnmarshalJSON(input); err != nil {
+		t.Fatalf("UnmarshalJSON() error: %v", err)
+	}
+
+	if fm.DisplayTitle != "Title" {
+		t.Errorf("DisplayTitle = %q, want %q", fm.DisplayTitle, "Title")
+	}
+	if fm.Layout != "wide" {
+		t.Errorf("Layout = %q, want %q", fm.Layout, "wide")
+	}
+	if fm.TOC == nil || !*fm.TOC {
+		t.Error("TOC should be true")
+	}
+	if fm.Extra["custom"] != "value" {
+		t.Errorf("Extra[custom] = %q, want %q", fm.Extra["custom"], "value")
+	}
+	// Known fields should not leak into Extra
+	if _, ok := fm.Extra["display_title"]; ok {
+		t.Error("display_title should not appear in Extra")
+	}
+}
+
+func TestFrontmatterJSONRoundTrip(t *testing.T) {
+	tests := []struct {
+		name string
+		fm   Frontmatter
+	}{
+		{"empty", Frontmatter{}},
+		{"display_title only", Frontmatter{DisplayTitle: "Title"}},
+		{"all known fields", Frontmatter{DisplayTitle: "T", Layout: "wide", TOC: boolPtr(true)}},
+		{"extra fields", Frontmatter{Extra: map[string]string{"a": "1", "b": "2"}}},
+		{"known and extra", Frontmatter{DisplayTitle: "T", Extra: map[string]string{"x": "y"}}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := tt.fm.MarshalJSON()
+			if err != nil {
+				t.Fatalf("MarshalJSON() error: %v", err)
+			}
+			var got Frontmatter
+			if err := got.UnmarshalJSON(data); err != nil {
+				t.Fatalf("UnmarshalJSON() error: %v", err)
+			}
+			if !reflect.DeepEqual(got, tt.fm) {
+				t.Errorf("round-trip: got %+v, want %+v", got, tt.fm)
+			}
+		})
+	}
+}
+
