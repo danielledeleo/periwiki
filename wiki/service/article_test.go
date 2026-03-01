@@ -639,6 +639,149 @@ func TestPostArticle_SelfLink(t *testing.T) {
 	}
 }
 
+func TestQueueRerenderRevision(t *testing.T) {
+	app, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
+
+	t.Run("rerenders current revision", func(t *testing.T) {
+		testutil.CreateTestArticle(t, app, "queue-rerender", "# Original", user)
+
+		resultCh, err := app.Articles.QueueRerenderRevision(nil, "queue-rerender", 0)
+		if err != nil {
+			t.Fatalf("QueueRerenderRevision failed: %v", err)
+		}
+
+		result := <-resultCh
+		if result.Err != nil {
+			t.Fatalf("rerender result error: %v", result.Err)
+		}
+		if result.URL != "queue-rerender" {
+			t.Errorf("expected URL 'queue-rerender', got %q", result.URL)
+		}
+
+		// Verify article is still readable after rerender
+		article, err := app.Articles.GetArticle("queue-rerender")
+		if err != nil {
+			t.Fatalf("GetArticle after rerender failed: %v", err)
+		}
+		if article.HTML == "" {
+			t.Error("expected non-empty HTML after rerender")
+		}
+	})
+
+	t.Run("rerenders specific revision", func(t *testing.T) {
+		testutil.CreateTestArticle(t, app, "queue-rev", "Version 1", user)
+		v1, _ := app.Articles.GetArticle("queue-rev")
+
+		v2 := wiki.NewArticle("queue-rev", "Version 2")
+		v2.Creator = user
+		v2.PreviousID = v1.ID
+		if err := app.Articles.PostArticle(v2); err != nil {
+			t.Fatalf("PostArticle(v2) failed: %v", err)
+		}
+
+		// Rerender revision 1 specifically
+		resultCh, err := app.Articles.QueueRerenderRevision(nil, "queue-rev", 1)
+		if err != nil {
+			t.Fatalf("QueueRerenderRevision failed: %v", err)
+		}
+
+		result := <-resultCh
+		if result.Err != nil {
+			t.Fatalf("rerender result error: %v", result.Err)
+		}
+	})
+
+	t.Run("returns error for nonexistent article", func(t *testing.T) {
+		_, err := app.Articles.QueueRerenderRevision(nil, "nonexistent", 0)
+		if err != wiki.ErrGenericNotFound {
+			t.Errorf("expected ErrGenericNotFound, got: %v", err)
+		}
+	})
+
+	t.Run("returns error for nonexistent revision", func(t *testing.T) {
+		testutil.CreateTestArticle(t, app, "queue-rev-missing", "Content", user)
+
+		_, err := app.Articles.QueueRerenderRevision(nil, "queue-rev-missing", 999)
+		if err != wiki.ErrRevisionNotFound {
+			t.Errorf("expected ErrRevisionNotFound, got: %v", err)
+		}
+	})
+
+	t.Run("channel is closed after result", func(t *testing.T) {
+		testutil.CreateTestArticle(t, app, "queue-closed", "Content", user)
+
+		resultCh, err := app.Articles.QueueRerenderRevision(nil, "queue-closed", 0)
+		if err != nil {
+			t.Fatalf("QueueRerenderRevision failed: %v", err)
+		}
+
+		<-resultCh // consume result
+		_, ok := <-resultCh
+		if ok {
+			t.Error("expected channel to be closed after result")
+		}
+	})
+}
+
+func TestBackfillLinks(t *testing.T) {
+	app, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, app.DB, "testuser", "test@example.com", "password123")
+
+	t.Run("empty database returns zero", func(t *testing.T) {
+		count, err := app.Articles.BackfillLinks()
+		if err != nil {
+			t.Fatalf("BackfillLinks failed: %v", err)
+		}
+		if count != 0 {
+			t.Errorf("expected 0, got %d", count)
+		}
+	})
+
+	t.Run("backfills links for all articles", func(t *testing.T) {
+		testutil.CreateTestArticle(t, app, "Backfill_A", "Links to [[Backfill_B]] and [[Backfill_C]].", user)
+		testutil.CreateTestArticle(t, app, "Backfill_B", "Links to [[Backfill_A]].", user)
+		testutil.CreateTestArticle(t, app, "Backfill_C", "No links here.", user)
+
+		// Clear all links to simulate stale state
+		if err := app.DB.ReplaceArticleLinks("Backfill_A", nil); err != nil {
+			t.Fatalf("clear links failed: %v", err)
+		}
+		if err := app.DB.ReplaceArticleLinks("Backfill_B", nil); err != nil {
+			t.Fatalf("clear links failed: %v", err)
+		}
+
+		// Verify links were cleared
+		backlinks, _ := app.DB.SelectBacklinks("Backfill_B")
+		if len(backlinks) != 0 {
+			t.Fatal("expected no backlinks after clearing")
+		}
+
+		// Backfill should restore them
+		count, err := app.Articles.BackfillLinks()
+		if err != nil {
+			t.Fatalf("BackfillLinks failed: %v", err)
+		}
+		// A has 2 links, B has 1 link, C has 0 links → count = 2
+		if count != 2 {
+			t.Errorf("expected 2 articles with links, got %d", count)
+		}
+
+		// Verify links were restored
+		backlinks, err = app.DB.SelectBacklinks("Backfill_B")
+		if err != nil {
+			t.Fatalf("SelectBacklinks failed: %v", err)
+		}
+		if len(backlinks) != 1 || backlinks[0].URL != "Backfill_A" {
+			t.Errorf("expected backlink from Backfill_A to Backfill_B, got %v", backlinks)
+		}
+	})
+}
+
 func TestPostArticle_TalkPage(t *testing.T) {
 	app, cleanup := testutil.SetupTestApp(t)
 	defer cleanup()

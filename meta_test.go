@@ -78,25 +78,17 @@ func TestExportedFunctionsHaveTests(t *testing.T) {
 	// indirectly (if any).
 	allowList := map[string]string{
 		// Production infrastructure — only called during server startup, no test exercises these
-		"internal/storage.Init": "setup only; tested via TestDB which mirrors the same init path",
-		"wiki.LoadRuntimeConfig":  "setup only",
-		"wiki.GetOrCreateSetting": "setup only",
-		"wiki.UpdateSetting":      "setup only",
+		"internal/storage.Init":   "setup only; tested via TestDB which mirrors the same init path",
+		"wiki.LoadRuntimeConfig": "setup only; composes GetOrCreateSetting which is tested directly",
 
 		// Tested indirectly — traced to specific test functions
-		"wiki/service.articleService.PostArticleWithContext":            "called by PostArticle; exercised by TestPreviewArticle, TestPostArticle*",
-		"wiki/service.embeddedArticleService.PostArticleWithContext":    "delegates to articleService.PostArticleWithContext",
-		"wiki/service.articleService.RerenderRevision":                  "called by handleRerenderRevision; exercised by TestRerenderCurrentRevision, TestRerenderSpecificRevision",
-		"wiki/service.embeddedArticleService.RerenderRevision":         "delegates to articleService.RerenderRevision",
-		"wiki/service.renderingService.PreviewMarkdown":                "called by articlePreviewHandler; exercised by TestPreviewArticle",
-
-		// Called in production but no integration test exercises the code path yet
-		"wiki/service.articleService.QueueRerenderRevision":            "called by RerenderAllPage.handlePost and invalidateBacklinkers; no test yet",
-		"wiki/service.embeddedArticleService.QueueRerenderRevision":    "delegates to articleService.QueueRerenderRevision",
-		"wiki/service.articleService.BackfillLinks":                    "called by BackfillLinksHandler; no test yet",
-		"wiki/service.embeddedArticleService.BackfillLinks":            "delegates to articleService.BackfillLinks",
-		"special.NewRerenderAllPage":                                   "registered in RegisterSpecialPages; no test yet",
-		"internal/embedded.EmbeddedArticles.RenderAll":                 "called during setup to re-render after existence checker is ready; no test yet",
+		"wiki/service.articleService.PostArticleWithContext":         "called by PostArticle; exercised by TestPreviewArticle, TestPostArticle*",
+		"wiki/service.articleService.RerenderRevision":               "called by handleRerenderRevision; exercised by TestRerenderCurrentRevision, TestRerenderSpecificRevision",
+		"wiki/service.embeddedArticleService.BackfillLinks":          "delegates to articleService.BackfillLinks; base tested by TestBackfillLinks",
+		"wiki/service.embeddedArticleService.PostArticleWithContext": "delegates to articleService.PostArticleWithContext",
+		"wiki/service.embeddedArticleService.RerenderRevision":       "delegates to articleService.RerenderRevision",
+		"wiki/service.embeddedArticleService.QueueRerenderRevision":  "delegates to articleService.QueueRerenderRevision; base tested by TestQueueRerenderRevision",
+		"wiki/service.renderingService.PreviewMarkdown":              "called by articlePreviewHandler; exercised by TestPreviewArticle",
 	}
 
 	// Collect contents of all test files and test infrastructure.
