@@ -84,8 +84,6 @@ func TestExportedFunctionsHaveTests(t *testing.T) {
 		"wiki.UpdateSetting":      "setup only",
 
 		// Tested indirectly — traced to specific test functions
-		"wiki.TitleToSlug": "called by LinkExtractor.ExtractLinks and wikilink resolver; exercised by TestExtractLinks, TestWikiLink*",
-
 		"wiki/service.articleService.PostArticleWithContext":            "called by PostArticle; exercised by TestPreviewArticle, TestPostArticle*",
 		"wiki/service.embeddedArticleService.PostArticleWithContext":    "delegates to articleService.PostArticleWithContext",
 		"wiki/service.articleService.RerenderRevision":                  "called by handleRerenderRevision; exercised by TestRerenderCurrentRevision, TestRerenderSpecificRevision",

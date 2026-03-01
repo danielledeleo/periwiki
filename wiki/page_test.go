@@ -176,6 +176,33 @@ func TestArticleDisplayTitleWithInference(t *testing.T) {
 	}
 }
 
+func TestTitleToSlug(t *testing.T) {
+	tests := []struct {
+		name     string
+		title    string
+		expected string
+	}{
+		{name: "simple title", title: "Hello", expected: "Hello"},
+		{name: "spaces to underscores", title: "Hello World", expected: "Hello_World"},
+		{name: "multiple spaces collapsed", title: "Hello   World", expected: "Hello_World"},
+		{name: "leading/trailing whitespace trimmed", title: "  Hello  ", expected: "Hello"},
+		{name: "tabs to underscores", title: "Hello\tWorld", expected: "Hello_World"},
+		{name: "mixed whitespace collapsed", title: "Hello \t\n World", expected: "Hello_World"},
+		{name: "empty string", title: "", expected: ""},
+		{name: "only whitespace", title: "   ", expected: ""},
+		{name: "preserves case", title: "HTML Specification", expected: "HTML_Specification"},
+		{name: "preserves special characters", title: "C++ Programming", expected: "C++_Programming"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := TitleToSlug(tt.title); got != tt.expected {
+				t.Errorf("TitleToSlug(%q) = %q, want %q", tt.title, got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestInferTitle(t *testing.T) {
 	tests := []struct {
 		name     string
