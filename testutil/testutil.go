@@ -185,7 +185,13 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 
 		// Check special pages (Special:* namespace)
 		if specialPages != nil && strings.HasPrefix(url, "Special:") {
-			return specialPages.Has(strings.TrimPrefix(url, "Special:"))
+			name := strings.TrimPrefix(url, "Special:")
+			if specialPages.Has(name) {
+				return true
+			}
+			if idx := strings.IndexByte(name, '/'); idx >= 0 {
+				return specialPages.Has(name[:idx])
+			}
 		}
 
 		return false

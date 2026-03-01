@@ -201,7 +201,14 @@ func (s *ExistenceState) check(url string) bool {
 	}
 
 	if s.SpecialPages != nil && strings.HasPrefix(url, "Special:") {
-		return s.SpecialPages.Has(strings.TrimPrefix(url, "Special:"))
+		name := strings.TrimPrefix(url, "Special:")
+		if s.SpecialPages.Has(name) {
+			return true
+		}
+		// Support subpage URLs like Special:Contributions/Username
+		if idx := strings.IndexByte(name, '/'); idx >= 0 {
+			return s.SpecialPages.Has(name[:idx])
+		}
 	}
 
 	return false
