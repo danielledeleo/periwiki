@@ -231,6 +231,7 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 
 	specialPages = special.NewRegistry()
 	specialPages.Register("Random", special.NewRandomPage(articleServiceWrapped))
+	specialPages.Register("Contributions", special.NewContributionsPage(articleServiceWrapped, userService, tmpl))
 
 	app := &TestApp{
 		Templater:     tmpl,

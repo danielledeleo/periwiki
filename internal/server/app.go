@@ -153,7 +153,7 @@ func NewSanitizer() *bluemonday.Policy {
 
 // RegisterSpecialPages creates and populates a special page registry.
 // Used by both the main server and the WASM demo.
-func RegisterSpecialPages(articles service.ArticleService, t *templater.Templater, baseURL string) *special.Registry {
+func RegisterSpecialPages(articles service.ArticleService, users service.UserService, t *templater.Templater, baseURL string) *special.Registry {
 	registry := special.NewRegistry()
 	registry.Register("Random", special.NewRandomPage(articles))
 
@@ -165,6 +165,7 @@ func RegisterSpecialPages(articles service.ArticleService, t *templater.Template
 	registry.Register("RerenderAll", special.NewRerenderAllPage(articles, t))
 	registry.Register("WhatLinksHere", special.NewWhatLinksHerePage(articles, t))
 	registry.Register("SourceCode", special.NewSourceCodePage())
+	registry.Register("Contributions", special.NewContributionsPage(articles, users, t))
 	return registry
 }
 

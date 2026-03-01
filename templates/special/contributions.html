@@ -1,0 +1,26 @@
+{{define "content"}}
+<div id="article-area">
+    <article>
+        <h1>Contributions by {{.ScreenName}}</h1>
+        <div class="pw-article-content">
+            {{if .Contributions}}
+            <ul>
+                {{range .Contributions}}
+                <li>
+                    <a href="{{revisionURL .ArticleURL .RevisionID}}">
+                        {{.Created.Format "2006, Jan _2 3:04 MST"}}
+                    </a>
+                    <a href="{{articleURL .ArticleURL}}">{{inferTitle .ArticleURL}}</a>
+                    ({{.MarkdownSize}} bytes){{if .Comment}}
+                    <em>({{.Comment}})</em>{{end}}{{if gt .PreviousID 0}}
+                    (<a href="{{diffURL .ArticleURL .PreviousID .RevisionID}}">diff</a>){{end}}
+                </li>
+                {{end}}
+            </ul>
+            {{else}}
+            <p>This user has not made any edits.</p>
+            {{end}}
+        </div>
+    </article>
+</div>
+{{end}}

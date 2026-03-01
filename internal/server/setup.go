@@ -146,7 +146,7 @@ func Setup(contentFS fs.FS, contentInfo *ContentInfo) (*App, *renderqueue.Queue)
 	// Create preference service
 	preferenceService := service.NewPreferenceService(database)
 
-	specialPages := RegisterSpecialPages(articleService, t, modelConf.BaseURL)
+	specialPages := RegisterSpecialPages(articleService, userService, t, modelConf.BaseURL)
 	existenceState.SpecialPages = specialPages
 
 	// Re-render embedded articles now that the existence checker can see
