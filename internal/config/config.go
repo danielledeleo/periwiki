@@ -3,12 +3,10 @@ package config
 import (
 	"log/slog"
 	"os"
-	"strings"
 
 	"github.com/danielledeleo/periwiki/internal/logger"
 	"github.com/danielledeleo/periwiki/wiki"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v3"
 )
 
 const configFilename = "config.yaml"
@@ -25,14 +23,8 @@ func SetupConfig() *wiki.Config {
 
 	viper.SetConfigFile(configFilename)
 	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
-
-	createDefaultConfigFile := false
-
-	if err != nil {
-		if strings.Contains(err.Error(), "no such file or directory") {
-			createDefaultConfigFile = true
-		} else {
+	if err := viper.ReadInConfig(); err != nil {
+		if !os.IsNotExist(err) {
 			slog.Error("failed to read config", "error", err)
 			os.Exit(1)
 		}
@@ -44,27 +36,11 @@ func SetupConfig() *wiki.Config {
 		logger.ParseLogLevel(viper.GetString("log_level")),
 	)
 
-	config := &wiki.Config{
+	return &wiki.Config{
 		DatabaseFile: viper.GetString("dbfile"),
 		Host:         viper.GetString("host"),
 		BaseURL:      viper.GetString("base_url"),
 		LogFormat:    viper.GetString("log_format"),
 		LogLevel:     viper.GetString("log_level"),
 	}
-
-	if createDefaultConfigFile {
-		slog.Info("config not found, writing defaults", "file", configFilename)
-		conf, err := os.Create(configFilename)
-		if err != nil {
-			slog.Error("failed to create config file", "error", err)
-			os.Exit(1)
-		}
-
-		if err := yaml.NewEncoder(conf).Encode(config); err != nil {
-			slog.Error("failed to write config file", "error", err)
-			os.Exit(1)
-		}
-	}
-
-	return config
 }
