@@ -337,7 +337,8 @@ type articleResult struct {
 	Comment     string
 	UserID      int       `db:"user_id"`
 	ScreenName  string    `db:"screenname"`
-	HasUserPage bool      `db:"has_user_page"`
+	HasUserPage     bool      `db:"has_user_page"`
+	HasUserTalkPage bool      `db:"has_user_talk_page"`
 }
 
 func (r *articleResult) toArticle() *wiki.Article {
@@ -351,7 +352,7 @@ func (r *articleResult) toArticle() *wiki.Article {
 			Created:    r.Created,
 			PreviousID: r.PreviousID,
 			Comment:    r.Comment,
-			Creator:    &wiki.User{ID: r.UserID, ScreenName: r.ScreenName, HasUserPage: r.HasUserPage},
+			Creator:    &wiki.User{ID: r.UserID, ScreenName: r.ScreenName, HasUserPage: r.HasUserPage, HasUserTalkPage: r.HasUserTalkPage},
 		},
 	}
 }
@@ -392,7 +393,8 @@ func (tdb *TestDB) SelectRevision(hash string) (*wiki.Revision, error) {
 func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 	rows, err := tdb.conn.Queryx(
 		`SELECT Revision.id, hashval, created, comment, previous_id, User.screenname, length(markdown),
-			EXISTS(SELECT 1 FROM Article a2 WHERE a2.url = 'User:' || User.screenname) AS has_user_page
+			EXISTS(SELECT 1 FROM Article a2 WHERE a2.url = 'User:' || User.screenname) AS has_user_page,
+			EXISTS(SELECT 1 FROM Article a3 WHERE a3.url = 'User_talk:' || User.screenname) AS has_user_talk_page
 			FROM Article JOIN Revision ON Article.id = Revision.article_id
 					     JOIN User ON Revision.user_id = User.id
 			WHERE Article.url = ? ORDER BY Revision.id DESC`, url)
@@ -408,6 +410,7 @@ func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 		Length                       int       `db:"length(markdown)"`
 		Created                      time.Time `db:"created"`
 		HasUserPage                  bool      `db:"has_user_page"`
+		HasUserTalkPage              bool      `db:"has_user_talk_page"`
 	}{}
 	results := make([]*wiki.Revision, 0)
 	for rows.Next() {
@@ -424,6 +427,7 @@ func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 		rev.Markdown = string(rune(result.Length))
 		rev.Creator.ScreenName = result.Screenname
 		rev.Creator.HasUserPage = result.HasUserPage
+		rev.Creator.HasUserTalkPage = result.HasUserTalkPage
 		results = append(results, rev)
 	}
 	if len(results) < 1 {

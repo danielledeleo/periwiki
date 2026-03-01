@@ -11,7 +11,7 @@
                 <li>
                     <a href="{{revisionURL $.Article.URL .ID}}">
                         {{ .Created.Format "2006, Jan _2 3:04 MST" }}
-                    </a> by <a href="{{userPageArticleURL .Creator.ScreenName}}"{{if not .Creator.HasUserPage}} class="pw-deadlink"{{end}}>{{.Creator.ScreenName}}</a> (<a href="{{articleURL (userTalkPageURL .Creator.ScreenName)}}">talk</a> | <a href="{{contributionsURL .Creator.ScreenName}}">contribs</a>) ({{.Markdown}} bytes){{if .Comment}} ...
+                    </a> by <a href="{{userPageArticleURL .Creator.ScreenName}}"{{if not .Creator.HasUserPage}} class="pw-deadlink"{{end}}>{{.Creator.ScreenName}}</a> (<a href="{{articleURL (userTalkPageURL .Creator.ScreenName)}}"{{if not .Creator.HasUserTalkPage}} class="pw-deadlink"{{end}}>talk</a> | <a href="{{contributionsURL .Creator.ScreenName}}">contribs</a>) ({{.Markdown}} bytes){{if .Comment}} ...
                     <em>({{.Comment}})</em>{{end}}{{if or (gt .PreviousID 0) (ne .ID $.CurrentRevisionID)}}
                     ({{if gt .PreviousID 0}}<a href="{{diffURL $.Article.URL .PreviousID .ID}}">diff</a>{{end}}{{if and (gt .PreviousID 0) (ne .ID $.CurrentRevisionID)}} | {{end}}{{if ne .ID $.CurrentRevisionID}}<a href="{{diffURL $.Article.URL .ID 0}}">curr</a>{{end}}){{end}}
                 </li>

@@ -22,7 +22,8 @@ func InitializeStatements(conn *sqlx.DB) (*PreparedStatements, error) {
 	var err error
 
 	q := `SELECT url, Revision.id, markdown, COALESCE(html, '') AS html, hashval, created, previous_id, comment, User.id AS user_id, User.screenname,
-			EXISTS(SELECT 1 FROM Article a2 WHERE a2.url = 'User:' || User.screenname) AS has_user_page
+			EXISTS(SELECT 1 FROM Article a2 WHERE a2.url = 'User:' || User.screenname) AS has_user_page,
+			EXISTS(SELECT 1 FROM Article a3 WHERE a3.url = 'User_talk:' || User.screenname) AS has_user_talk_page
 			FROM Article
 			JOIN Revision ON Article.id = Revision.article_id
 			JOIN User ON Revision.user_id = User.id

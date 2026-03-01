@@ -22,7 +22,8 @@ type User struct {
 	CreatedAt    time.Time `db:"created_at"`
 	RawPassword  string
 	IPAddress    string
-	HasUserPage  bool `db:"has_user_page"`
+	HasUserPage     bool `db:"has_user_page"`
+	HasUserTalkPage bool `db:"has_user_talk_page"`
 }
 
 // IsAnonymous returns true if the user is not authenticated.

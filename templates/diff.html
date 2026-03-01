@@ -8,7 +8,7 @@
             <p>
                 Comparing {{if eq .ID $.CurrentRevisionID}} latest {{end}} revision at
                 <a href="{{revisionURL .URL .ID}}">{{.Created.Format "2006-01-02 15:04"}}</a>
-                {{if .Creator}}by <a href="{{userPageArticleURL .Creator.ScreenName}}"{{if not .Creator.HasUserPage}} class="pw-deadlink"{{end}}>{{.Creator.ScreenName}}</a> (<a href="{{articleURL (userTalkPageURL .Creator.ScreenName)}}">talk</a> | <a href="{{contributionsURL .Creator.ScreenName}}">contribs</a>){{end}}
+                {{if .Creator}}by <a href="{{userPageArticleURL .Creator.ScreenName}}"{{if not .Creator.HasUserPage}} class="pw-deadlink"{{end}}>{{.Creator.ScreenName}}</a> (<a href="{{articleURL (userTalkPageURL .Creator.ScreenName)}}"{{if not .Creator.HasUserTalkPage}} class="pw-deadlink"{{end}}>talk</a> | <a href="{{contributionsURL .Creator.ScreenName}}">contribs</a>){{end}}
                 {{- if .Comment -}}<span class="pw-diff-comment"> ... ({{.Comment}})</span>{{- end -}}
             </p>
             <p>
