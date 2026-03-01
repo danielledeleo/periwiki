@@ -43,6 +43,13 @@ Configuration and Runtime
 - Improve "server failed to start" error message with specific reason (port in use, permission denied, etc.)
 - CLI flags to override config file path, database file, host, log level, etc.
 
+HTML Meta Tags
+- `<meta name="description">` — explore auto-generation from article content vs. frontmatter opt-in
+- Open Graph tags (og:title, og:type, og:url) for link previews in Slack/Discord/social media
+- `<meta name="author">` from article creator
+- `<link rel="canonical">` for articles
+- `<meta name="robots">` noindex for old revisions
+
 Down the line
 - SSG mode (full static builds)
 - Custom goldmark table ParagraphTransformer that tracks [[/]] bracket depth, allowing unescaped pipes in wikilinks inside tables (currently requires \| escape)
