@@ -48,6 +48,12 @@ a.pw-deadlink {
     color: var(--pw-deadlink-color);
 }
 
+/* Anonymous author in history/diff */
+.pw-anon-author {
+    border-bottom: 1px dashed var(--pw-grey);
+    cursor: help;
+}
+
 #navbar {
     display: flex;
     justify-content: space-between;

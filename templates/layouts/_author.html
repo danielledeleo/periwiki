@@ -1,0 +1,7 @@
+{{define "author"}}
+{{- if .IsAnonymous -}}
+<span class="pw-anon-author" title="Not logged in">{{.ScreenName}}</span>
+{{- else -}}
+<a href="{{userPageArticleURL .ScreenName}}"{{if not .HasUserPage}} class="pw-deadlink"{{end}}>{{.ScreenName}}</a> (<a href="{{articleURL (userTalkPageURL .ScreenName)}}"{{if not .HasUserTalkPage}} class="pw-deadlink"{{end}}>talk</a> | <a href="{{contributionsURL .ScreenName}}">contribs</a>)
+{{- end -}}
+{{end}}

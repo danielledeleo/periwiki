@@ -92,7 +92,7 @@ func (db *sqliteDb) SelectRevision(hash string) (*wiki.Revision, error) {
 
 func (db *sqliteDb) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 	rows, err := db.conn.Queryx(
-		`SELECT Revision.id, hashval, created, comment, previous_id, User.screenname, length(markdown),
+		`SELECT Revision.id, hashval, created, comment, previous_id, User.id AS user_id, User.screenname, length(markdown),
 			EXISTS(SELECT 1 FROM Article a2 WHERE a2.url = 'User:' || User.screenname) AS has_user_page,
 			EXISTS(SELECT 1 FROM Article a3 WHERE a3.url = 'User_talk:' || User.screenname) AS has_user_talk_page
 			FROM Article JOIN Revision ON Article.id = Revision.article_id
@@ -104,6 +104,7 @@ func (db *sqliteDb) SelectRevisionHistory(url string) ([]*wiki.Revision, error) 
 	result := struct {
 		Hashval, Comment, Screenname string
 		ID                           int
+		UserID                       int       `db:"user_id"`
 		PreviousID                   int       `db:"previous_id"`
 		Length                       int       `db:"length(markdown)"`
 		Created                      time.Time
@@ -123,6 +124,7 @@ func (db *sqliteDb) SelectRevisionHistory(url string) ([]*wiki.Revision, error) 
 		rev.PreviousID = result.PreviousID
 		rev.Comment = result.Comment
 		rev.Markdown = fmt.Sprint(result.Length) // dirty hack
+		rev.Creator.ID = result.UserID
 		rev.Creator.ScreenName = result.Screenname
 		rev.Creator.HasUserPage = result.HasUserPage
 		rev.Creator.HasUserTalkPage = result.HasUserTalkPage

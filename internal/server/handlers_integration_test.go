@@ -854,6 +854,46 @@ func TestArticleMarkdownHandler(t *testing.T) {
 			t.Errorf("expected status 404, got %d", rr.Code)
 		}
 	})
+
+	t.Run("namespace markdown endpoints", func(t *testing.T) {
+		md := "Namespace markdown test content."
+
+		// Create articles in each namespace
+		for _, url := range []string{"Talk:Foo", "User:" + user.ScreenName, "User_talk:" + user.ScreenName} {
+			article := wiki.NewArticle(url, md)
+			article.Creator = user
+			if err := testApp.Articles.PostArticle(article); err != nil {
+				t.Fatalf("PostArticle(%s) failed: %v", url, err)
+			}
+		}
+
+		for _, tc := range []struct {
+			name string
+			path string
+		}{
+			{"Talk", "/wiki/Talk:Foo.md"},
+			{"User", "/wiki/User:" + user.ScreenName + ".md"},
+			{"User_talk", "/wiki/User_talk:" + user.ScreenName + ".md"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				req := httptest.NewRequest("GET", tc.path, nil)
+				rr := httptest.NewRecorder()
+
+				router.ServeHTTP(rr, req)
+
+				if rr.Code != http.StatusOK {
+					t.Errorf("expected status 200, got %d", rr.Code)
+				}
+				ct := rr.Header().Get("Content-Type")
+				if ct != "text/plain; charset=utf-8" {
+					t.Errorf("expected Content-Type text/plain, got %q", ct)
+				}
+				if body := rr.Body.String(); body != md {
+					t.Errorf("expected raw markdown, got %q", body)
+				}
+			})
+		}
+	})
 }
 
 func TestArticleCaching_CurrentRevision(t *testing.T) {

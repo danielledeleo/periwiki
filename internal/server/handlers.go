@@ -350,16 +350,7 @@ func (a *App) handleUserPage(rw http.ResponseWriter, req *http.Request, articleU
 		return
 	}
 
-	// Try to get the user's custom page content
-	var article *wiki.Article
-	var customContent template.HTML
-	article, err = a.Articles.GetArticle(articleURL)
-	if err != nil {
-		// No custom page — create a placeholder for tabs
-		article = wiki.NewArticle(articleURL, "")
-	} else {
-		customContent = template.HTML(article.HTML)
-	}
+	params := req.URL.Query()
 
 	// Get edit count
 	editCount, _ := a.Articles.GetUserEditCount(userProfile.ID)
@@ -368,16 +359,61 @@ func (a *App) handleUserPage(rw http.ResponseWriter, req *http.Request, articleU
 	currentUser := req.Context().Value(wiki.UserKey).(*wiki.User)
 	canEdit := currentUser.ID == userProfile.ID || currentUser.IsAdmin()
 
-	err = a.RenderTemplate(rw, "user_page.html", "index.html", map[string]interface{}{
-		"Page":          wiki.NewStaticPage(screenName),
-		"Article":       article,
-		"Context":       req.Context(),
-		"ActiveTab":     "userpage",
-		"UserProfile":   userProfile,
-		"EditCount":     editCount,
-		"CustomContent": customContent,
-		"HideEdit":      !canEdit,
-	})
+	templateData := map[string]interface{}{
+		"Context":     req.Context(),
+		"ActiveTab":   "userpage",
+		"UserProfile": userProfile,
+		"EditCount":   editCount,
+		"HideEdit":    !canEdit,
+	}
+
+	// Viewing a specific old revision
+	if revisionStr := params.Get("revision"); revisionStr != "" {
+		revisionID, err := strconv.Atoi(revisionStr)
+		if err != nil {
+			a.ErrorHandler(http.StatusBadRequest, rw, req, err)
+			return
+		}
+		article, err := a.Articles.GetArticleByRevisionID(articleURL, revisionID)
+		if err != nil {
+			a.ErrorHandler(http.StatusNotFound, rw, req, err)
+			return
+		}
+
+		setCacheStable(rw, article.Created)
+		if checkNotModified(rw, req, "", article.Created) {
+			return
+		}
+
+		templateData["Page"] = article
+		templateData["Article"] = article
+		if current, err := a.Articles.GetArticle(articleURL); err == nil && current.ID != article.ID {
+			templateData["IsOldRevision"] = true
+			templateData["CurrentRevisionID"] = current.ID
+			templateData["CurrentRevisionCreated"] = current.Created
+		}
+
+		err = a.RenderTemplate(rw, "article.html", "index.html", templateData)
+		check(err)
+		return
+	}
+
+	// Current revision (or no custom page yet)
+	article, err := a.Articles.GetArticle(articleURL)
+	if err != nil {
+		article = wiki.NewArticle(articleURL, "")
+	} else {
+		etag := `W/"` + article.Hash + `"`
+		setCacheConditional(rw, article.Hash, article.Created)
+		if checkNotModified(rw, req, etag, article.Created) {
+			return
+		}
+	}
+
+	templateData["Page"] = wiki.NewStaticPage(screenName)
+	templateData["Article"] = article
+
+	err = a.RenderTemplate(rw, "article.html", "index.html", templateData)
 	check(err)
 }
 
@@ -911,6 +947,10 @@ func (a *App) NamespaceHandler(rw http.ResponseWriter, req *http.Request) {
 
 	// User namespace: user profile pages
 	if strings.EqualFold(namespace, "user") {
+		if mdPage, ok := strings.CutSuffix(page, ".md"); ok {
+			a.serveArticleMarkdown(rw, req, "User:"+mdPage)
+			return
+		}
 		a.dispatchUserPage(rw, req, "User:"+page)
 		return
 	}
