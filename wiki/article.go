@@ -54,6 +54,34 @@ func SubjectPageURL(url string) string {
 	return strings.TrimPrefix(url, "Talk:")
 }
 
+// IsUserPage returns true if the URL is in the User namespace (but not User_talk).
+func IsUserPage(url string) bool {
+	return strings.HasPrefix(url, "User:") && !strings.HasPrefix(url, "User_talk:")
+}
+
+// IsUserTalkPage returns true if the URL is in the User_talk namespace.
+func IsUserTalkPage(url string) bool {
+	return strings.HasPrefix(url, "User_talk:")
+}
+
+// UserPageURL returns the User namespace URL for a given screen name.
+func UserPageURL(screenName string) string {
+	return "User:" + screenName
+}
+
+// UserTalkPageURL returns the User_talk namespace URL for a given screen name.
+func UserTalkPageURL(screenName string) string {
+	return "User_talk:" + screenName
+}
+
+// UserPageScreenName extracts the screen name from a User: or User_talk: URL.
+func UserPageScreenName(url string) string {
+	if after, ok := strings.CutPrefix(url, "User_talk:"); ok {
+		return after
+	}
+	return strings.TrimPrefix(url, "User:")
+}
+
 // ArticleSummary represents minimal article info for sitemaps.
 // Note: Does not include markdown for performance - use InferTitle for display.
 // ArticleSummary is a lightweight article representation for listings.
