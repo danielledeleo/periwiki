@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/danielledeleo/periwiki/wiki"
 )
@@ -44,6 +45,28 @@ func (p *SitemapPage) Handle(rw http.ResponseWriter, req *http.Request) {
 		slog.Error("failed to get articles for sitemap", "category", "special", "error", err)
 		http.Error(rw, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+
+	// Find newest modification time for conditional caching
+	var newest time.Time
+	for _, a := range articles {
+		if a.LastModified.After(newest) {
+			newest = a.LastModified
+		}
+	}
+
+	rw.Header().Set("Cache-Control", "public, no-cache")
+	if !newest.IsZero() {
+		rw.Header().Set("Last-Modified", newest.UTC().Format(http.TimeFormat))
+
+		// Check conditional request
+		if ims := req.Header.Get("If-Modified-Since"); ims != "" {
+			t, parseErr := http.ParseTime(ims)
+			if parseErr == nil && !newest.Truncate(time.Second).After(t.Truncate(time.Second)) {
+				rw.WriteHeader(http.StatusNotModified)
+				return
+			}
+		}
 	}
 
 	// Detect format from URL path

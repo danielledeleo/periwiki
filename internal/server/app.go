@@ -2,6 +2,7 @@ package server
 
 import (
 	"database/sql"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -91,7 +92,9 @@ func (a *App) RegisterRoutes(router *mux.Router, contentFS fs.FS) {
 
 	staticSub, _ := fs.Sub(contentFS, "static")
 	staticFS := http.FileServer(http.FS(staticSub))
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", staticFS))
+	router.PathPrefix("/static/").Handler(
+		http.StripPrefix("/static/", cacheControlHandler(staticFS, "public, max-age=86400")),
+	)
 
 	router.HandleFunc("/favicon.ico", serveFile(contentFS, "static/favicon.ico", "image/x-icon"))
 	router.HandleFunc("/robots.txt", serveFile(contentFS, "static/robots.txt", "text/plain; charset=utf-8"))
@@ -118,20 +121,20 @@ func (a *App) RegisterRoutes(router *mux.Router, contentFS fs.FS) {
 	router.HandleFunc("/wiki/{article}.md", a.ArticleMarkdownHandler).Methods("GET")
 	router.HandleFunc("/wiki/{article}", a.ArticleDispatcher).Methods("GET", "POST")
 
-	router.HandleFunc("/user/register", a.RegisterHandler).Methods("GET")
-	router.HandleFunc("/user/register", a.RegisterPostHandler).Methods("POST")
-	router.HandleFunc("/user/login", a.LoginHandler).Methods("GET")
-	router.HandleFunc("/user/login", a.LoginPostHandler).Methods("POST")
-	router.HandleFunc("/user/logout", a.LogoutPostHandler).Methods("POST")
+	router.HandleFunc("/user/register", noStore(a.RegisterHandler)).Methods("GET")
+	router.HandleFunc("/user/register", noStore(a.RegisterPostHandler)).Methods("POST")
+	router.HandleFunc("/user/login", noStore(a.LoginHandler)).Methods("GET")
+	router.HandleFunc("/user/login", noStore(a.LoginPostHandler)).Methods("POST")
+	router.HandleFunc("/user/logout", noStore(a.LogoutPostHandler)).Methods("POST")
 
-	router.HandleFunc("/manage/users", a.ManageUsersHandler).Methods("GET")
-	router.HandleFunc("/manage/users/{id:[0-9]+}", a.ManageUserRoleHandler).Methods("POST")
-	router.HandleFunc("/manage/settings", a.ManageSettingsHandler).Methods("GET")
-	router.HandleFunc("/manage/settings", a.ManageSettingsPostHandler).Methods("POST")
-	router.HandleFunc("/manage/tools", a.ManageToolsHandler).Methods("GET")
-	router.HandleFunc("/manage/tools/reset-main-page", a.ResetMainPageHandler).Methods("POST")
-	router.HandleFunc("/manage/tools/backfill-links", a.BackfillLinksHandler).Methods("POST")
-	router.HandleFunc("/manage/content", a.ManageContentHandler).Methods("GET")
+	router.HandleFunc("/manage/users", noStore(a.ManageUsersHandler)).Methods("GET")
+	router.HandleFunc("/manage/users/{id:[0-9]+}", noStore(a.ManageUserRoleHandler)).Methods("POST")
+	router.HandleFunc("/manage/settings", noStore(a.ManageSettingsHandler)).Methods("GET")
+	router.HandleFunc("/manage/settings", noStore(a.ManageSettingsPostHandler)).Methods("POST")
+	router.HandleFunc("/manage/tools", noStore(a.ManageToolsHandler)).Methods("GET")
+	router.HandleFunc("/manage/tools/reset-main-page", noStore(a.ResetMainPageHandler)).Methods("POST")
+	router.HandleFunc("/manage/tools/backfill-links", noStore(a.BackfillLinksHandler)).Methods("POST")
+	router.HandleFunc("/manage/content", noStore(a.ManageContentHandler)).Methods("GET")
 }
 
 // NewSanitizer creates the bluemonday HTML sanitizer with the standard policy.
@@ -205,9 +208,27 @@ func (s *ExistenceState) check(url string) bool {
 
 func serveFile(fsys fs.FS, path string, contentType string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data, err := fs.ReadFile(fsys, path)
+		f, err := fsys.Open(path)
 		if err != nil {
 			http.NotFound(w, r)
+			return
+		}
+		defer f.Close()
+
+		info, err := f.Stat()
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		data, err := io.ReadAll(f)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		setCacheStable(w, info.ModTime())
+		if checkNotModified(w, r, "", info.ModTime()) {
 			return
 		}
 		w.Header().Set("Content-Type", contentType)

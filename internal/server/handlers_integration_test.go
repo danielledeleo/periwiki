@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -804,6 +805,272 @@ func TestArticleMarkdownHandler(t *testing.T) {
 			t.Error("expected HTML response for normal route")
 		}
 	})
+}
+
+func TestArticleCaching_CurrentRevision(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "Cache_Test", "Content here.", user)
+
+	req := httptest.NewRequest("GET", "/wiki/Cache_Test", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if got := rr.Header().Get("Cache-Control"); got != "public, no-cache" {
+		t.Errorf("Cache-Control = %q, want %q", got, "public, no-cache")
+	}
+	if got := rr.Header().Get("ETag"); got == "" {
+		t.Error("expected ETag header to be set")
+	}
+	if got := rr.Header().Get("Last-Modified"); got == "" {
+		t.Error("expected Last-Modified header to be set")
+	}
+}
+
+func TestArticleCaching_OldRevision(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "Old_Rev", "Version 1.", user)
+
+	// Create a second revision
+	article, _ := testApp.Articles.GetArticle("Old_Rev")
+	article.Markdown = "Version 2."
+	article.PreviousID = article.ID
+	article.Creator = user
+	testApp.Articles.PostArticle(article)
+
+	// Request old revision (ID 1)
+	req := httptest.NewRequest("GET", "/wiki/Old_Rev?revision=1", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if got := rr.Header().Get("Cache-Control"); got != "public, max-age=86400" {
+		t.Errorf("Cache-Control = %q, want %q", got, "public, max-age=86400")
+	}
+}
+
+func TestArticleCaching_304_ETag(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "ETag_Test", "Content.", user)
+
+	// First request to get ETag
+	req1 := httptest.NewRequest("GET", "/wiki/ETag_Test", nil)
+	rr1 := httptest.NewRecorder()
+	router.ServeHTTP(rr1, req1)
+	etag := rr1.Header().Get("ETag")
+
+	// Second request with If-None-Match
+	req2 := httptest.NewRequest("GET", "/wiki/ETag_Test", nil)
+	req2.Header.Set("If-None-Match", etag)
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req2)
+
+	if rr2.Code != http.StatusNotModified {
+		t.Errorf("status = %d, want %d", rr2.Code, http.StatusNotModified)
+	}
+	if rr2.Body.Len() != 0 {
+		t.Error("expected empty body for 304 response")
+	}
+}
+
+func TestArticleCaching_NotFound_NoCache(t *testing.T) {
+	router, _, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	req := httptest.NewRequest("GET", "/wiki/Does_Not_Exist", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if got := rr.Header().Get("Cache-Control"); got != "" {
+		t.Errorf("Cache-Control = %q, want empty for 404", got)
+	}
+}
+
+func TestMarkdownCaching(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "Md_Cache", "# Hello", user)
+
+	req := httptest.NewRequest("GET", "/wiki/Md_Cache.md", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if got := rr.Header().Get("Cache-Control"); got != "public, no-cache" {
+		t.Errorf("Cache-Control = %q, want %q", got, "public, no-cache")
+	}
+	if got := rr.Header().Get("ETag"); got == "" {
+		t.Error("expected ETag header")
+	}
+}
+
+func TestHistoryCaching(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "Hist_Cache", "Content.", user)
+
+	req := httptest.NewRequest("GET", "/wiki/Hist_Cache?history", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if got := rr.Header().Get("Cache-Control"); got != "public, no-cache" {
+		t.Errorf("Cache-Control = %q, want %q", got, "public, no-cache")
+	}
+	if got := rr.Header().Get("Last-Modified"); got == "" {
+		t.Error("expected Last-Modified header")
+	}
+}
+
+func TestDiffCaching(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "Diff_Cache", "Version 1.", user)
+
+	article, _ := testApp.Articles.GetArticle("Diff_Cache")
+	oldID := article.ID
+	article.Markdown = "Version 2."
+	article.PreviousID = article.ID
+	article.Creator = user
+	testApp.Articles.PostArticle(article)
+
+	req := httptest.NewRequest("GET", fmt.Sprintf("/wiki/Diff_Cache?diff&old=%d", oldID), nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if got := rr.Header().Get("Cache-Control"); got != "public, max-age=86400" {
+		t.Errorf("Cache-Control = %q, want %q", got, "public, max-age=86400")
+	}
+}
+
+func TestUncacheableRoutes(t *testing.T) {
+	router, _, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	paths := []string{
+		"/user/login",
+		"/user/register",
+		"/manage/users",
+		"/manage/settings",
+		"/manage/tools",
+		"/manage/content",
+	}
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest("GET", path, nil)
+			rr := httptest.NewRecorder()
+			router.ServeHTTP(rr, req)
+
+			if got := rr.Header().Get("Cache-Control"); got != "no-store" {
+				t.Errorf("Cache-Control = %q, want %q", got, "no-store")
+			}
+		})
+	}
+}
+
+func TestEmbeddedArticleCaching(t *testing.T) {
+	router, _, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	req := httptest.NewRequest("GET", "/wiki/Periwiki:Syntax", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	if got := rr.Header().Get("Cache-Control"); got != "public, max-age=86400" {
+		t.Errorf("Cache-Control = %q, want %q", got, "public, max-age=86400")
+	}
+}
+
+func TestSitemapCaching(t *testing.T) {
+	testApp, cleanup := testutil.SetupTestApp(t)
+	defer cleanup()
+
+	// Register sitemap special pages (not included in default test setup)
+	sitemapHandler := special.NewSitemapPage(testApp.Articles, testApp.Templater, "http://localhost")
+	testApp.SpecialPages.Register("Sitemap", sitemapHandler)
+	testApp.SpecialPages.Register("Sitemap.xml", sitemapHandler)
+	testApp.SpecialPages.Register("Sitemap.md", sitemapHandler)
+
+	app := &App{
+		Templater:     testApp.Templater,
+		Articles:      testApp.Articles,
+		Users:         testApp.Users,
+		Sessions:      testApp.Sessions,
+		Rendering:     testApp.Rendering,
+		Preferences:   testApp.Preferences,
+		SpecialPages:  testApp.SpecialPages,
+		Config:        testApp.Config,
+		RuntimeConfig: testApp.RuntimeConfig,
+	}
+	router := mux.NewRouter().StrictSlash(true)
+	app.RegisterRoutes(router, testutil.TestContentFS())
+
+	user := testutil.CreateTestUser(t, testApp.DB, "testuser", "test@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "Sitemap_Cache", "Content.", user)
+
+	paths := []string{"/sitemap.xml", "/sitemap.md", "/wiki/Special:Sitemap"}
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest("GET", path, nil)
+			rr := httptest.NewRecorder()
+			router.ServeHTTP(rr, req)
+
+			if rr.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", rr.Code)
+			}
+			if got := rr.Header().Get("Cache-Control"); got != "public, no-cache" {
+				t.Errorf("Cache-Control = %q, want %q", got, "public, no-cache")
+			}
+			if got := rr.Header().Get("Last-Modified"); got == "" {
+				t.Error("expected Last-Modified header")
+			}
+		})
+	}
+}
+
+func TestStaticFileCaching(t *testing.T) {
+	router, _, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	tests := []struct {
+		path         string
+		cacheControl string
+	}{
+		{"/favicon.ico", "public, max-age=86400"},
+		{"/robots.txt", "public, max-age=86400"},
+		{"/llms.txt", "public, max-age=86400"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			req := httptest.NewRequest("GET", tt.path, nil)
+			rr := httptest.NewRecorder()
+			router.ServeHTTP(rr, req)
+
+			if rr.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", rr.Code)
+			}
+			if got := rr.Header().Get("Cache-Control"); got != tt.cacheControl {
+				t.Errorf("Cache-Control = %q, want %q", got, tt.cacheControl)
+			}
+			if got := rr.Header().Get("Last-Modified"); got == "" {
+				t.Error("expected Last-Modified header to be set")
+			}
+		})
+	}
 }
 
 type mockSpecialPage struct {

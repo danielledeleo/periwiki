@@ -182,6 +182,11 @@ func (a *App) serveArticleMarkdown(rw http.ResponseWriter, req *http.Request, ar
 		http.NotFound(rw, req)
 		return
 	}
+	etag := `W/"` + article.Hash + `"`
+	setCacheConditional(rw, article.Hash, article.Created)
+	if checkNotModified(rw, req, etag, article.Created) {
+		return
+	}
 	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	rw.Write([]byte(article.Markdown))
 }
@@ -312,6 +317,12 @@ func (a *App) handleView(rw http.ResponseWriter, req *http.Request, articleURL s
 			return
 		}
 
+		// Tier 1: old revisions are stable per-run
+		setCacheStable(rw, article.Created)
+		if checkNotModified(rw, req, "", article.Created) {
+			return
+		}
+
 		// Check if this is an old revision by comparing with current
 		templateData := map[string]interface{}{
 			"Page":      article,
@@ -349,6 +360,15 @@ func (a *App) handleView(rw http.ResponseWriter, req *http.Request, articleURL s
 	if !found {
 		article = wiki.NewArticle(articleURL, "")
 		article.Hash = "new"
+	}
+
+	// Tier 2: current revision uses conditional caching
+	if found {
+		etag := `W/"` + article.Hash + `"`
+		setCacheConditional(rw, article.Hash, article.Created)
+		if checkNotModified(rw, req, etag, article.Created) {
+			return
+		}
 	}
 
 	render["Page"] = article
@@ -416,6 +436,14 @@ func (a *App) handleHistory(rw http.ResponseWriter, req *http.Request, articleUR
 		return
 	}
 
+	// Use newest revision's timestamp for conditional caching
+	if len(revisions) > 0 {
+		setCacheConditional(rw, "", revisions[0].Created)
+		if checkNotModified(rw, req, "", revisions[0].Created) {
+			return
+		}
+	}
+
 	slog.Debug("article history viewed", "category", "article", "action", "history", "article", articleURL)
 
 	var currentRevisionID int
@@ -453,6 +481,8 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 			return
 		}
 	}
+
+	rw.Header().Set("Cache-Control", "no-store")
 
 	// Check if anonymous editing is allowed
 	user := req.Context().Value(wiki.UserKey).(*wiki.User)
@@ -593,6 +623,12 @@ func (a *App) handleDiff(rw http.ResponseWriter, req *http.Request, articleURL s
 			_, _ = buff.WriteString(text)
 			_, _ = buff.WriteString("</span>")
 		}
+	}
+
+	// Diffs compare specific revisions — stable per-run
+	setCacheStable(rw, newArticle.Created)
+	if checkNotModified(rw, req, "", newArticle.Created) {
+		return
 	}
 
 	// Get current revision ID for template comparisons
@@ -759,6 +795,11 @@ func (a *App) NamespaceHandler(rw http.ResponseWriter, req *http.Request) {
 		article, err := a.Articles.GetArticle(articleURL)
 		if err != nil {
 			a.ErrorHandler(http.StatusNotFound, rw, req, err)
+			return
+		}
+		// Tier 1: embedded articles are stable per-run
+		setCacheStable(rw, article.Created)
+		if checkNotModified(rw, req, "", article.Created) {
 			return
 		}
 		err = a.RenderTemplate(rw, "article.html", "index.html", map[string]interface{}{
