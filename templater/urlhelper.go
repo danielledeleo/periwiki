@@ -64,3 +64,43 @@ func talkPageURL(urlPath string) string {
 func subjectURL(urlPath string) string {
 	return wiki.SubjectPageURL(urlPath)
 }
+
+// isUserPage returns true if the URL is in the User namespace.
+func isUserPage(urlPath string) bool {
+	return wiki.IsUserPage(urlPath)
+}
+
+// isUserTalkPage returns true if the URL is in the User_talk namespace.
+func isUserTalkPage(urlPath string) bool {
+	return wiki.IsUserTalkPage(urlPath)
+}
+
+// userPageURL returns the User namespace URL for a given screen name.
+func userPageURL(screenName string) string {
+	return wiki.UserPageURL(screenName)
+}
+
+// userTalkPageURL returns the User_talk namespace URL for a given screen name.
+func userTalkPageURL(screenName string) string {
+	return wiki.UserTalkPageURL(screenName)
+}
+
+// userPageScreenName extracts the screen name from a User: or User_talk: URL.
+func userPageScreenName(urlPath string) string {
+	return wiki.UserPageScreenName(urlPath)
+}
+
+// contributionsURL returns the Special:Contributions URL for a given screen name.
+func contributionsURL(screenName string) string {
+	return "/wiki/Special:Contributions/" + url.PathEscape(screenName)
+}
+
+// userPageArticleURL returns the full wiki article URL for a user page.
+func userPageArticleURL(screenName string) string {
+	return "/wiki/" + url.PathEscape(wiki.UserPageURL(screenName))
+}
+
+// inferTitle infers a display title from an article URL path.
+func inferTitle(urlPath string) string {
+	return wiki.InferTitle(urlPath)
+}
