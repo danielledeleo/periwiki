@@ -54,13 +54,6 @@ func (s *embeddedArticleService) GetArticleByRevisionID(url string, id int) (*wi
 	return s.base.GetArticleByRevisionID(url, id)
 }
 
-func (s *embeddedArticleService) GetArticleByRevisionHash(url string, hash string) (*wiki.Article, error) {
-	if embedded.IsEmbeddedURL(url) {
-		return nil, wiki.ErrRevisionNotFound
-	}
-	return s.base.GetArticleByRevisionHash(url, hash)
-}
-
 func (s *embeddedArticleService) GetRevisionHistory(url string) ([]*wiki.Revision, error) {
 	if embedded.IsEmbeddedURL(url) {
 		return nil, nil // Empty history for embedded articles

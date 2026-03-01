@@ -32,9 +32,6 @@ type ArticleService interface {
 	// GetArticleByRevisionID retrieves an article by URL and revision ID.
 	GetArticleByRevisionID(url string, id int) (*wiki.Article, error)
 
-	// GetArticleByRevisionHash retrieves an article by URL and revision hash.
-	GetArticleByRevisionHash(url string, hash string) (*wiki.Article, error)
-
 	// GetRevisionHistory retrieves all revisions for an article.
 	GetRevisionHistory(url string) ([]*wiki.Revision, error)
 
@@ -206,22 +203,6 @@ func (s *articleService) Preview(markdown string) (string, error) {
 // GetArticleByRevisionID retrieves an article by URL and revision ID.
 func (s *articleService) GetArticleByRevisionID(url string, id int) (*wiki.Article, error) {
 	article, err := s.repo.SelectArticleByRevisionID(url, id)
-	if err == sql.ErrNoRows {
-		return nil, wiki.ErrRevisionNotFound
-	} else if err != nil {
-		return nil, err
-	}
-
-	if err := s.ensureHTML(article); err != nil {
-		return nil, err
-	}
-
-	return article, nil
-}
-
-// GetArticleByRevisionHash retrieves an article by URL and revision hash.
-func (s *articleService) GetArticleByRevisionHash(url string, hash string) (*wiki.Article, error) {
-	article, err := s.repo.SelectArticleByRevisionHash(url, hash)
 	if err == sql.ErrNoRows {
 		return nil, wiki.ErrRevisionNotFound
 	} else if err != nil {

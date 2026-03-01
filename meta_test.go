@@ -99,13 +99,6 @@ func TestExportedFunctionsHaveTests(t *testing.T) {
 		"wiki/service.embeddedArticleService.BackfillLinks":            "delegates to articleService.BackfillLinks",
 		"special.NewRerenderAllPage":                                   "registered in RegisterSpecialPages; no test yet",
 		"internal/embedded.EmbeddedArticles.RenderAll":                 "called during setup to re-render after existence checker is ready; no test yet",
-
-		// Dead code — defined in interface but never called
-		"wiki/service.articleService.GetArticleByRevisionHash":         "dead code: defined in ArticleService interface but no caller exists",
-		"wiki/service.embeddedArticleService.GetArticleByRevisionHash": "dead code: delegates to articleService.GetArticleByRevisionHash",
-		"wiki/service.preferenceService.GetPreference":                 "dead code: defined in PreferenceService interface but no caller exists",
-		"wiki/service.preferenceService.UpdatePreference":              "dead code: defined in PreferenceService interface but no caller exists",
-		"templater.HTMLItem.AddAttribute":                              "dead code: defined but never called",
 	}
 
 	// Collect contents of all test files and test infrastructure.

@@ -26,39 +26,6 @@ type Templater struct {
 	funcs     map[string]any
 }
 
-// HTMLItem is used to inject attributes and text into HTML templates.
-type HTMLItem struct {
-	Text string
-	attr map[string][]string
-}
-
-// Attributes returns a formatted string of attributes (set by AddAttribute)
-func (item HTMLItem) Attributes() string {
-	var result strings.Builder
-	for key, val := range item.attr {
-		result.WriteString(key)
-		result.WriteString(`="`)
-		for i, attr := range val {
-			if i > 0 {
-				result.WriteByte(' ')
-			}
-			result.WriteString(attr)
-		}
-		result.WriteString(`" `)
-	}
-	return result.String()
-}
-
-// AddAttribute creates a key/value pair to represent and format HTML attributes into a string
-// e.g. class="hidden pw-error"
-// Setting a key twice overwrites it. Empty keys are ignored.
-func (item HTMLItem) AddAttribute(key string, value ...string) {
-	if key == "" {
-		return
-	}
-	item.attr[key] = value
-}
-
 func New(fsys fs.FS) *Templater {
 	return &Templater{fsys: fsys}
 }
