@@ -90,9 +90,9 @@ func TestExportedFunctionsHaveTests(t *testing.T) {
 		"wiki/service.embeddedArticleService.QueueRerenderRevision":  "delegates to articleService.QueueRerenderRevision; base tested by TestQueueRerenderRevision",
 		"wiki/service.renderingService.PreviewMarkdown":              "called by articlePreviewHandler; exercised by TestPreviewArticle",
 
-		// User contributions — will be exercised by Special:Contributions integration tests
-		"wiki/service.articleService.GetRevisionsByScreenName":         "called by Special:Contributions handler",
-		"wiki/service.articleService.GetUserEditCount":                 "called by User: page handler",
+		// User contributions — exercised indirectly via integration tests (TestSpecialContributions, TestUserNamespace_ViewProfile)
+		"wiki/service.articleService.GetRevisionsByScreenName":         "called by Special:Contributions handler; exercised by TestSpecialContributions",
+		"wiki/service.articleService.GetUserEditCount":                 "called by User: page handler; exercised by TestUserNamespace_ViewProfile",
 		"wiki/service.embeddedArticleService.GetRevisionsByScreenName": "delegates to articleService.GetRevisionsByScreenName",
 		"wiki/service.embeddedArticleService.GetUserEditCount":         "delegates to articleService.GetUserEditCount",
 	}
