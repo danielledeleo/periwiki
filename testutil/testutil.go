@@ -185,7 +185,13 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 
 		// Check special pages (Special:* namespace)
 		if specialPages != nil && strings.HasPrefix(url, "Special:") {
-			return specialPages.Has(strings.TrimPrefix(url, "Special:"))
+			name := strings.TrimPrefix(url, "Special:")
+			if specialPages.Has(name) {
+				return true
+			}
+			if idx := strings.IndexByte(name, '/'); idx >= 0 {
+				return specialPages.Has(name[:idx])
+			}
 		}
 
 		return false
@@ -231,6 +237,7 @@ func SetupTestApp(t testing.TB) (*TestApp, func()) {
 
 	specialPages = special.NewRegistry()
 	specialPages.Register("Random", special.NewRandomPage(articleServiceWrapped))
+	specialPages.Register("Contributions", special.NewContributionsPage(articleServiceWrapped, userService, tmpl))
 
 	app := &TestApp{
 		Templater:     tmpl,
@@ -320,16 +327,18 @@ func CreateTestArticle(t testing.TB, app *TestApp, url, markdown string, creator
 
 // articleResult is used for scanning article queries that include user info
 type articleResult struct {
-	URL        string
-	ID         int
-	Markdown   string
-	HTML       string
-	Hash       string    `db:"hashval"`
-	Created    time.Time
-	PreviousID int       `db:"previous_id"`
-	Comment    string
-	UserID     int       `db:"user_id"`
-	ScreenName string    `db:"screenname"`
+	URL         string
+	ID          int
+	Markdown    string
+	HTML        string
+	Hash        string    `db:"hashval"`
+	Created     time.Time
+	PreviousID  int       `db:"previous_id"`
+	Comment     string
+	UserID      int       `db:"user_id"`
+	ScreenName  string    `db:"screenname"`
+	HasUserPage     bool      `db:"has_user_page"`
+	HasUserTalkPage bool      `db:"has_user_talk_page"`
 }
 
 func (r *articleResult) toArticle() *wiki.Article {
@@ -343,7 +352,7 @@ func (r *articleResult) toArticle() *wiki.Article {
 			Created:    r.Created,
 			PreviousID: r.PreviousID,
 			Comment:    r.Comment,
-			Creator:    &wiki.User{ID: r.UserID, ScreenName: r.ScreenName},
+			Creator:    &wiki.User{ID: r.UserID, ScreenName: r.ScreenName, HasUserPage: r.HasUserPage, HasUserTalkPage: r.HasUserTalkPage},
 		},
 	}
 }
@@ -383,7 +392,9 @@ func (tdb *TestDB) SelectRevision(hash string) (*wiki.Revision, error) {
 
 func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 	rows, err := tdb.conn.Queryx(
-		`SELECT Revision.id, hashval, created, comment, previous_id, User.screenname, length(markdown)
+		`SELECT Revision.id, hashval, created, comment, previous_id, User.screenname, length(markdown),
+			EXISTS(SELECT 1 FROM Article a2 WHERE a2.url = 'User:' || User.screenname) AS has_user_page,
+			EXISTS(SELECT 1 FROM Article a3 WHERE a3.url = 'User_talk:' || User.screenname) AS has_user_talk_page
 			FROM Article JOIN Revision ON Article.id = Revision.article_id
 					     JOIN User ON Revision.user_id = User.id
 			WHERE Article.url = ? ORDER BY Revision.id DESC`, url)
@@ -398,6 +409,8 @@ func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 		PreviousID                   int       `db:"previous_id"`
 		Length                       int       `db:"length(markdown)"`
 		Created                      time.Time `db:"created"`
+		HasUserPage                  bool      `db:"has_user_page"`
+		HasUserTalkPage              bool      `db:"has_user_talk_page"`
 	}{}
 	results := make([]*wiki.Revision, 0)
 	for rows.Next() {
@@ -413,12 +426,58 @@ func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 		rev.Created = result.Created
 		rev.Markdown = string(rune(result.Length))
 		rev.Creator.ScreenName = result.Screenname
+		rev.Creator.HasUserPage = result.HasUserPage
+		rev.Creator.HasUserTalkPage = result.HasUserTalkPage
 		results = append(results, rev)
 	}
 	if len(results) < 1 {
 		return nil, wiki.ErrGenericNotFound
 	}
 	return results, nil
+}
+
+func (tdb *TestDB) SelectRevisionsByScreenName(screenName string) ([]*wiki.ContributionEntry, error) {
+	rows, err := tdb.conn.Queryx(
+		`SELECT Article.url, Revision.id, Revision.previous_id, Revision.created, Revision.comment, length(Revision.markdown)
+			FROM Revision
+			JOIN User ON Revision.user_id = User.id
+			JOIN Article ON Revision.article_id = Article.id
+			WHERE User.screenname = ?
+			ORDER BY Revision.created DESC`, screenName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := struct {
+		URL        string    `db:"url"`
+		ID         int       `db:"id"`
+		PreviousID int       `db:"previous_id"`
+		Created    time.Time `db:"created"`
+		Comment    string    `db:"comment"`
+		Length     int       `db:"length(Revision.markdown)"`
+	}{}
+	var entries []*wiki.ContributionEntry
+	for rows.Next() {
+		if err := rows.StructScan(&result); err != nil {
+			return nil, err
+		}
+		entries = append(entries, &wiki.ContributionEntry{
+			ArticleURL:   result.URL,
+			RevisionID:   result.ID,
+			PreviousID:   result.PreviousID,
+			Created:      result.Created,
+			Comment:      result.Comment,
+			MarkdownSize: result.Length,
+		})
+	}
+	return entries, rows.Err()
+}
+
+func (tdb *TestDB) SelectUserEditCount(userID int) (int, error) {
+	var count int
+	err := tdb.conn.Get(&count, `SELECT COUNT(*) FROM Revision WHERE user_id = ?`, userID)
+	return count, err
 }
 
 func (tdb *TestDB) SelectRandomArticleURL() (string, error) {

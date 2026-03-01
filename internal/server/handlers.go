@@ -315,6 +315,72 @@ func (a *App) dispatchArticle(rw http.ResponseWriter, req *http.Request, article
 	a.handleView(rw, req, articleURL, params)
 }
 
+// dispatchUserPage routes User: namespace requests.
+// Default view uses handleUserPage; edit/history/diff use the standard article handlers.
+func (a *App) dispatchUserPage(rw http.ResponseWriter, req *http.Request, articleURL string) {
+	params := req.URL.Query()
+
+	if req.Method == "POST" {
+		a.handleArticlePost(rw, req, articleURL)
+		return
+	}
+	if params.Has("diff") {
+		a.handleDiff(rw, req, articleURL, params)
+		return
+	}
+	if params.Has("history") {
+		a.handleHistory(rw, req, articleURL)
+		return
+	}
+	if params.Has("edit") {
+		a.handleEdit(rw, req, articleURL, params)
+		return
+	}
+	a.handleUserPage(rw, req, articleURL)
+}
+
+// handleUserPage renders a user profile page with optional custom content and stats.
+func (a *App) handleUserPage(rw http.ResponseWriter, req *http.Request, articleURL string) {
+	screenName := wiki.UserPageScreenName(articleURL)
+
+	// Verify the user exists
+	userProfile, err := a.Users.GetUserByScreenName(screenName)
+	if err != nil {
+		a.ErrorHandler(http.StatusNotFound, rw, req, err)
+		return
+	}
+
+	// Try to get the user's custom page content
+	var article *wiki.Article
+	var customContent template.HTML
+	article, err = a.Articles.GetArticle(articleURL)
+	if err != nil {
+		// No custom page — create a placeholder for tabs
+		article = wiki.NewArticle(articleURL, "")
+	} else {
+		customContent = template.HTML(article.HTML)
+	}
+
+	// Get edit count
+	editCount, _ := a.Articles.GetUserEditCount(userProfile.ID)
+
+	// Check if current user can edit
+	currentUser := req.Context().Value(wiki.UserKey).(*wiki.User)
+	canEdit := currentUser.ID == userProfile.ID || currentUser.IsAdmin()
+
+	err = a.RenderTemplate(rw, "user_page.html", "index.html", map[string]interface{}{
+		"Page":          wiki.NewStaticPage(screenName),
+		"Article":       article,
+		"Context":       req.Context(),
+		"ActiveTab":     "userpage",
+		"UserProfile":   userProfile,
+		"EditCount":     editCount,
+		"CustomContent": customContent,
+		"HideEdit":      !canEdit,
+	})
+	check(err)
+}
+
 // handleView handles viewing an article or specific revision.
 func (a *App) handleView(rw http.ResponseWriter, req *http.Request, articleURL string, params url.Values) {
 	// Check if viewing a specific revision
@@ -491,6 +557,26 @@ func (a *App) handleEdit(rw http.ResponseWriter, req *http.Request, articleURL s
 		if _, err := a.Articles.GetArticle(wiki.SubjectPageURL(articleURL)); err != nil {
 			a.ErrorHandler(http.StatusNotFound, rw, req,
 				fmt.Errorf("cannot create talk page: article %q does not exist", wiki.SubjectPageURL(articleURL)))
+			return
+		}
+	}
+
+	// Block editing User: pages unless the current user is the owner or admin
+	if wiki.IsUserPage(articleURL) {
+		user := req.Context().Value(wiki.UserKey).(*wiki.User)
+		ownerName := wiki.UserPageScreenName(articleURL)
+		if user.IsAnonymous() || (user.ScreenName != ownerName && !user.IsAdmin()) {
+			a.ErrorHandler(http.StatusForbidden, rw, req, wiki.ErrForbidden)
+			return
+		}
+	}
+
+	// Block editing User_talk: pages when the target user doesn't exist
+	if wiki.IsUserTalkPage(articleURL) {
+		ownerName := wiki.UserPageScreenName(articleURL)
+		if _, err := a.Users.GetUserByScreenName(ownerName); err != nil {
+			a.ErrorHandler(http.StatusNotFound, rw, req,
+				fmt.Errorf("cannot create user talk page: user %q does not exist", ownerName))
 			return
 		}
 	}
@@ -684,6 +770,15 @@ func (a *App) handleArticlePost(rw http.ResponseWriter, req *http.Request, artic
 		return
 	}
 
+	// Block saving User: pages unless the current user is the owner or admin
+	if wiki.IsUserPage(articleURL) {
+		ownerName := wiki.UserPageScreenName(articleURL)
+		if user.IsAnonymous() || (user.ScreenName != ownerName && !user.IsAdmin()) {
+			a.ErrorHandler(http.StatusForbidden, rw, req, wiki.ErrForbidden)
+			return
+		}
+	}
+
 	article.Creator = user
 
 	// Get previous_id from form body
@@ -780,6 +875,12 @@ func (a *App) NamespaceHandler(rw http.ResponseWriter, req *http.Request) {
 	if strings.EqualFold(namespace, "special") {
 		handler, ok := a.SpecialPages.Get(page)
 		if !ok {
+			// Support subpage URLs like Contributions/Username
+			if idx := strings.IndexByte(page, '/'); idx >= 0 {
+				handler, ok = a.SpecialPages.Get(page[:idx])
+			}
+		}
+		if !ok {
 			a.ErrorHandler(http.StatusNotFound, rw, req,
 				fmt.Errorf("special page '%s' does not exist", page))
 			return
@@ -795,6 +896,22 @@ func (a *App) NamespaceHandler(rw http.ResponseWriter, req *http.Request) {
 			return
 		}
 		a.dispatchArticle(rw, req, "Talk:"+page)
+		return
+	}
+
+	// User_talk namespace: discussion pages for user pages
+	if strings.EqualFold(namespace, "user_talk") {
+		if mdPage, ok := strings.CutSuffix(page, ".md"); ok {
+			a.serveArticleMarkdown(rw, req, "User_talk:"+mdPage)
+			return
+		}
+		a.dispatchArticle(rw, req, "User_talk:"+page)
+		return
+	}
+
+	// User namespace: user profile pages
+	if strings.EqualFold(namespace, "user") {
+		a.dispatchUserPage(rw, req, "User:"+page)
 		return
 	}
 

@@ -117,7 +117,7 @@ func (a *App) RegisterRoutes(router *mux.Router, contentFS fs.FS) {
 	})
 
 	router.HandleFunc("/", a.HomeHandler).Methods("GET")
-	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page}", a.NamespaceHandler).Methods("GET", "POST")
+	router.HandleFunc("/wiki/{namespace:[^:/]+}:{page:.+}", a.NamespaceHandler).Methods("GET", "POST")
 	router.HandleFunc("/wiki/{article}.md", a.ArticleMarkdownHandler).Methods("GET")
 	router.HandleFunc("/wiki/{article}", a.ArticleDispatcher).Methods("GET", "POST")
 
@@ -153,7 +153,7 @@ func NewSanitizer() *bluemonday.Policy {
 
 // RegisterSpecialPages creates and populates a special page registry.
 // Used by both the main server and the WASM demo.
-func RegisterSpecialPages(articles service.ArticleService, t *templater.Templater, baseURL string) *special.Registry {
+func RegisterSpecialPages(articles service.ArticleService, users service.UserService, t *templater.Templater, baseURL string) *special.Registry {
 	registry := special.NewRegistry()
 	registry.Register("Random", special.NewRandomPage(articles))
 
@@ -165,6 +165,7 @@ func RegisterSpecialPages(articles service.ArticleService, t *templater.Template
 	registry.Register("RerenderAll", special.NewRerenderAllPage(articles, t))
 	registry.Register("WhatLinksHere", special.NewWhatLinksHerePage(articles, t))
 	registry.Register("SourceCode", special.NewSourceCodePage())
+	registry.Register("Contributions", special.NewContributionsPage(articles, users, t))
 	return registry
 }
 
@@ -200,7 +201,14 @@ func (s *ExistenceState) check(url string) bool {
 	}
 
 	if s.SpecialPages != nil && strings.HasPrefix(url, "Special:") {
-		return s.SpecialPages.Has(strings.TrimPrefix(url, "Special:"))
+		name := strings.TrimPrefix(url, "Special:")
+		if s.SpecialPages.Has(name) {
+			return true
+		}
+		// Support subpage URLs like Special:Contributions/Username
+		if idx := strings.IndexByte(name, '/'); idx >= 0 {
+			return s.SpecialPages.Has(name[:idx])
+		}
 	}
 
 	return false

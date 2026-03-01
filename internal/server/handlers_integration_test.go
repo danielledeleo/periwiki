@@ -1183,3 +1183,208 @@ func TestUserContextInHandlers(t *testing.T) {
 		t.Errorf("expected anonymous user for request without session, got ID %d", u.ID)
 	}
 }
+
+// --- User:, User_talk:, and Special:Contributions integration tests ---
+
+func TestUserNamespace_ViewProfile(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "alice", "alice@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "Test_Article", "Content", user)
+
+	req := httptest.NewRequest("GET", "/wiki/User:alice", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "alice") {
+		t.Error("expected body to contain username")
+	}
+	if !strings.Contains(body, "Member since") {
+		t.Error("expected body to contain member since info")
+	}
+}
+
+func TestUserNamespace_ViewProfile_NotFound(t *testing.T) {
+	router, _, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	req := httptest.NewRequest("GET", "/wiki/User:nonexistent", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", rr.Code)
+	}
+}
+
+func TestUserNamespace_ViewProfileWithCustomContent(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "alice", "alice@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "User:alice", "Hello, I'm Alice!", user)
+
+	req := httptest.NewRequest("GET", "/wiki/User:alice", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rr.Code)
+	}
+	body := rr.Body.String()
+	// Custom content is rendered as HTML; check for the text
+	if !strings.Contains(body, "Alice") {
+		t.Error("expected custom content to appear on user page")
+	}
+	// The user info section should still be present
+	if !strings.Contains(body, "Member since") {
+		t.Error("expected user info section alongside custom content")
+	}
+}
+
+func TestUserTalkNamespace_DispatchesToArticle(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "alice", "alice@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "User_talk:alice", "Discussion here", user)
+
+	req := httptest.NewRequest("GET", "/wiki/User_talk:alice", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "Discussion here") {
+		t.Error("expected talk page content")
+	}
+}
+
+func TestSpecialContributions(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "alice", "alice@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "Test_Article", "Content", user)
+
+	req := httptest.NewRequest("GET", "/wiki/Special:Contributions/alice", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "Test Article") && !strings.Contains(body, "Test_Article") {
+		t.Error("expected contributions to list the article")
+	}
+	if !strings.Contains(body, "alice") {
+		t.Error("expected contributions page to contain username")
+	}
+}
+
+func TestSpecialContributions_NotFound(t *testing.T) {
+	router, _, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	req := httptest.NewRequest("GET", "/wiki/Special:Contributions/nobody", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", rr.Code)
+	}
+}
+
+func TestHistoryPage_UsernameLinks(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	user := testutil.CreateTestUser(t, testApp.DB, "alice", "alice@example.com", "password123")
+	testutil.CreateTestArticle(t, testApp, "Test_Article", "Content", user)
+
+	req := httptest.NewRequest("GET", "/wiki/Test_Article?history", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rr.Code)
+	}
+
+	body := rr.Body.String()
+	if !strings.Contains(body, "/wiki/User:alice") {
+		t.Error("expected history page to link to User:alice")
+	}
+	if !strings.Contains(body, "talk") {
+		t.Error("expected history page to contain talk link")
+	}
+	if !strings.Contains(body, "contribs") {
+		t.Error("expected history page to contain contribs link")
+	}
+}
+
+func TestUserNamespace_EditBlockedForAnonymous(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	testutil.CreateTestUser(t, testApp.DB, "alice", "alice@example.com", "password123")
+
+	req := httptest.NewRequest("GET", "/wiki/User:alice?edit", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	// Anonymous users should get 403 (forbidden) for User: page edits
+	if rr.Code != http.StatusForbidden {
+		t.Errorf("expected 403 for anonymous edit of User: page, got %d", rr.Code)
+	}
+}
+
+func TestUserTalkNamespace_EditBlockedWhenUserMissing(t *testing.T) {
+	router, _, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	req := httptest.NewRequest("GET", "/wiki/User_talk:Nonexistent?edit", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "does not exist") {
+		t.Error("expected error message about user not existing")
+	}
+}
+
+func TestUserNamespace_Tabs(t *testing.T) {
+	router, testApp, cleanup := setupHandlerTestRouter(t)
+	defer cleanup()
+
+	testutil.CreateTestUser(t, testApp.DB, "alice", "alice@example.com", "password123")
+
+	req := httptest.NewRequest("GET", "/wiki/User:alice", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rr.Code)
+	}
+
+	body := rr.Body.String()
+	if !strings.Contains(body, "User page") {
+		t.Error("expected 'User page' tab")
+	}
+	if !strings.Contains(body, "Talk") {
+		t.Error("expected 'Talk' tab")
+	}
+	if !strings.Contains(body, "Contribs") {
+		t.Error("expected 'Contribs' tab")
+	}
+}

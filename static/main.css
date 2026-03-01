@@ -228,7 +228,7 @@ article section.footnotes p {
     margin: 0;
 }
 
-article section.footnotes hr {
+article hr {
     border: 0;
     height: 0;
     border-bottom: 1px solid var(--pw-underline);

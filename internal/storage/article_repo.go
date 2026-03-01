@@ -16,16 +16,18 @@ import (
 
 // articleResult is used for scanning article queries that include user info
 type articleResult struct {
-	URL        string
-	ID         int
-	Markdown   string
-	HTML       string
-	Hash       string    `db:"hashval"`
-	Created    time.Time
-	PreviousID int       `db:"previous_id"`
-	Comment    string
-	UserID     int       `db:"user_id"`
-	ScreenName string    `db:"screenname"`
+	URL         string
+	ID          int
+	Markdown    string
+	HTML        string
+	Hash        string    `db:"hashval"`
+	Created     time.Time
+	PreviousID  int       `db:"previous_id"`
+	Comment     string
+	UserID      int       `db:"user_id"`
+	ScreenName  string    `db:"screenname"`
+	HasUserPage     bool      `db:"has_user_page"`
+	HasUserTalkPage bool      `db:"has_user_talk_page"`
 }
 
 func (r *articleResult) toArticle() *wiki.Article {
@@ -39,7 +41,7 @@ func (r *articleResult) toArticle() *wiki.Article {
 			Created:    r.Created,
 			PreviousID: r.PreviousID,
 			Comment:    r.Comment,
-			Creator:    &wiki.User{ID: r.UserID, ScreenName: r.ScreenName},
+			Creator:    &wiki.User{ID: r.UserID, ScreenName: r.ScreenName, HasUserPage: r.HasUserPage, HasUserTalkPage: r.HasUserTalkPage},
 		},
 	}
 }
@@ -90,7 +92,9 @@ func (db *sqliteDb) SelectRevision(hash string) (*wiki.Revision, error) {
 
 func (db *sqliteDb) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 	rows, err := db.conn.Queryx(
-		`SELECT Revision.id, hashval, created, comment, previous_id, User.screenname, length(markdown)
+		`SELECT Revision.id, hashval, created, comment, previous_id, User.screenname, length(markdown),
+			EXISTS(SELECT 1 FROM Article a2 WHERE a2.url = 'User:' || User.screenname) AS has_user_page,
+			EXISTS(SELECT 1 FROM Article a3 WHERE a3.url = 'User_talk:' || User.screenname) AS has_user_talk_page
 			FROM Article JOIN Revision ON Article.id = Revision.article_id
 					     JOIN User ON Revision.user_id = User.id
 			WHERE Article.url = ? ORDER BY Revision.id DESC`, url)
@@ -100,9 +104,11 @@ func (db *sqliteDb) SelectRevisionHistory(url string) ([]*wiki.Revision, error) 
 	result := struct {
 		Hashval, Comment, Screenname string
 		ID                           int
-		PreviousID                   int `db:"previous_id"`
-		Length                       int `db:"length(markdown)"`
+		PreviousID                   int       `db:"previous_id"`
+		Length                       int       `db:"length(markdown)"`
 		Created                      time.Time
+		HasUserPage                  bool      `db:"has_user_page"`
+		HasUserTalkPage              bool      `db:"has_user_talk_page"`
 	}{}
 	results := make([]*wiki.Revision, 0)
 	for rows.Next() {
@@ -118,6 +124,8 @@ func (db *sqliteDb) SelectRevisionHistory(url string) ([]*wiki.Revision, error) 
 		rev.Comment = result.Comment
 		rev.Markdown = fmt.Sprint(result.Length) // dirty hack
 		rev.Creator.ScreenName = result.Screenname
+		rev.Creator.HasUserPage = result.HasUserPage
+		rev.Creator.HasUserTalkPage = result.HasUserTalkPage
 		results = append(results, rev)
 	}
 	if len(results) < 1 {
@@ -354,4 +362,48 @@ func (db *sqliteDb) InvalidateNonHeadRevisionHTML() (int64, error) {
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+func (db *sqliteDb) SelectRevisionsByScreenName(screenName string) ([]*wiki.ContributionEntry, error) {
+	rows, err := db.conn.Queryx(
+		`SELECT Article.url, Revision.id, Revision.previous_id, Revision.created, Revision.comment, length(Revision.markdown)
+			FROM Revision
+			JOIN User ON Revision.user_id = User.id
+			JOIN Article ON Revision.article_id = Article.id
+			WHERE User.screenname = ?
+			ORDER BY Revision.created DESC`, screenName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := struct {
+		URL        string    `db:"url"`
+		ID         int       `db:"id"`
+		PreviousID int       `db:"previous_id"`
+		Created    time.Time `db:"created"`
+		Comment    string    `db:"comment"`
+		Length     int       `db:"length(Revision.markdown)"`
+	}{}
+	var entries []*wiki.ContributionEntry
+	for rows.Next() {
+		if err := rows.StructScan(&result); err != nil {
+			return nil, err
+		}
+		entries = append(entries, &wiki.ContributionEntry{
+			ArticleURL:   result.URL,
+			RevisionID:   result.ID,
+			PreviousID:   result.PreviousID,
+			Created:      result.Created,
+			Comment:      result.Comment,
+			MarkdownSize: result.Length,
+		})
+	}
+	return entries, rows.Err()
+}
+
+func (db *sqliteDb) SelectUserEditCount(userID int) (int, error) {
+	var count int
+	err := db.conn.Get(&count, `SELECT COUNT(*) FROM Revision WHERE user_id = ?`, userID)
+	return count, err
 }

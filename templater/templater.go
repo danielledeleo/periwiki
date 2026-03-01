@@ -96,6 +96,15 @@ func (t *Templater) Load(baseGlob string, mainGlobs ...string) error {
 		"isTalkPage":  isTalkPage,
 		"talkPageURL": talkPageURL,
 		"subjectURL":  subjectURL,
+		// User page helpers
+		"isUserPage":         isUserPage,
+		"isUserTalkPage":     isUserTalkPage,
+		"userPageURL":        userPageURL,
+		"userTalkPageURL":    userTalkPageURL,
+		"userPageScreenName": userPageScreenName,
+		"contributionsURL":   contributionsURL,
+		"userPageArticleURL": userPageArticleURL,
+		"inferTitle":         inferTitle,
 	}
 
 	// Generate our templates map from our layouts/ and includes/ directories

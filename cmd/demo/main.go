@@ -100,7 +100,7 @@ func main() {
 
 	preferenceService := service.NewPreferenceService(database)
 
-	specialPages := server.RegisterSpecialPages(articleServiceWrapped, t, "")
+	specialPages := server.RegisterSpecialPages(articleServiceWrapped, userService, t, "")
 	existenceState.SpecialPages = specialPages
 
 	// Re-render embedded articles so the existence checker can see everything

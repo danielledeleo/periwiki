@@ -56,6 +56,12 @@ type ArticleService interface {
 	// BackfillLinks re-extracts and persists outgoing links for all articles.
 	// Returns the number of articles that had links.
 	BackfillLinks() (int, error)
+
+	// GetRevisionsByScreenName returns all contributions by a user.
+	GetRevisionsByScreenName(screenName string) ([]*wiki.ContributionEntry, error)
+
+	// GetUserEditCount returns the total number of edits by a user.
+	GetUserEditCount(userID int) (int, error)
 }
 
 // articleService is the default implementation of ArticleService.
@@ -432,6 +438,14 @@ func (s *articleService) BackfillLinks() (int, error) {
 	}
 
 	return count, nil
+}
+
+func (s *articleService) GetRevisionsByScreenName(screenName string) ([]*wiki.ContributionEntry, error) {
+	return s.repo.SelectRevisionsByScreenName(screenName)
+}
+
+func (s *articleService) GetUserEditCount(userID int) (int, error) {
+	return s.repo.SelectUserEditCount(userID)
 }
 
 // updateLinks persists the outgoing link graph for the saved article and,

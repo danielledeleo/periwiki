@@ -8,13 +8,13 @@
             <p>
                 Comparing {{if eq .ID $.CurrentRevisionID}} latest {{end}} revision at
                 <a href="{{revisionURL .URL .ID}}">{{.Created.Format "2006-01-02 15:04"}}</a>
-                {{if .Creator}}by {{.Creator.ScreenName}}{{end}}
+                {{if .Creator}}by <a href="{{userPageArticleURL .Creator.ScreenName}}"{{if not .Creator.HasUserPage}} class="pw-deadlink"{{end}}>{{.Creator.ScreenName}}</a> (<a href="{{articleURL (userTalkPageURL .Creator.ScreenName)}}"{{if not .Creator.HasUserTalkPage}} class="pw-deadlink"{{end}}>talk</a> | <a href="{{contributionsURL .Creator.ScreenName}}">contribs</a>){{end}}
                 {{- if .Comment -}}<span class="pw-diff-comment"> ... ({{.Comment}})</span>{{- end -}}
             </p>
             <p>
                 With {{if eq $.NewRevision.ID $.CurrentRevisionID}} latest {{end}} revision at
                 <a href="{{revisionURL $.NewRevision.URL $.NewRevision.ID}}">{{$.NewRevision.Created.Format "2006-01-02 15:04"}}</a>
-                {{if $.NewRevision.Creator}}by {{$.NewRevision.Creator.ScreenName}}{{end}}
+                {{if $.NewRevision.Creator}}by <a href="{{userPageArticleURL $.NewRevision.Creator.ScreenName}}"{{if not $.NewRevision.Creator.HasUserPage}} class="pw-deadlink"{{end}}>{{$.NewRevision.Creator.ScreenName}}</a> (<a href="{{articleURL (userTalkPageURL $.NewRevision.Creator.ScreenName)}}">talk</a> | <a href="{{contributionsURL $.NewRevision.Creator.ScreenName}}">contribs</a>){{end}}
                 {{- if $.NewRevision.Comment -}}<span class="pw-diff-comment"> ... ({{$.NewRevision.Comment}})</span>{{- end -}}
             </p>
         </div>

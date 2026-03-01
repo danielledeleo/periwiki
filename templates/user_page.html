@@ -1,0 +1,21 @@
+{{define "content"}}
+<div id="article-area">
+    {{template "tabs" .}}
+    <article>
+        <h1>{{.UserProfile.ScreenName}}</h1>
+        <div class="pw-article-content">
+            {{if .CustomContent}}
+            {{.CustomContent}}
+            <hr>
+            {{end}}
+            <details>
+                <summary>User info</summary>
+                <ul>
+                    <li>Member since {{.UserProfile.CreatedAt.Format "January 2, 2006"}}</li>
+                    <li>{{.EditCount}} {{if eq .EditCount 1}}edit{{else}}edits{{end}}</li>
+                </ul>
+            </details>
+        </div>
+    </article>
+</div>
+{{end}}

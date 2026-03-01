@@ -93,3 +93,11 @@ func (s *embeddedArticleService) GetBacklinks(slug string) ([]*wiki.ArticleSumma
 func (s *embeddedArticleService) BackfillLinks() (int, error) {
 	return s.base.BackfillLinks()
 }
+
+func (s *embeddedArticleService) GetRevisionsByScreenName(screenName string) ([]*wiki.ContributionEntry, error) {
+	return s.base.GetRevisionsByScreenName(screenName)
+}
+
+func (s *embeddedArticleService) GetUserEditCount(userID int) (int, error) {
+	return s.base.GetUserEditCount(userID)
+}

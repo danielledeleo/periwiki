@@ -37,4 +37,10 @@ type ArticleRepository interface {
 	// InvalidateNonHeadRevisionHTML sets html to NULL for all non-head revisions.
 	// This is used when the render pipeline changes and cached HTML is stale.
 	InvalidateNonHeadRevisionHTML() (int64, error)
+
+	// SelectRevisionsByScreenName returns all revisions by a user, newest first.
+	SelectRevisionsByScreenName(screenName string) ([]*wiki.ContributionEntry, error)
+
+	// SelectUserEditCount returns the total number of edits by a user.
+	SelectUserEditCount(userID int) (int, error)
 }

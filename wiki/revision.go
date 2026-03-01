@@ -13,3 +13,13 @@ type Revision struct {
 	PreviousID int       `db:"previous_id"`
 	Comment    string    `db:"comment"`
 }
+
+// ContributionEntry represents a single edit by a user, for the contributions page.
+type ContributionEntry struct {
+	ArticleURL   string
+	RevisionID   int
+	PreviousID   int
+	Created      time.Time
+	Comment      string
+	MarkdownSize int
+}
