@@ -1,6 +1,14 @@
 {{define "tabs"}}
 <ul class="pw-tabs">
-    {{- if isTalkPage .Article.URL}}
+    {{- if isUserTalkPage .Article.URL}}
+    <li><a href="{{articleURL (userPageURL (userPageScreenName .Article.URL))}}">User page</a></li>
+    <li class="pw-active"><a href="{{articleURL .Article.URL}}">Talk</a></li>
+    <li><a href="{{contributionsURL (userPageScreenName .Article.URL)}}">Contribs</a></li>
+    {{- else if isUserPage .Article.URL}}
+    <li class="pw-active"><a href="{{articleURL .Article.URL}}">User page</a></li>
+    <li><a href="{{articleURL (userTalkPageURL (userPageScreenName .Article.URL))}}">Talk</a></li>
+    <li><a href="{{contributionsURL (userPageScreenName .Article.URL)}}">Contribs</a></li>
+    {{- else if isTalkPage .Article.URL}}
     <li><a href="{{articleURL (subjectURL .Article.URL)}}">Article</a></li>
     <li class="pw-active"><a href="{{articleURL .Article.URL}}">Talk</a></li>
     {{- else}}
@@ -12,11 +20,17 @@
     {{- end}}
     {{- end}}
     {{- if not .Article.ReadOnly}}
+    {{- if not (index . "HideEdit")}}
     {{- if or .Article.ID (eq .ActiveTab "history")}}
     <li class="pw-tab-right{{if eq .ActiveTab "history"}} pw-active{{end}}"><a href="{{historyURL .Article.URL}}">History</a></li>
     <li{{if eq .ActiveTab "edit"}} class="pw-active"{{end}}><a href="{{editURL .Article.URL .Article.ID}}">Edit</a></li>
     {{- else}}
     <li class="pw-tab-right{{if eq .ActiveTab "edit"}} pw-active{{end}}"><a href="{{editURL .Article.URL .Article.ID}}">Edit</a></li>
+    {{- end}}
+    {{- else}}{{/* HideEdit is true — show only History */}}
+    {{- if or .Article.ID (eq .ActiveTab "history")}}
+    <li class="pw-tab-right{{if eq .ActiveTab "history"}} pw-active{{end}}"><a href="{{historyURL .Article.URL}}">History</a></li>
+    {{- end}}
     {{- end}}
     {{- else if .EmbeddedSourceURL}}
     <li class="pw-tab-right"><a href="{{.EmbeddedSourceURL}}" target="_blank">View source</a></li>

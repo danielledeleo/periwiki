@@ -12,7 +12,7 @@
         <a href="/" id="logo-link"><img id="logo" src="/static/logo.svg" alt="periwiki" /></a>
         <ul id="login-bar">
             {{ if and .User (ne .User.ScreenName "Anonymous") }}
-                <li><a href="/profile/{{ pathEscape .User.ScreenName }}">{{.User.ScreenName}}</a></li>
+                <li><a href="/wiki/User:{{ pathEscape .User.ScreenName }}">{{.User.ScreenName}}</a></li>
                 {{ if .User.IsAdmin }}<li><a href="/manage/users">Admin</a></li>{{ end }}
                 <li><a href="/user/settings">Settings</a></li>
                 <li><form method="POST" action="/user/logout"><button class="pw-logout-btn" type="submit">Logout</button></form></li>
