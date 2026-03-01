@@ -320,16 +320,17 @@ func CreateTestArticle(t testing.TB, app *TestApp, url, markdown string, creator
 
 // articleResult is used for scanning article queries that include user info
 type articleResult struct {
-	URL        string
-	ID         int
-	Markdown   string
-	HTML       string
-	Hash       string    `db:"hashval"`
-	Created    time.Time
-	PreviousID int       `db:"previous_id"`
-	Comment    string
-	UserID     int       `db:"user_id"`
-	ScreenName string    `db:"screenname"`
+	URL         string
+	ID          int
+	Markdown    string
+	HTML        string
+	Hash        string    `db:"hashval"`
+	Created     time.Time
+	PreviousID  int       `db:"previous_id"`
+	Comment     string
+	UserID      int       `db:"user_id"`
+	ScreenName  string    `db:"screenname"`
+	HasUserPage bool      `db:"has_user_page"`
 }
 
 func (r *articleResult) toArticle() *wiki.Article {
@@ -343,7 +344,7 @@ func (r *articleResult) toArticle() *wiki.Article {
 			Created:    r.Created,
 			PreviousID: r.PreviousID,
 			Comment:    r.Comment,
-			Creator:    &wiki.User{ID: r.UserID, ScreenName: r.ScreenName},
+			Creator:    &wiki.User{ID: r.UserID, ScreenName: r.ScreenName, HasUserPage: r.HasUserPage},
 		},
 	}
 }
@@ -383,7 +384,8 @@ func (tdb *TestDB) SelectRevision(hash string) (*wiki.Revision, error) {
 
 func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 	rows, err := tdb.conn.Queryx(
-		`SELECT Revision.id, hashval, created, comment, previous_id, User.screenname, length(markdown)
+		`SELECT Revision.id, hashval, created, comment, previous_id, User.screenname, length(markdown),
+			EXISTS(SELECT 1 FROM Article a2 WHERE a2.url = 'User:' || User.screenname) AS has_user_page
 			FROM Article JOIN Revision ON Article.id = Revision.article_id
 					     JOIN User ON Revision.user_id = User.id
 			WHERE Article.url = ? ORDER BY Revision.id DESC`, url)
@@ -398,6 +400,7 @@ func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 		PreviousID                   int       `db:"previous_id"`
 		Length                       int       `db:"length(markdown)"`
 		Created                      time.Time `db:"created"`
+		HasUserPage                  bool      `db:"has_user_page"`
 	}{}
 	results := make([]*wiki.Revision, 0)
 	for rows.Next() {
@@ -413,6 +416,7 @@ func (tdb *TestDB) SelectRevisionHistory(url string) ([]*wiki.Revision, error) {
 		rev.Created = result.Created
 		rev.Markdown = string(rune(result.Length))
 		rev.Creator.ScreenName = result.Screenname
+		rev.Creator.HasUserPage = result.HasUserPage
 		results = append(results, rev)
 	}
 	if len(results) < 1 {
