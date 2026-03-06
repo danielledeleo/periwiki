@@ -9,14 +9,11 @@ body {
     padding: 0;
 }
 
-/* Hide chrome */
-#navbar,
-#sidebar,
-#login-bar,
-#footer,
-ul.pw-tabs,
-.pw-last-edited,
-.pw-what-links-here,
+/* Hide everything except article content */
+body > *:not(#flex-container),
+#flex-container > *:not(#right-panel),
+#right-panel > *:not(#article-area),
+#article-area > *:not(article),
 #toc .toc-toggle,
 #toc .toc-brackets,
 #toc .toc-header label,
