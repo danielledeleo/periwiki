@@ -1,0 +1,147 @@
+/* Print stylesheet — serif body, essential content only, black & white */
+
+body {
+    background: #fff;
+    color: #000;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    line-height: 1.5;
+    margin: 0;
+    padding: 0;
+}
+
+/* Hide chrome */
+#navbar,
+#sidebar,
+#login-bar,
+#footer,
+ul.pw-tabs,
+.pw-last-edited,
+.pw-what-links-here,
+#toc .toc-toggle,
+#toc .toc-brackets,
+#toc .toc-header label,
+a.pw-syntax-help {
+    display: none !important;
+}
+
+/* Layout reset */
+#flex-container {
+    display: block;
+}
+
+#right-panel {
+    max-width: 45rem;
+    margin: 0 auto;
+    overflow: visible;
+}
+
+#article-area {
+    width: 100%;
+    overflow: visible;
+}
+
+/* Article */
+article {
+    border: none;
+    background: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* Links: black, no underline, show URL after external links */
+a {
+    color: #000;
+    text-decoration: underline;
+}
+
+a.pw-deadlink {
+    color: #000;
+}
+
+article section.footnotes a,
+article sup a,
+#toc a {
+    text-decoration: none;
+}
+
+a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+}
+
+/* Headings */
+article h1,
+article h2 {
+    font-family: Georgia, "Times New Roman", Times, serif;
+    border-bottom: 1px solid #000;
+}
+
+/* TOC: show contents, remove background and border */
+#toc {
+    border: none;
+    background: none;
+}
+
+#toc .toc-toggle:not(:checked) ~ ol {
+    visibility: visible;
+    height: auto;
+    overflow: visible;
+}
+
+/* Tables */
+article div.pw-article-content > table {
+    display: table;
+    border: 1px solid #000;
+    border-collapse: collapse;
+}
+
+article div.pw-article-content > table thead,
+article div.pw-article-content > table tr:nth-child(2n) {
+    background: none;
+}
+
+article div.pw-article-content > table td,
+article div.pw-article-content > table th {
+    border: 1px solid #000;
+    padding: 0.2rem 0.5rem;
+}
+
+/* Code blocks */
+article pre {
+    border: 1px solid #000;
+    background: none;
+    padding: 0.75rem;
+}
+
+/* Infobox */
+article .infobox {
+    border: 1px solid #000;
+    background: none;
+}
+
+/* Callouts: strip color, thin border */
+.pw-callout,
+.pw-green, .pw-success,
+.pw-red, .pw-error,
+.pw-blue, .pw-info,
+.pw-neutral {
+    border-color: #000;
+    background: none;
+}
+
+/* Images */
+img {
+    max-width: 100%;
+}
+
+/* Avoid page breaks inside key elements */
+article pre,
+article .infobox,
+article table,
+article blockquote {
+    page-break-inside: avoid;
+}
+
+h1, h2, h3 {
+    page-break-after: avoid;
+}

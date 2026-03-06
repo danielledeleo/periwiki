@@ -9,6 +9,15 @@ import (
 	"github.com/danielledeleo/periwiki/wiki"
 )
 
+// PrintModeMiddleware checks for the ?print query parameter and stores it in context.
+func PrintModeMiddleware(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		_, printMode := req.URL.Query()["print"]
+		ctx := context.WithValue(req.Context(), wiki.PrintModeKey, printMode)
+		handler.ServeHTTP(rw, req.WithContext(ctx))
+	})
+}
+
 func (a *App) SessionMiddleware(handler http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {

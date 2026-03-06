@@ -2,7 +2,6 @@
 Soon(ish)
 - [MED] Whole-site cache busting on deploy — after a binary or template update, browsers can serve stale page HTML because ETags/Last-Modified only track article content, not the surrounding templates or CSS. Need a mechanism (e.g. mixing BuildCommit into ETags, or similar) so deploying a new binary invalidates all browser caches via normal HTTP conditional request handling.
 - [MED] Sitemap registry: include special pages via opt-in interface (see docs/plans/sitemap-registry.md)
-- [MED] User:pages
 - Page alias and redirect system (design TBD)
 - Page renaming tool e.g., move foo to Foobar_(Computing)
   - this is separate from but related to from the alias/redirect system
@@ -20,17 +19,15 @@ Soon(ish)
 - Include better sample pages
 - Move .go files out of root directory (note: `content.go` added for overlay FS embed)
 - [MED] User-defined templates system (see docs/plans/user-templates-design.md)
-  - Prerequisites: content re-render queue, article type field
-  - Subsumes: widgets, tagging/frontmatter, rich homepage, some special page customization
-  - See: wikipedia {Navbar} + {Template that calls navbar}
-  - **Privileged templates defined in the theme, dynamic templates defined as Articles**
-  - In order for runtime privileged templates to work, we'll likely need a theming system
-  - They should have distinct names
+  - Prerequisites: content re-render queue (done), namespace routing (done), frontmatter parsing (done)
+  - Core widgets in `templates/_widgets/`, user templates as `Template:*` articles
+  - Subsumes: widgets, rich homepage, some special page customization
 - Create Markdown templates for default pages (admin pages, etc.)
 - User settings?
 - Password recovery, 2FA, Login providers
 - Backup/data export mechanism
 - Tagging system (frontmatter-based, with tag pages)
+  - Research task: look at prior art for taxonomy systems
 - 404 page with "Did you mean /wiki/notfound?" link (?)
 - Two column References section layout like wikipedia
 - Add extension for custom superscripts/subscripts, [citation needed]-style, not bound to a footnote
@@ -38,6 +35,10 @@ Soon(ish)
   - Asset metadata is tracked by the wiki system, but blobs are not stored in the database
   - References are kept to an externally managed media system (local filesystem, S3, static files on an nginx server, etc.)
 - Allow the binary to launch in the event of database errors/connectivity loss (at least display an error page)
+- [MED] Licensing strategy for user generated content
+  - At what level should user-generated content be licensed?
+  - Sitewide, per page, default, overrides?
+  - How is it displayed?
 
 Architecture
 
@@ -58,7 +59,6 @@ Down the line
 - Custom goldmark table ParagraphTransformer that tracks [[/]] bracket depth, allowing unescaped pipes in wikilinks inside tables (currently requires \| escape)
 - Moderation tools?
 - Admin panel
-- print CSS
 - A theme system (custom templates)
 - Theme configurability (custom logo, custom colours)
 - Action rate limiting (saves per x time, anti-crawl, etc.)

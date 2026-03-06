@@ -88,6 +88,7 @@ func SlogLoggingMiddleware(next http.Handler) http.Handler {
 // RegisterRoutes adds all application routes to the given router.
 // Both the main server and the WASM demo call this to avoid duplication.
 func (a *App) RegisterRoutes(router *mux.Router, contentFS fs.FS) {
+	router.Use(PrintModeMiddleware)
 	router.Use(a.SessionMiddleware)
 
 	staticSub, _ := fs.Sub(contentFS, "static")

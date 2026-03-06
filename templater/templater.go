@@ -130,7 +130,11 @@ func (t *Templater) RenderTemplate(w io.Writer, name string, base string, data m
 	}
 
 	if data["Context"] != nil {
-		data["User"] = data["Context"].(context.Context).Value(wiki.UserKey).(*wiki.User)
+		ctx := data["Context"].(context.Context)
+		data["User"] = ctx.Value(wiki.UserKey).(*wiki.User)
+		if pm, ok := ctx.Value(wiki.PrintModeKey).(bool); ok {
+			data["PrintMode"] = pm
+		}
 	}
 
 	// Ensure Article has a display title for page title

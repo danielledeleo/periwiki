@@ -5,3 +5,6 @@ type ContextKey string
 
 // UserKey is the context key for storing the current user.
 const UserKey ContextKey = "periwiki.user"
+
+// PrintModeKey is the context key for the ?print query parameter.
+const PrintModeKey ContextKey = "periwiki.printmode"
