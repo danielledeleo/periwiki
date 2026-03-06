@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
 	"golang.org/x/mod/modfile"
 )
@@ -35,12 +36,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get HEAD commit (best-effort — build works without git)
+	// Get HEAD commit and timestamp (best-effort — build works without git)
 	commit := "unknown"
+	commitTime := ""
 	if out, err := exec.Command("git", "-C", repoRoot, "rev-parse", "HEAD").Output(); err == nil {
 		commit = strings.TrimSpace(string(out))
 	} else {
 		fmt.Fprintf(os.Stderr, "warning: could not determine git commit: %v\n", err)
+	}
+	if commit != "unknown" {
+		if out, err := exec.Command("git", "-C", repoRoot, "log", "-1", "--format=%cI", "HEAD").Output(); err == nil {
+			commitTime = strings.TrimSpace(string(out))
+		}
+	}
+	if commitTime == "" {
+		commitTime = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	// Build base URL (GitHub only for now, skip if no commit)
@@ -51,7 +61,7 @@ func main() {
 
 	// Generate metadata file
 	outputPath := filepath.Join(repoRoot, "internal", "embedded", "metadata_gen.go")
-	if err := generateFile(outputPath, commit, baseURL); err != nil {
+	if err := generateFile(outputPath, commit, baseURL, commitTime); err != nil {
 		fmt.Fprintf(os.Stderr, "error generating file: %v\n", err)
 		os.Exit(1)
 	}
@@ -162,12 +172,16 @@ package embedded
 // BuildCommit is the git commit hash at build time.
 const BuildCommit = "{{.Commit}}"
 
+// BuildTime is the commit timestamp in RFC 3339 format.
+// Falls back to the time the generator ran if git is unavailable.
+const BuildTime = "{{.BuildTime}}"
+
 // SourceBaseURL is the base URL for viewing source files.
 // Empty if the forge couldn't be determined from go.mod.
 const SourceBaseURL = "{{.BaseURL}}"
 `
 
-func generateFile(outputPath, commit, baseURL string) error {
+func generateFile(outputPath, commit, baseURL, buildTime string) error {
 	t, err := template.New("metadata").Parse(tmpl)
 	if err != nil {
 		return err
@@ -180,7 +194,8 @@ func generateFile(outputPath, commit, baseURL string) error {
 	defer f.Close()
 
 	return t.Execute(f, map[string]string{
-		"Commit":  commit,
-		"BaseURL": baseURL,
+		"Commit":    commit,
+		"BaseURL":   baseURL,
+		"BuildTime": buildTime,
 	})
 }

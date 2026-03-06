@@ -5,9 +5,17 @@ package embedded
 import (
 	"io/fs"
 	"strings"
+	"time"
 
 	"github.com/danielledeleo/periwiki/wiki"
 )
+
+// GetBuildTime parses the generated BuildTime constant.
+// Returns zero time if not available.
+func GetBuildTime() time.Time {
+	t, _ := time.Parse(time.RFC3339, BuildTime)
+	return t
+}
 
 const embeddedPrefix = "Periwiki:"
 
@@ -62,6 +70,7 @@ func New(fsys fs.FS, render RenderFunc) (*EmbeddedArticles, error) {
 			Revision: &wiki.Revision{
 				Markdown: string(content),
 				HTML:     html,
+				Created:  GetBuildTime(),
 			},
 		}
 	}

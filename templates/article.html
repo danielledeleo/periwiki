@@ -20,9 +20,7 @@
             {{if $.UserProfile}}{{template "user_info" $}}{{end}}
         </div>
     </article>
-    {{if not .ReadOnly}}
     {{template "article_footer" $}}
-    {{end}}
     {{end}}
 </div>
 {{end}}

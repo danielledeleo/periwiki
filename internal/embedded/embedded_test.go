@@ -97,6 +97,13 @@ func TestRenderAll(t *testing.T) {
 	})
 }
 
+func TestGetBuildTime(t *testing.T) {
+	bt := embedded.GetBuildTime()
+	if bt.IsZero() {
+		t.Error("expected non-zero build time")
+	}
+}
+
 func TestIsEmbeddedURL(t *testing.T) {
 	tests := []struct {
 		url      string
